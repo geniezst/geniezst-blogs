@@ -1,0 +1,23 @@
+{
+  "last_updated": "2026-09-18T02:47:35.000Z",
+  "category_counts": {
+    "welfare": 1,
+    "tax": 0,
+    "finance": 0,
+    "saving": 0,
+    "subsidy": 0,
+    "life-tips": 0
+  },
+  "last_session": "lunch",
+  "history": [
+    {
+      "date": "2026-09-18",
+      "session": "lunch",
+      "time": "11:40",
+      "category": "welfare",
+      "title": "2026년 국민취업지원제도 구직촉진수당 자격 조건과 신청 방법: 최대 540만원 지원금 및 취업성공수당 총정리",
+      "slug": "national-employment-support-allowance-2026",
+      "status": "success"
+    }
+  ]
+}

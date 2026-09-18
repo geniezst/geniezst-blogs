@@ -40,6 +40,11 @@ const ALL_CATEGORIES = [
  * 상태 파일 로드
  */
 function loadState() {
+  const dir = path.dirname(STATE_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
   if (fs.existsSync(STATE_FILE)) {
     try {
       return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
@@ -47,18 +52,25 @@ function loadState() {
       log('상태 파일 읽기 실패, 초기화합니다:', e.message);
     }
   }
-  return {
+
+  const initialState = {
     last_updated: new Date().toISOString(),
     category_counts: Object.fromEntries(ALL_CATEGORIES.map((c) => [c, 0])),
     last_session: null,
     history: [],
   };
+  saveState(initialState);
+  return initialState;
 }
 
 /**
  * 상태 파일 저장
  */
 function saveState(state) {
+  const dir = path.dirname(STATE_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   state.last_updated = new Date().toISOString();
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
 }
@@ -239,16 +251,7 @@ export async function runPublishPipeline(sessionName) {
       stdio: 'inherit',
     });
 
-    // 6. GitHub commit & push (Cloudflare Workers 자동 배포)
-    log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
-    try {
-      execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
-    } catch (_) {}
-    execSync(`git add content/posts/ data/auto-publish-state.json`, { cwd: BLOG_ROOT });
-    execSync(`git commit -m "feat(post): auto publish [${sessionName}] ${generatedSlug}"`, { cwd: BLOG_ROOT });
-    execSync(`git push origin main`, { cwd: BLOG_ROOT });
-
-    // 7. 상태 파일 갱신
+    // 6. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
     state.category_counts[category] = (state.category_counts[category] || 0) + 1;
     state.last_session = sessionName;
     state.history.push({
@@ -261,6 +264,24 @@ export async function runPublishPipeline(sessionName) {
       status: 'success',
     });
     saveState(state);
+
+    // 7. GitHub commit & push (Cloudflare Workers 자동 배포)
+    log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
+    try {
+      execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
+    } catch (_) {}
+
+    const filesToStage = ['content/posts/'];
+    if (fs.existsSync(STATE_FILE)) {
+      filesToStage.push('data/auto-publish-state.json');
+    }
+    execSync(`git add ${filesToStage.join(' ')}`, { cwd: BLOG_ROOT });
+
+    const stagedChanges = execSync(`git status --porcelain`, { cwd: BLOG_ROOT }).toString().trim();
+    if (stagedChanges) {
+      execSync(`git commit -m "feat(post): auto publish [${sessionName}] ${generatedSlug}"`, { cwd: BLOG_ROOT });
+      execSync(`git push origin main`, { cwd: BLOG_ROOT });
+    }
 
     // 8. 텔레그램 성공 보고 발송
     const successMsg = `🎉 *[스마트 라이프 & 머니(blogs) 자동 게시 완료]*
