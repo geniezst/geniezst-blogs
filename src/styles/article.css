@@ -159,8 +159,30 @@ html.dark .article-content li {
   font-weight: 700;
 }
 
+/* Nested Unordered Lists (Sub-items marked with '-' instead of dot) */
 .article-content li > ul,
-.article-content li > ol {
+.article-content ul ul {
+  list-style-type: "-";
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  padding-left: 1.25rem;
+}
+
+.article-content li > ul > li,
+.article-content ul ul > li {
+  margin-bottom: 0.35rem;
+  padding-left: 0.25rem;
+}
+
+.article-content li > ul > li::marker,
+.article-content ul ul > li::marker {
+  content: "- ";
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.article-content li > ol,
+.article-content ol ol {
   margin-top: 0.35rem;
   margin-bottom: 0.35rem;
   padding-left: 1.25rem;
