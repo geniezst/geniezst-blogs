@@ -71,8 +71,8 @@ const categoryQuickPills = [
         </div>
       )}
 
-      <!-- 카테고리 퀵 필터 칩 바 -->
-      <div class="editorial-card p-3 sm:p-4 border-emerald-100/70 dark:border-emerald-950/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <!-- 카테고리 퀵 필터 칩 바 (모바일에서는 숨김, 데스크톱 lg에서만 표시) -->
+      <div class="hidden lg:flex editorial-card p-3 sm:p-4 border-emerald-100/70 dark:border-emerald-950/40 items-center gap-2 overflow-x-auto scrollbar-none">
         <a
           href="/blog"
           class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shrink-0 hover:bg-emerald-700 transition"
