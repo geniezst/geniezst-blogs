@@ -12,40 +12,45 @@ if (db) {
 ---
 
 <BaseLayout
-  title="블로그 소개 - geniezst"
-  description="geniezst 블로그의 운영 철학과 기술 소개입니다."
+  title="블로그 소개 - 스마트 라이프 & 머니"
+  description="스마트 라이프 & 머니의 운영 철학과 생활 금융 가이드 소개입니다."
 >
   <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} />
 
-    <div class="flex-1 w-full fuwari-card p-6 sm:p-10">
-      <h1 class="text-3xl font-black text-neutral-900 dark:text-white mb-4">
-        About geniezst
+    <div class="flex-1 w-full fuwari-card p-6 sm:p-10 border-emerald-100/80 dark:border-emerald-950/50">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40 mb-3">
+        <span>🏛️</span>
+        <span>스마트 금융 아카이브</span>
+      </div>
+
+      <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mb-2">
+        About 스마트 라이프 &amp; 머니
       </h1>
       <p class="text-sm text-neutral-500 dark:text-neutral-400 pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
-        경험과 트러블슈팅을 기록하는 테크 아카이브
+        놓치면 손해보는 정부 복지 혜택과 알뜰 생활 금융의 모든 것
       </p>
 
       <div class="prose prose-neutral dark:prose-invert max-w-none text-base leading-relaxed
-                  prose-headings:font-bold prose-a:text-blue-600 dark:prose-a:text-blue-400">
+                  prose-headings:font-bold prose-a:text-emerald-600 dark:prose-a:text-emerald-400">
         <p>
-          <strong>geniezst</strong>는 홈랩, 서버 인프라, 전자기기, 그리고 최신 AI 도구를 실무와 일상에 직접 적용하며 겪은 문제와 해결책을 체계적으로 아카이빙하는 공간입니다.
+          <strong>스마트 라이프 &amp; 머니</strong>는 복잡하고 어려운 정부 정책 지원금, 숨은 세금 환급금, 알뜰 금융 및 생활비 절약 노하우를 일반 독자의 눈높이에서 가장 쉽고 명쾌하게 안내하는 실전 생활 금융 가이드입니다.
         </p>
 
-        <h2>다루는 주제</h2>
+        <h2>주요 다루는 분야</h2>
         <ul>
-          <li><strong>NAS &amp; Home Server:</strong> 시놀로지, 커스텀 NAS, 네트워크 스토리지 구축 및 문제 해결</li>
-          <li><strong>Docker &amp; Infrastructure:</strong> 컨테이너 네트워크 분리, 홈랩 서비스 운영 노하우</li>
-          <li><strong>Cloudflare &amp; Serverless:</strong> Workers, D1, R2를 활용한 초고속 웹 아키텍처</li>
-          <li><strong>Mac &amp; Windows:</strong> OS 환경 최적화 팁 및 생산성 도구 가이드</li>
-          <li><strong>Hardware &amp; Gadgets:</strong> 배터리, 충전기, 오디오 등 검증된 IT 기기 실사용 리뷰</li>
+          <li><strong>정부 지원금 &amp; 복지:</strong> 청년도약계좌, 근로·자녀장려금, 부모급여 등 전 국민 맞춤형 복지 혜택</li>
+          <li><strong>연말정산 &amp; 절세/환급:</strong> 숨은 국세/지방세 환급금 조회, 소득공제 극대화 전략</li>
+          <li><strong>예적금 &amp; 금융 팁:</strong> 고금리 파킹통장 실시간 비교, 특판 예적금, 청약통장 및 ISA 절세 계좌 활용법</li>
+          <li><strong>생활비 절약 &amp; 공과금:</strong> 전기·가스요금 캐시백, 통신비 25% 요금할인, 신용·체크카드 피킹 노하우</li>
+          <li><strong>소상공인 &amp; 정책자금:</strong> 소상공인 전기료 지원, 저금리 대환 대출, 희망리턴패키지 정부 지원금</li>
+          <li><strong>생활 행정 &amp; 필수 팁:</strong> 정부24 원스톱 민원 서류 발급, 착한운전 마일리지, 일상 행정 상식</li>
         </ul>
 
-        <h2>디자인 &amp; 기술 스택</h2>
+        <h2>운영 원칙</h2>
         <p>
-          본 사이트는 트렌디한 카드 기반 UI와 애니메이션을 제공하는 <strong>Fuwari 테마 스타일</strong>을 기반으로 제작되었습니다.
-          Astro 7 프레임워크와 Cloudflare의 글로벌 Edge 네트워크(Workers + D1 + R2) 위에서 완벽히 구동되며,
-          빠른 반응 속도와 부드러운 다크/라이트 모드 경험을 선사합니다.
+          모든 콘텐츠는 정부 부처와 금융기관의 공식 발표 자료 및 최신 법령을 기준으로 철저히 검증하여 작성되며,
+          누구나 3분 안에 이해하고 모바일로 바로 신청할 수 있는 실천적 가이드를 지향합니다.
         </p>
       </div>
     </div>

@@ -37,20 +37,23 @@ if (!currentCategory) {
 ---
 
 <BaseLayout
-  title={`${currentCategory.name} - geniezst`}
+  title={`${currentCategory.name} - 스마트 라이프 & 머니`}
   description={currentCategory.description || `${currentCategory.name} 관련 아티클 모음`}
 >
   <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="fuwari-card p-6">
-        <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">Category</span>
-        <h1 class="text-2xl font-black text-neutral-900 dark:text-white mt-1">
+      <div class="fuwari-card p-6 border-emerald-100/80 dark:border-emerald-950/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+          <span>🏛️</span>
+          <span>카테고리 가이드</span>
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mt-1.5">
           {currentCategory.name}
         </h1>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {currentCategory.description || '관련 글 목록'} (총 {total}개)
+        <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
+          {currentCategory.description || '관련 글 목록'} (총 {total}개의 가이드)
         </p>
       </div>
 
@@ -61,7 +64,7 @@ if (!currentCategory) {
           ))}
         </div>
       ) : (
-        <div class="fuwari-card p-12 text-center">
+        <div class="fuwari-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
           <p class="text-neutral-500 dark:text-neutral-400 text-sm">이 카테고리에는 아직 등록된 글이 없습니다.</p>
         </div>
       )}

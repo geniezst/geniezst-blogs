@@ -38,6 +38,39 @@ const formattedDate = post.published_at
       day: 'numeric',
     })
   : '';
+
+// 6대 카테고리별 맞춤형 뱃지 스타일
+const categoryBadgeStyles: Record<string, { bg: string; icon: string }> = {
+  welfare: {
+    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40',
+    icon: '🏛️',
+  },
+  tax: {
+    bg: 'bg-amber-50 text-amber-700 border-amber-200/70 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40',
+    icon: '💰',
+  },
+  finance: {
+    bg: 'bg-blue-50 text-blue-700 border-blue-200/70 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/40',
+    icon: '📈',
+  },
+  saving: {
+    bg: 'bg-teal-50 text-teal-700 border-teal-200/70 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/40',
+    icon: '⚡',
+  },
+  subsidy: {
+    bg: 'bg-violet-50 text-violet-700 border-violet-200/70 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/40',
+    icon: '🏪',
+  },
+  'life-tips': {
+    bg: 'bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40',
+    icon: '📋',
+  },
+};
+
+const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug]) || {
+  bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40',
+  icon: '💡',
+};
 ---
 
 <BaseLayout
@@ -53,13 +86,13 @@ const formattedDate = post.published_at
     <!-- 사이드바 -->
     <Sidebar categories={categories} />
 
-    <!-- 본문 카드 영역 (Fuwari 시그니처) -->
-    <article class="flex-1 w-full fuwari-card p-6 sm:p-10">
+    <!-- 본문 카드 영역 (핀테크 에디토리얼 매거진) -->
+    <article class="flex-1 w-full fuwari-card p-6 sm:p-10 border-emerald-100/80 dark:border-emerald-950/50">
       <!-- 뒤로 가기 링크 -->
       <div class="mb-6">
         <button
           onclick="history.back()"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800/80 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
         >
           <span>&larr;</span>
           <span>목록으로 돌아가기</span>
@@ -73,14 +106,14 @@ const formattedDate = post.published_at
           {post.category_name && (
             <a
               href={`/category/${post.category_slug}`}
-              class="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40 hover:opacity-80 transition"
+              class={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border hover:opacity-85 transition ${badgeStyle.bg}`}
             >
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+              <span>{badgeStyle.icon}</span>
               <span>{post.category_name}</span>
             </a>
           )}
           <span class="text-xs text-neutral-400 dark:text-neutral-500 font-mono">
-            {post.reading_time_minutes}분 소요
+            {post.reading_time_minutes}분 정독
           </span>
         </div>
 
@@ -91,15 +124,15 @@ const formattedDate = post.published_at
         <!-- 메타 정보 -->
         <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
           <div class="flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <time datetime={post.published_at || ''}>{formattedDate}</time>
           </div>
           <span>•</span>
           <div class="flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
-              G
+            <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center text-[10px] font-bold">
+              M
             </span>
             <span>{post.author}</span>
           </div>
@@ -111,9 +144,16 @@ const formattedDate = post.published_at
           )}
         </div>
 
-        <p class="mt-4 text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed bg-neutral-50/80 dark:bg-neutral-800/40 p-4 rounded-xl border border-neutral-100 dark:border-neutral-800">
-          {post.description}
-        </p>
+        <!-- 핵심 요약 체크포인트 박스 -->
+        <div class="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/60 dark:border-emerald-900/40">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-sm">📌</span>
+            <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">핵심 요약 안내</span>
+          </div>
+          <p class="text-sm sm:text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
+            {post.description}
+          </p>
+        </div>
       </header>
 
       <!-- 제휴 마케팅 공지 -->
@@ -122,7 +162,7 @@ const formattedDate = post.published_at
       <!-- 본문 상단 광고 -->
       <AdSlot format="horizontal" />
 
-      <!-- 마크다운 본문 (Fuwari Typography & Premium Code Container) -->
+      <!-- 마크다운 본문 (Fintech Typography & Tables) -->
       <div
         class="mt-8 article-content"
         set:html={contentHtml}
@@ -136,7 +176,7 @@ const formattedDate = post.published_at
         {post.tags && post.tags.length > 0 ? (
           <div class="flex flex-wrap gap-2">
             {post.tags.map((t) => (
-              <span class="px-3 py-1 rounded-xl bg-neutral-100 dark:bg-neutral-800 font-mono text-xs text-neutral-600 dark:text-neutral-300">
+              <span class="px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/40 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 #{t.name}
               </span>
             ))}
@@ -145,7 +185,7 @@ const formattedDate = post.published_at
 
         <button
           onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
-          class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+          class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
         >
           <span>&uarr; 맨 위로 이동</span>
         </button>
@@ -178,46 +218,35 @@ const formattedDate = post.published_at
               textArea.value = codeText;
               textArea.style.position = 'fixed';
               textArea.style.left = '-999999px';
-              textArea.style.top = '-999999px';
               document.body.appendChild(textArea);
-              textArea.focus();
               textArea.select();
               document.execCommand('copy');
-              textArea.remove();
+              document.body.removeChild(textArea);
             }
 
-            const copyIcon = btn.querySelector('.copy-icon');
-            const checkIcon = btn.querySelector('.check-icon');
-            const copyLabel = btn.querySelector('.copy-label');
-
-            if (copyIcon) copyIcon.classList.add('hidden');
-            if (checkIcon) checkIcon.classList.remove('hidden');
-            if (copyLabel) copyLabel.textContent = '복사 완료!';
-            btn.classList.add('border-emerald-500/60', 'text-emerald-400');
+            btn.innerHTML = `
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span class="text-emerald-400 font-bold">복사 완료!</span>
+            `;
 
             setTimeout(() => {
-              if (copyIcon) copyIcon.classList.remove('hidden');
-              if (checkIcon) checkIcon.classList.add('hidden');
-              if (copyLabel) copyLabel.textContent = '복사';
-              btn.classList.remove('border-emerald-500/60', 'text-emerald-400');
+              btn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>복사</span>
+              `;
             }, 2000);
           } catch (err) {
-            console.error('Failed to copy code to clipboard:', err);
-            const copyLabel = btn.querySelector('.copy-label');
-            if (copyLabel) copyLabel.textContent = '실패';
-            setTimeout(() => {
-              if (copyLabel) copyLabel.textContent = '복사';
-            }, 2000);
+            console.error('Failed to copy text: ', err);
           }
         });
       });
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupCodeCopyButtons);
-    } else {
-      setupCodeCopyButtons();
-    }
+    setupCodeCopyButtons();
     document.addEventListener('astro:page-load', setupCodeCopyButtons);
   </script>
 </BaseLayout>

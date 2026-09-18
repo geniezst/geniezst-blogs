@@ -33,17 +33,20 @@ if (db) {
 ---
 
 <BaseLayout
-  title={q ? `'${q}' 검색 결과 - geniezst` : '글 검색 - geniezst'}
-  description="geniezst 블로그의 글과 트러블슈팅 가이드를 검색합니다."
+  title={q ? `'${q}' 검색 결과 - 스마트 라이프 & 머니` : '가이드 검색 - 스마트 라이프 & 머니'}
+  description="정부 지원금, 환급금, 예적금, 생활 절세 가이드를 검색합니다."
 >
   <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="fuwari-card p-6 sm:p-8">
-        <h1 class="text-2xl font-black text-neutral-900 dark:text-white mb-4">
-          글 검색
+      <div class="fuwari-card p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50">
+        <h1 class="text-2xl font-black text-neutral-900 dark:text-white mb-2">
+          생활 금융 가이드 검색
         </h1>
+        <p class="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+          궁금한 정책 지원금, 환급금, 공과금 절약 키워드를 검색하세요.
+        </p>
 
         <!-- 검색창 -->
         <form method="GET" action="/search">
@@ -52,12 +55,12 @@ if (db) {
               type="search"
               name="q"
               value={q}
-              placeholder="궁금한 기술, 에러 메시지, 제품명을 입력하세요..."
+              placeholder="지원금 명칭, 환급, 세금, 청년, 소상공인 등 입력..."
               required
-              class="w-full px-4 py-3 pl-11 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/80 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
+              class="w-full px-4 py-3 pl-11 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-slate-800/80 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
             />
             <svg
-              class="w-5 h-5 absolute left-3.5 top-3.5 text-neutral-400"
+              class="w-5 h-5 absolute left-3.5 top-3.5 text-emerald-600 dark:text-emerald-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -72,7 +75,7 @@ if (db) {
       {q ? (
         <div>
           <p class="text-xs text-neutral-500 dark:text-neutral-400 px-2 mb-4">
-            <strong>'{q}'</strong> 검색 결과: 총 {results.length}건
+            <strong class="text-emerald-700 dark:text-emerald-400">'{q}'</strong> 검색 결과: 총 {results.length}건
           </p>
 
           {results.length > 0 ? (
@@ -82,7 +85,7 @@ if (db) {
               ))}
             </div>
           ) : (
-            <div class="fuwari-card p-12 text-center">
+            <div class="fuwari-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
                 일치하는 글을 찾을 수 없습니다. 다른 키워드로 검색해 보세요.
               </p>
@@ -90,7 +93,7 @@ if (db) {
           )}
         </div>
       ) : (
-        <div class="fuwari-card p-12 text-center text-sm text-neutral-400 dark:text-neutral-500">
+        <div class="fuwari-card p-12 text-center text-sm text-neutral-400 dark:text-neutral-500 border-emerald-100/60 dark:border-emerald-950/40">
           검색어를 입력하고 Enter를 누르세요.
         </div>
       )}

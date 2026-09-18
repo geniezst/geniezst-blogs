@@ -4,22 +4,25 @@ import { siteConfig } from '../site.config';
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="mt-20 border-t border-dashed border-neutral-200 dark:border-neutral-800 py-8 text-xs text-neutral-500 dark:text-neutral-400">
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-    <!-- 저작권 -->
-    <div>
-      <span>Copyright &#169; {currentYear} {siteConfig.author}. All rights reserved.</span>
+<footer class="mt-20 border-t border-dashed border-emerald-200/50 dark:border-emerald-900/30 py-8 text-xs text-neutral-500 dark:text-neutral-400">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- 저작권 및 사이트명 -->
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span>Copyright &#169; {currentYear} {siteConfig.title}. All rights reserved.</span>
     </div>
 
     <!-- 링크 목록 -->
     <div class="flex items-center gap-4">
-      <a href="/privacy" class="link-hover">개인정보처리방침</a>
+      <a href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">소개</a>
       <span>•</span>
-      <a href="/contact" class="link-hover">문의하기</a>
+      <a href="/privacy" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">개인정보처리방침</a>
+      <span>•</span>
+      <a href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">문의하기</a>
       <span>•</span>
       <a
         href="/rss.xml"
-        class="inline-flex items-center gap-1 text-[var(--color-accent)] link-hover"
+        class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition"
         title="RSS 피드"
       >
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">

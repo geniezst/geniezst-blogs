@@ -81,8 +81,8 @@ html.dark .article-content p {
 /* Links */
 .article-content a,
 .article-content .article-link {
-  color: #2563eb;
-  font-weight: 500;
+  color: #059669;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   transition: color 0.15s ease, opacity 0.15s ease;
@@ -90,7 +90,7 @@ html.dark .article-content p {
 
 .article-content a:hover,
 .article-content .article-link:hover {
-  color: #1d4ed8;
+  color: #047857;
   opacity: 0.9;
 }
 
@@ -98,12 +98,12 @@ html[data-theme="dark"] .article-content a,
 html.dark .article-content a,
 html[data-theme="dark"] .article-content .article-link,
 html.dark .article-content .article-link {
-  color: #60a5fa;
+  color: #10b981;
 }
 
 html[data-theme="dark"] .article-content a:hover,
 html.dark .article-content a:hover {
-  color: #93c5fd;
+  color: #34d399;
 }
 
 /* Blockquotes / Callouts */
@@ -111,15 +111,15 @@ html.dark .article-content a:hover {
   position: relative;
   margin: 2rem 0;
   padding: 1.25rem 1.5rem;
-  background-color: rgba(59, 130, 246, 0.05);
+  background-color: rgba(5, 150, 105, 0.05);
   border-left: 4px solid var(--color-primary);
   border-radius: 0 1rem 1rem 0;
-  color: #475569;
+  color: #334155;
 }
 
 html[data-theme="dark"] .article-content blockquote,
 html.dark .article-content blockquote {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(16, 185, 129, 0.08);
   color: #94a3b8;
 }
 
@@ -173,16 +173,16 @@ html.dark .article-content li {
   font-weight: 600;
   padding: 0.2rem 0.45rem;
   border-radius: 0.375rem;
-  background-color: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #dbeafe;
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
 }
 
 html[data-theme="dark"] .article-content :not(pre) > code,
 html.dark .article-content :not(pre) > code {
-  background-color: rgba(30, 41, 59, 0.8);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.25);
+  background-color: rgba(6, 78, 59, 0.4);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 /* Horizontal Divider */
@@ -190,7 +190,7 @@ html.dark .article-content :not(pre) > code {
   margin: 3rem 0;
   border: none;
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent);
+  background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.25), transparent);
 }
 
 /* Code Container Custom Styles */
@@ -221,15 +221,59 @@ html.dark .article-content :not(pre) > code {
   background: #474f6e;
 }
 
-/* Table Styles */
+/* Table Styles - Modern Financial Table */
+.article-table-wrapper {
+  margin: 2rem 0;
+  overflow-x: auto;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: var(--bg-card);
+}
+
+html[data-theme="dark"] .article-table-wrapper,
+html.dark .article-table-wrapper {
+  border-color: rgba(30, 48, 77, 0.8);
+}
+
+.article-table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
 .article-table-wrapper table th {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.15rem;
   font-weight: 700;
-  text-align: inherit;
-  color: var(--text-primary);
+  text-align: left;
+  background-color: rgba(5, 150, 105, 0.08);
+  border-bottom: 2px solid rgba(5, 150, 105, 0.2);
+  color: #065f46;
+}
+
+html[data-theme="dark"] .article-table-wrapper table th,
+html.dark .article-table-wrapper table th {
+  background-color: rgba(16, 185, 129, 0.12);
+  border-bottom-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
 }
 
 .article-table-wrapper table td {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.15rem;
   vertical-align: middle;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .article-table-wrapper table td,
+html.dark .article-table-wrapper table td {
+  border-bottom-color: rgba(30, 48, 77, 0.6);
+}
+
+.article-table-wrapper table tr:nth-child(even) td {
+  background-color: rgba(248, 250, 252, 0.6);
+}
+
+html[data-theme="dark"] .article-table-wrapper table tr:nth-child(even) td,
+html.dark .article-table-wrapper table tr:nth-child(even) td {
+  background-color: rgba(19, 34, 56, 0.4);
 }
