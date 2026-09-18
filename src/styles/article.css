@@ -302,11 +302,17 @@ html[data-theme="dark"] .article-table-wrapper table tr:hover td {
 
 .financial-chart-box {
   margin: 2.5rem 0;
-  padding: 1.5rem sm:2rem;
+  padding: 1.75rem 1.25rem;
   border-radius: 1.25rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   background: var(--bg-card);
   box-shadow: 0 6px 24px -4px rgba(15, 23, 42, 0.06);
+}
+
+@media (min-width: 640px) {
+  .financial-chart-box {
+    padding: 2.25rem 2rem;
+  }
 }
 
 html[data-theme="dark"] .financial-chart-box,
@@ -317,7 +323,7 @@ html.dark .financial-chart-box {
 
 .chart-header {
   margin-bottom: 1.5rem;
-  padding-bottom: 0.85rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 }
 
