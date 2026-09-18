@@ -159,6 +159,18 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
       <!-- 제휴 마케팅 공지 -->
       {post.affiliate_disclosure === 1 && <AffiliateNotice />}
 
+      <!-- 대표 삽화 (R2 연동 고화질 에디토리얼 일러스트) -->
+      {post.featured_image && (
+        <div class="my-6 overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-950/60 shadow-md bg-white dark:bg-slate-900">
+          <img
+            src={post.featured_image}
+            alt={post.title}
+            class="w-full h-auto object-cover max-h-[440px]"
+            loading="eager"
+          />
+        </div>
+      )}
+
       <!-- 본문 상단 광고 -->
       <AdSlot format="horizontal" />
 

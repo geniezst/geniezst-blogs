@@ -118,7 +118,7 @@ async function main() {
     const r2Key = `images/${datePrefix}/${slug}${ext}`;
 
     console.log(`[2/3] R2 버킷(${TARGET_R2})에 이미지 업로드 중: ${r2Key}...`);
-    execSync(`wrangler r2 object put "${TARGET_R2}/${r2Key}" --file="${localImgPath}"`, {
+    execSync(`wrangler r2 object put "${TARGET_R2}/${r2Key}" --file="${localImgPath}" --remote`, {
       stdio: 'inherit',
     });
     featuredImage = `/api/images/${datePrefix}/${slug}${ext}`;
