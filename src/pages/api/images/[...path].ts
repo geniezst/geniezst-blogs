@@ -10,9 +10,26 @@ const MIME_TYPES: Record<string, string> = {
   avif: 'image/avif',
 };
 
+async function getBucket(locals?: any) {
+  try {
+    const cf = await import('cloudflare:workers');
+    if ((cf.env as any)?.BUCKET) {
+      return (cf.env as any).BUCKET;
+    }
+  } catch {}
+
+  try {
+    if (locals?.runtime?.env?.BUCKET) {
+      return locals.runtime.env.BUCKET;
+    }
+  } catch {}
+
+  return null;
+}
+
 export const GET: APIRoute = async ({ params, locals }) => {
   try {
-    const bucket = locals.runtime?.env?.BUCKET;
+    const bucket = await getBucket(locals);
     if (!bucket) {
       return new Response('R2 bucket not configured', { status: 500 });
     }

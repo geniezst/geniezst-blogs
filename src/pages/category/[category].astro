@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import Sidebar from '../../components/Sidebar.astro';
-import { getDb, getPublishedPosts, getCategories } from '../../lib/db';
+import { getDb, getPublishedPosts, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import type { BlogPost, Category } from '../../types/blog';
 
 const { category: categorySlug } = Astro.params;
@@ -13,17 +13,20 @@ if (!categorySlug) {
 const db = await getDb(Astro.locals);
 let posts: BlogPost[] = [];
 let total = 0;
+let totalAllPosts = 0;
 let currentCategory: Category | undefined;
 let categories: Category[] = [];
 
 if (db) {
   try {
-    const [postsRes, categoriesRes] = await Promise.all([
+    const [postsRes, categoriesRes, totalCount] = await Promise.all([
       getPublishedPosts(db, { limit: 20, categorySlug }),
       getCategories(db),
+      getTotalPublishedPosts(db),
     ]);
     posts = postsRes.posts;
     total = postsRes.total;
+    totalAllPosts = totalCount;
     categories = categoriesRes;
     currentCategory = categories.find((c) => c.slug === categorySlug);
   } catch (err) {
@@ -40,32 +43,37 @@ if (!currentCategory) {
   title={`${currentCategory.name} - 스마트 라이프 & 머니`}
   description={currentCategory.description || `${currentCategory.name} 관련 아티클 모음`}
 >
-  <div class="flex flex-col lg:flex-row gap-6 items-start">
-    <Sidebar categories={categories} />
+  <div class="flex flex-col lg:flex-row gap-8 items-start">
+    <Sidebar categories={categories} totalPosts={totalAllPosts} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="fuwari-card p-6 border-emerald-100/80 dark:border-emerald-950/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-          <span>🏛️</span>
-          <span>카테고리 가이드</span>
-        </span>
-        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mt-1.5">
+      <div class="editorial-card p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+            <span>🏛️</span>
+            <span>카테고리 공식 가이드</span>
+          </span>
+          <span class="text-xs font-mono font-bold text-neutral-500 dark:text-neutral-400">
+            총 {total}편 등록
+          </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white font-heading">
           {currentCategory.name}
         </h1>
-        <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
-          {currentCategory.description || '관련 글 목록'} (총 {total}개의 가이드)
+        <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+          {currentCategory.description || '정부 정책 및 실전 재테크 알짜 가이드 목록'}
         </p>
       </div>
 
       {posts.length > 0 ? (
-        <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-4">
           {posts.map((post) => (
             <PostCard post={post} />
           ))}
         </div>
       ) : (
-        <div class="fuwari-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
-          <p class="text-neutral-500 dark:text-neutral-400 text-sm">이 카테고리에는 아직 등록된 글이 없습니다.</p>
+        <div class="editorial-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
+          <p class="text-neutral-500 dark:text-neutral-400 text-sm">이 카테고리에는 아직 등록된 가이드가 없습니다.</p>
         </div>
       )}
     </div>

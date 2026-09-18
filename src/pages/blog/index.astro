@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import Sidebar from '../../components/Sidebar.astro';
-import { getDb, getPublishedPosts, getCategories } from '../../lib/db';
+import { getDb, getPublishedPosts, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import type { BlogPost, Category } from '../../types/blog';
 
 const page = Number(Astro.url.searchParams.get('page') || '1');
@@ -17,12 +17,13 @@ const db = await getDb(Astro.locals);
 
 if (db) {
   try {
-    const [postsRes, categoriesRes] = await Promise.all([
+    const [postsRes, categoriesRes, totalCount] = await Promise.all([
       getPublishedPosts(db, { limit, offset }),
       getCategories(db),
+      getTotalPublishedPosts(db),
     ]);
     posts = postsRes.posts;
-    total = postsRes.total;
+    total = totalCount > 0 ? totalCount : postsRes.total;
     categories = categoriesRes;
   } catch (err) {
     console.error('Failed to fetch posts:', err);
@@ -36,33 +37,42 @@ const totalPages = Math.ceil(total / limit);
   title="전체 가이드 목록 - 스마트 라이프 & 머니"
   description="놓치면 손해보는 정부 지원금, 환급금, 예적금, 생활 절세 가이드 전체 목록입니다."
 >
-  <div class="flex flex-col lg:flex-row gap-6 items-start">
+  <div class="flex flex-col lg:flex-row gap-8 items-start">
     <Sidebar categories={categories} totalPosts={total} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="fuwari-card p-6 border-emerald-100/80 dark:border-emerald-950/50">
-        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">
+      <div class="editorial-card p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-2">
+          <span>📚</span>
+          <span>생활 금융 공식 아카이브</span>
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white font-heading">
           생활 금융 전체 가이드
         </h1>
-        <p class="mt-1.5 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-          총 {total}개의 실전 가이드가 등록되어 있습니다.
+        <p class="mt-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
+          총 {total}개의 실전 혜택 및 지원금 가이드가 등록되어 있습니다.
         </p>
 
         <!-- 카테고리 칩 -->
         {categories.length > 0 && (
-          <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap gap-1.5">
+          <div class="mt-5 pt-4 border-t border-neutral-200/70 dark:border-neutral-800 flex flex-wrap gap-2">
             <a
               href="/blog"
-              class="px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-600 text-white shadow-xs"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs"
             >
-              전체
+              전체 보기 ({total})
             </a>
             {categories.map((c) => (
               <a
                 href={`/category/${c.slug}`}
-                class="px-3 py-1 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
               >
-                {c.name}
+                <span>{c.name}</span>
+                {c.post_count !== undefined && c.post_count > 0 && (
+                  <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                    {c.post_count}
+                  </span>
+                )}
               </a>
             ))}
           </div>
@@ -71,35 +81,35 @@ const totalPages = Math.ceil(total / limit);
 
       <!-- 포스트 카드 목록 -->
       {posts.length > 0 ? (
-        <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-4">
           {posts.map((post) => (
             <PostCard post={post} />
           ))}
         </div>
       ) : (
-        <div class="fuwari-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
-          <p class="text-neutral-500 dark:text-neutral-400 text-sm">아직 등록된 글이 없습니다.</p>
+        <div class="editorial-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
+          <p class="text-neutral-500 dark:text-neutral-400 text-sm">아직 등록된 가이드가 없습니다.</p>
         </div>
       )}
 
       <!-- 페이지네이션 -->
       {totalPages > 1 && (
-        <div class="fuwari-card p-4 flex items-center justify-center gap-3 text-xs font-medium border-emerald-100/70 dark:border-emerald-950/40">
+        <div class="editorial-card p-4 flex items-center justify-center gap-3 text-xs font-medium border-emerald-100/70 dark:border-emerald-950/40">
           {page > 1 && (
             <a
               href={`/blog?page=${page - 1}`}
-              class="px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
+              class="px-3.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
             >
               &larr; 이전
             </a>
           )}
-          <span class="text-neutral-500">
+          <span class="text-neutral-500 font-mono">
             {page} / {totalPages}
           </span>
           {page < totalPages && (
             <a
               href={`/blog?page=${page + 1}`}
-              class="px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
+              class="px-3.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
             >
               다음 &rarr;
             </a>

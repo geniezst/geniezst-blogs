@@ -7,8 +7,12 @@ interface Props {
   totalPosts?: number;
 }
 
-const { categories = [], totalPosts = 0 } = Astro.props;
+const { categories = [], totalPosts } = Astro.props;
 const { profile } = siteConfig;
+
+// post_count 합산 또는 전달받은 totalPosts 사용 (0으로 고정되는 문제 완전 해결)
+const calculatedTotal = categories.reduce((sum, c) => sum + (Number(c.post_count) || 0), 0);
+const displayTotalPosts = (totalPosts !== undefined && totalPosts > 0) ? totalPosts : calculatedTotal;
 
 const categoryDotColors: Record<string, string> = {
   welfare: 'bg-emerald-500',
@@ -18,12 +22,20 @@ const categoryDotColors: Record<string, string> = {
   subsidy: 'bg-violet-500',
   'life-tips': 'bg-rose-500',
 };
+
+// 필수 지원금 빠른 링크 목록
+const quickWelfareLinks = [
+  { title: '2026 청년도약계좌 신청', url: '/blog/youth-leap-account-2026-guide', badge: '필수' },
+  { title: '근로·자녀장려금 신청 안내', url: '/category/welfare', badge: '정기' },
+  { title: '숨은 세금 환급금(삼쩜삼/홈택스)', url: '/category/tax', badge: '조회' },
+  { title: '고금리 파킹통장 금리 비교', url: '/category/finance', badge: '인기' },
+];
 ---
 
 <aside class="w-full lg:w-72 shrink-0 flex flex-col gap-6">
-  <!-- 프로필 카드 (스마트 머니 에디토리얼) -->
-  <div class="fuwari-card p-6 text-center border-emerald-100 dark:border-emerald-950/50">
-    <!-- 아바타 -->
+  <!-- 프로필 카드 (스마트 머니 에디토리얼 연구팀) -->
+  <div class="editorial-card p-6 text-center border-emerald-100/80 dark:border-emerald-950/50">
+    <!-- 아바타 및 검증 마크 -->
     <div class="relative w-20 h-20 mx-auto mb-4">
       {profile.avatarImage ? (
         <img
@@ -32,58 +44,74 @@ const categoryDotColors: Record<string, string> = {
           class="w-20 h-20 rounded-2xl object-cover shadow-md"
         />
       ) : (
-        <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-green-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20">
           <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
         </div>
       )}
-      <span class="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-white font-bold" title="공식 가이드">✓</span>
+      <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-white font-bold" title="공식 정책 검증 완료">✓</span>
     </div>
 
     <!-- 이름 & 소개 -->
-    <h3 class="text-lg font-bold text-neutral-900 dark:text-white">
+    <h3 class="text-base font-bold text-neutral-900 dark:text-white">
       {profile.name}
     </h3>
     <p class="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
       {profile.bio}
     </p>
 
-    <!-- 통계 수치 바 -->
+    <!-- 통계 수치 바 (포스트 수 정확히 표시) -->
     <div class="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-around text-center">
       <a href="/blog" class="group">
-        <span class="block text-base font-bold text-neutral-800 dark:text-neutral-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
-          {totalPosts}
+        <span class="block text-lg font-black text-neutral-800 dark:text-neutral-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-mono">
+          {displayTotalPosts}
         </span>
         <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">포스트</span>
       </a>
       <div class="w-px h-6 bg-neutral-200 dark:bg-neutral-800"></div>
       <div>
-        <span class="block text-base font-bold text-neutral-800 dark:text-neutral-200">
+        <span class="block text-lg font-black text-neutral-800 dark:text-neutral-200 font-mono">
           {categories.length}
         </span>
         <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">카테고리</span>
       </div>
     </div>
 
-    <!-- 구독 및 RSS 링크 버튼 -->
-    <div class="mt-5 flex items-center justify-center gap-2">
-      <a
-        href="/rss.xml"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-semibold transition-all"
-        title="RSS 피드 구독"
-      >
-        <svg class="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
-        </svg>
-        <span>RSS 구독</span>
-      </a>
+    <!-- 신뢰 보증 뱃지 -->
+    <div class="mt-4 pt-3 border-t border-dashed border-neutral-200/70 dark:border-neutral-800/60 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center justify-center gap-1">
+      <span>🛡️ 100% 공공데이터 기준 검증</span>
     </div>
   </div>
 
-  <!-- 카테고리 카드 -->
+  <!-- 이달의 필수 혜택 체크리스트 위젯 -->
+  <div class="editorial-card p-5 border-emerald-200/60 dark:border-emerald-900/40 bg-gradient-to-br from-emerald-500/8 via-teal-500/4 to-transparent">
+    <div class="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-100 dark:border-emerald-950/60">
+      <span class="text-sm">📌</span>
+      <h4 class="text-xs font-bold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
+        이달의 필수 지원금 체크
+      </h4>
+    </div>
+    <ul class="space-y-2">
+      {quickWelfareLinks.map((item) => (
+        <li>
+          <a
+            href={item.url}
+            class="flex items-center justify-between p-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-white/80 dark:hover:bg-slate-800/70 transition border border-transparent hover:border-emerald-200/60 dark:hover:border-emerald-800/40 group"
+          >
+            <span class="truncate">{item.title}</span>
+            <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 group-hover:bg-emerald-600 group-hover:text-white transition">
+              {item.badge}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <!-- 카테고리 카드 (실제 post_count 정확 반영) -->
   {categories.length > 0 && (
-    <div class="fuwari-card p-5 border-emerald-100/70 dark:border-emerald-950/40">
+    <div class="editorial-card p-5 border-emerald-100/70 dark:border-emerald-950/40">
       <div class="flex items-center gap-2 mb-3 pb-2.5 border-b border-neutral-100 dark:border-neutral-800">
         <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -106,7 +134,7 @@ const categoryDotColors: Record<string, string> = {
                   <span class={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
                   <span class="truncate">{c.name}</span>
                 </span>
-                <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 shrink-0">
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-950 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition shrink-0 font-semibold">
                   {c.post_count ?? 0}
                 </span>
               </a>
@@ -117,16 +145,16 @@ const categoryDotColors: Record<string, string> = {
     </div>
   )}
 
-  <!-- 스마트 머니 안심 가이드 배너 -->
-  <div class="fuwari-card p-5 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-200/50 dark:border-emerald-900/30">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="text-base">💡</span>
-      <h5 class="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-        정부 복지 &amp; 지원금 알림
-      </h5>
-    </div>
-    <p class="text-[12px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-      매월 개편되는 청년, 서민, 소상공인 정책 금융과 숨은 세금 환급금을 놓치지 않고 꼼꼼하게 정리해 드립니다.
-    </p>
+  <!-- RSS 피드 카드 -->
+  <div class="editorial-card p-4 text-center border-neutral-200/60 dark:border-neutral-800">
+    <a
+      href="/rss.xml"
+      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold transition"
+    >
+      <svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
+      </svg>
+      <span>신규 복지 알림 RSS 구독</span>
+    </a>
   </div>
 </aside>

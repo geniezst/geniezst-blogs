@@ -4,32 +4,42 @@ import { siteConfig } from '../site.config';
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="mt-20 border-t border-dashed border-emerald-200/50 dark:border-emerald-900/30 py-8 text-xs text-neutral-500 dark:text-neutral-400">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-    <!-- 저작권 및 사이트명 -->
-    <div class="flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-      <span>Copyright &#169; {currentYear} {siteConfig.title}. All rights reserved.</span>
+<footer class="mt-20 border-t border-emerald-200/50 dark:border-emerald-900/30 pt-10 pb-12 text-xs text-neutral-500 dark:text-neutral-400 bg-white/40 dark:bg-slate-950/40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-6">
+    <!-- 상단 링크 & 저작권 -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-neutral-200/60 dark:border-neutral-800">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        <span class="font-bold text-neutral-800 dark:text-neutral-200">{siteConfig.title}</span>
+        <span>•</span>
+        <span>Copyright &#169; {currentYear}. All rights reserved.</span>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <a href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">소개</a>
+        <span>•</span>
+        <a href="/privacy" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">개인정보처리방침</a>
+        <span>•</span>
+        <a href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">문의하기</a>
+        <span>•</span>
+        <a
+          href="/rss.xml"
+          class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition font-semibold"
+          title="RSS 피드"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
+          </svg>
+          <span>RSS</span>
+        </a>
+      </div>
     </div>
 
-    <!-- 링크 목록 -->
-    <div class="flex items-center gap-4">
-      <a href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">소개</a>
-      <span>•</span>
-      <a href="/privacy" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">개인정보처리방침</a>
-      <span>•</span>
-      <a href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">문의하기</a>
-      <span>•</span>
-      <a
-        href="/rss.xml"
-        class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition"
-        title="RSS 피드"
-      >
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
-        </svg>
-        <span>RSS</span>
-      </a>
+    <!-- 신뢰도 강화 면책 안내문 (애드센스 승인 및 신뢰도 향상) -->
+    <div class="text-[11px] leading-relaxed text-neutral-400 dark:text-neutral-500 max-w-4xl mx-auto text-center sm:text-left">
+      <p>
+        [안내 및 면책 고지] 본 웹사이트의 모든 콘텐츠는 대한민국 정부 부처 및 공공기관(기획재정부, 금융위원회, 서민금융진흥원, 국세청 등)의 공식 보도자료 및 공공누리 출처를 기반으로 일반 이용자가 이해하기 쉽게 정리한 생활 정보입니다. 정책 및 금리 조건은 관련 법령 개정 및 금융기관 사정에 따라 수시로 변동될 수 있으므로, 최종 신청 전 각 소관 부처 및 은행의 공식 창구를 반드시 재확인하시기 바랍니다.
+      </p>
     </div>
   </div>
 </footer>

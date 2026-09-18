@@ -3,53 +3,82 @@ import ThemeToggle from './ThemeToggle.astro';
 import { siteConfig } from '../site.config';
 
 const navItems = siteConfig.nav;
+
+const today = new Date();
+const formattedToday = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 ---
 
-<header class="sticky top-4 z-50 max-w-6xl mx-auto px-4 sm:px-6 mb-6">
-  <div class="fuwari-card px-4 sm:px-6 h-15 flex items-center justify-between border-emerald-200/40 dark:border-emerald-900/30">
-    <!-- 로고 -->
-    <a href="/" class="flex items-center gap-2.5 group">
-      <span class="w-8.5 h-8.5 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 text-white flex items-center justify-center text-sm font-black shadow-sm shadow-emerald-600/30 group-hover:scale-105 transition-transform duration-300">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </span>
-      <div class="flex flex-col">
-        <span class="font-black text-base sm:text-lg tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-          {siteConfig.title}
+<header class="sticky top-0 z-50 w-full mb-6">
+  <!-- 상단 에디토리얼 티커 바 -->
+  <div class="bg-gradient-to-r from-emerald-900 via-teal-950 to-emerald-950 text-emerald-100 text-[11px] py-1.5 px-4 sm:px-6 border-b border-emerald-800/40">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2 truncate">
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-700/80 text-[10px] font-bold text-white uppercase tracking-wider shrink-0">
+          공식 가이드
         </span>
-        <span class="text-[10px] font-medium tracking-wider text-emerald-600 dark:text-emerald-400 uppercase -mt-0.5">
-          Life &amp; Money Guide
+        <span class="truncate font-medium text-emerald-200">
+          2026년 청년·서민 정책금융, 숨은 환급금 및 알뜰 재테크 실시간 업데이트
         </span>
       </div>
-    </a>
+      <div class="hidden sm:flex items-center gap-3 shrink-0 text-emerald-300/80 font-mono text-[11px]">
+        <span>📅 {formattedToday}</span>
+        <span>•</span>
+        <span class="inline-flex items-center gap-1 text-emerald-300">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>공공데이터 검증</span>
+        </span>
+      </div>
+    </div>
+  </div>
 
-    <!-- 중앙 내비게이션 -->
-    <nav class="flex items-center gap-1 sm:gap-2">
-      {navItems.map((item) => (
-        <a
-          href={item.href}
-          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all"
-        >
-          {item.label}
-        </a>
-      ))}
-    </nav>
-
-    <!-- 우측 도구: 검색 & 테마 토글 -->
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <a
-        href="/search"
-        class="p-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition"
-        title="검색"
-        aria-label="검색"
-      >
-        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+  <!-- 메인 내비게이션 바 -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 mt-3">
+    <div class="editorial-card px-4 sm:px-6 h-16 flex items-center justify-between border-emerald-200/50 dark:border-emerald-900/40">
+      <!-- 로고 -->
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform duration-300">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-black text-lg sm:text-xl tracking-tight text-neutral-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+            {siteConfig.title}
+          </span>
+          <span class="text-[10px] font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase -mt-0.5">
+            Smart Money &amp; Life Welfare Portal
+          </span>
+        </div>
       </a>
 
-      <ThemeToggle />
+      <!-- 중앙 내비게이션 -->
+      <nav class="hidden md:flex items-center gap-1 lg:gap-2">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all"
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <!-- 우측 도구: 빠른 검색 & 다크모드 토글 -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <a
+          href="/search"
+          class="p-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition flex items-center gap-1 text-xs font-semibold"
+          title="가이드 검색"
+          aria-label="가이드 검색"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="hidden sm:inline">검색</span>
+        </a>
+
+        <ThemeToggle />
+      </div>
     </div>
   </div>
 </header>

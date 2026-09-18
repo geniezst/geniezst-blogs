@@ -4,6 +4,7 @@ export interface Category {
   name: string;
   description?: string;
   order_index: number;
+  post_count?: number;
   created_at: string;
 }
 

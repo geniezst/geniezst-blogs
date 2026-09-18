@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Sidebar from '../../components/Sidebar.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import AffiliateNotice from '../../components/AffiliateNotice.astro';
-import { getDb, getPostBySlug, incrementPostViews, getCategories } from '../../lib/db';
+import { getDb, getPostBySlug, incrementPostViews, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import { renderMarkdown } from '../../lib/markdown';
 import type { Category } from '../../types/blog';
 
@@ -17,9 +17,10 @@ if (!db) {
   return new Response('Database not available', { status: 500 });
 }
 
-const [post, categories] = await Promise.all([
+const [post, categories, totalCount] = await Promise.all([
   getPostBySlug(db, slug),
   getCategories(db),
+  getTotalPublishedPosts(db),
 ]);
 
 if (!post) {
@@ -82,20 +83,34 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
   tags={post.tags?.map((t) => t.name)}
   author={post.author}
 >
-  <div class="flex flex-col lg:flex-row gap-6 items-start">
+  <div class="flex flex-col lg:flex-row gap-8 items-start">
     <!-- 사이드바 -->
-    <Sidebar categories={categories} />
+    <Sidebar categories={categories} totalPosts={totalCount} />
 
-    <!-- 본문 카드 영역 (핀테크 에디토리얼 매거진) -->
-    <article class="flex-1 w-full fuwari-card p-6 sm:p-10 border-emerald-100/80 dark:border-emerald-950/50">
-      <!-- 뒤로 가기 링크 -->
-      <div class="mb-6">
+    <!-- 본문 카드 영역 (에디토리얼 매거진) -->
+    <article class="flex-1 w-full editorial-card p-6 sm:p-10 border-emerald-100/80 dark:border-emerald-950/50">
+      <!-- 브레드크럼 & 뒤로 가기 -->
+      <div class="mb-6 flex items-center justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+        <nav class="flex items-center gap-1.5 truncate">
+          <a href="/" class="hover:text-emerald-600 transition">홈</a>
+          <span>&gt;</span>
+          {post.category_name && (
+            <>
+              <a href={`/category/${post.category_slug}`} class="hover:text-emerald-600 transition font-medium">
+                {post.category_name}
+              </a>
+              <span>&gt;</span>
+            </>
+          )}
+          <span class="truncate text-neutral-700 dark:text-neutral-300">상세 안내</span>
+        </nav>
+
         <button
           onclick="history.back()"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer shrink-0"
         >
           <span>&larr;</span>
-          <span>목록으로 돌아가기</span>
+          <span>목록으로</span>
         </button>
       </div>
 
@@ -117,7 +132,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
           </span>
         </div>
 
-        <h1 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white leading-tight font-heading">
           {post.title}
         </h1>
 
@@ -132,7 +147,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
           <span>•</span>
           <div class="flex items-center gap-1.5">
             <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center text-[10px] font-bold">
-              M
+              ✓
             </span>
             <span>{post.author}</span>
           </div>
@@ -147,8 +162,10 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
         <!-- 핵심 요약 체크포인트 박스 -->
         <div class="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/60 dark:border-emerald-900/40">
           <div class="flex items-center gap-2 mb-1.5">
-            <span class="text-sm">📌</span>
-            <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">핵심 요약 안내</span>
+            <span class="text-base">📌</span>
+            <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
+              가이드 핵심 요약
+            </span>
           </div>
           <p class="text-sm sm:text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
             {post.description}
@@ -161,11 +178,11 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
 
       <!-- 대표 삽화 (R2 연동 고화질 에디토리얼 일러스트) -->
       {post.featured_image && (
-        <div class="my-6 overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-950/60 shadow-md bg-white dark:bg-slate-900">
+        <div class="my-8 overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-950/60 shadow-lg bg-neutral-100 dark:bg-slate-900">
           <img
             src={post.featured_image}
             alt={post.title}
-            class="w-full h-auto object-cover max-h-[440px]"
+            class="w-full h-auto object-cover max-h-[500px]"
             loading="eager"
           />
         </div>
@@ -183,8 +200,19 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
       <!-- 본문 하단 광고 -->
       <AdSlot format="rectangle" />
 
+      <!-- 하단 저작권 및 작성팀 서명 -->
+      <div class="mt-10 p-5 rounded-2xl bg-neutral-50 dark:bg-slate-900/80 border border-neutral-200/70 dark:border-neutral-800 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+          🏛️
+        </div>
+        <div class="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+          <span class="font-bold text-neutral-900 dark:text-white block mb-0.5">스마트 라이프 &amp; 머니 정책팀</span>
+          본 가이드는 기획재정부, 금융위원회 및 각 은행의 공식 고시 기준을 기반으로 작성되었습니다. 조건 변경 등 최신 정보는 매월 정기 점검을 통해 업데이트됩니다.
+        </div>
+      </div>
+
       <!-- 하단 태그 및 맨 위로 이동 -->
-      <footer class="mt-12 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <footer class="mt-8 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {post.tags && post.tags.length > 0 ? (
           <div class="flex flex-wrap gap-2">
             {post.tags.map((t) => (

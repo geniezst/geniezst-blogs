@@ -26,12 +26,31 @@ export async function getDb(locals?: any): Promise<D1Database | null> {
 export async function getCategories(db: D1Database): Promise<Category[]> {
   try {
     const { results } = await db
-      .prepare('SELECT * FROM blog_categories ORDER BY order_index ASC')
+      .prepare(
+        `SELECT c.*, (
+          SELECT COUNT(*) FROM blog_posts p 
+          WHERE p.category_id = c.id AND p.status = 'published'
+        ) as post_count
+        FROM blog_categories c 
+        ORDER BY c.order_index ASC`
+      )
       .all<Category>();
     return results ?? [];
   } catch (err) {
     console.error('getCategories error:', err);
     return [];
+  }
+}
+
+export async function getTotalPublishedPosts(db: D1Database): Promise<number> {
+  try {
+    const res = await db
+      .prepare("SELECT COUNT(*) as count FROM blog_posts WHERE status = 'published'")
+      .first<{ count: number }>();
+    return res?.count ?? 0;
+  } catch (err) {
+    console.error('getTotalPublishedPosts error:', err);
+    return 0;
   }
 }
 
