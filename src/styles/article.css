@@ -223,57 +223,227 @@ html.dark .article-content :not(pre) > code {
 
 /* Table Styles - Modern Financial Table */
 .article-table-wrapper {
-  margin: 2rem 0;
+  margin: 2.25rem 0;
   overflow-x: auto;
-  border-radius: 0.875rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
   background: var(--bg-card);
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
+  -webkit-overflow-scrolling: touch;
 }
 
 html[data-theme="dark"] .article-table-wrapper,
 html.dark .article-table-wrapper {
-  border-color: rgba(30, 48, 77, 0.8);
+  border-color: rgba(30, 48, 77, 0.85);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
 }
 
 .article-table-wrapper table {
   width: 100%;
+  min-width: 580px; /* 테이블이 너무 좁아져 텍스트가 찌그러지는 것 방지 */
   border-collapse: collapse;
   font-size: 0.9375rem;
+  line-height: 1.65;
 }
 
 .article-table-wrapper table th {
-  padding: 0.85rem 1.15rem;
+  padding: 0.95rem 1.15rem;
   font-weight: 700;
   text-align: left;
-  background-color: rgba(5, 150, 105, 0.08);
-  border-bottom: 2px solid rgba(5, 150, 105, 0.2);
+  white-space: nowrap; /* 헤더 글자 뜬금없는 줄바꿈 방지 */
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.12) 0%, rgba(13, 148, 136, 0.08) 100%);
+  border-bottom: 2px solid rgba(5, 150, 105, 0.25);
   color: #065f46;
+  font-size: 0.875rem;
+  letter-spacing: -0.01em;
 }
 
 html[data-theme="dark"] .article-table-wrapper table th,
 html.dark .article-table-wrapper table th {
-  background-color: rgba(16, 185, 129, 0.12);
-  border-bottom-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(20, 184, 166, 0.1) 100%);
+  border-bottom-color: rgba(16, 185, 129, 0.35);
   color: #6ee7b7;
 }
 
 .article-table-wrapper table td {
-  padding: 0.85rem 1.15rem;
+  padding: 0.9rem 1.15rem;
   vertical-align: middle;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
   color: var(--text-primary);
+  word-break: keep-all; /* 단어 단위 줄바꿈: 뜬금없이 음절 쪼개지는 현상 방지 */
+  overflow-wrap: break-word;
 }
 
 html[data-theme="dark"] .article-table-wrapper table td,
 html.dark .article-table-wrapper table td {
-  border-bottom-color: rgba(30, 48, 77, 0.6);
+  border-bottom-color: rgba(30, 48, 77, 0.65);
 }
 
 .article-table-wrapper table tr:nth-child(even) td {
-  background-color: rgba(248, 250, 252, 0.6);
+  background-color: rgba(248, 250, 252, 0.65);
 }
 
 html[data-theme="dark"] .article-table-wrapper table tr:nth-child(even) td,
 html.dark .article-table-wrapper table tr:nth-child(even) td {
-  background-color: rgba(19, 34, 56, 0.4);
+  background-color: rgba(18, 30, 50, 0.45);
 }
+
+.article-table-wrapper table tr:hover td {
+  background-color: rgba(5, 150, 105, 0.04);
+}
+
+html[data-theme="dark"] .article-table-wrapper table tr:hover td {
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+/* ===================================================
+   Financial Data Visualization Charts (CSS & SVG)
+   =================================================== */
+
+.financial-chart-box {
+  margin: 2.5rem 0;
+  padding: 1.5rem sm:2rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: var(--bg-card);
+  box-shadow: 0 6px 24px -4px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="dark"] .financial-chart-box,
+html.dark .financial-chart-box {
+  border-color: rgba(30, 48, 77, 0.85);
+  box-shadow: 0 6px 28px -4px rgba(0, 0, 0, 0.4);
+}
+
+.chart-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+html[data-theme="dark"] .chart-header,
+html.dark .chart-header {
+  border-bottom-color: rgba(30, 48, 77, 0.7);
+}
+
+.chart-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chart-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Horizontal Bar Chart */
+.bar-chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.bar-chart-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bar-chart-track {
+  height: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: rgba(226, 232, 240, 0.6);
+  overflow: hidden;
+  position: relative;
+}
+
+html[data-theme="dark"] .bar-chart-track,
+html.dark .bar-chart-track {
+  background-color: rgba(30, 48, 77, 0.5);
+}
+
+.bar-chart-fill {
+  height: 100%;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Donut Chart Layout */
+.donut-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .donut-chart-wrapper {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+}
+
+.donut-graphic {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  flex-shrink: 0;
+}
+
+.donut-graphic svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.donut-center-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex: 1;
+  width: 100%;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background-color: rgba(248, 250, 252, 0.7);
+  font-size: 0.8125rem;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+html[data-theme="dark"] .donut-legend-item,
+html.dark .donut-legend-item {
+  background-color: rgba(18, 30, 50, 0.6);
+  border-color: rgba(30, 48, 77, 0.5);
+}
+

@@ -72,7 +72,11 @@ function sanitizeProseSpaces(rawText) {
       return line;
     }
     // 2칸 이상 연속 띄어쓰기를 1칸으로 정제 및 행 끝 공백 제거
-    return line.replace(/([^\s])\s{2,}([^\s])/g, '$1 $2').replace(/\s+$/, '');
+    let cleaned = line.replace(/([^\s])\s{2,}([^\s])/g, '$1 $2').replace(/\s+$/, '');
+    // '70만 원' -> '70만원', '5,000만 원' -> '5,000만원' 등 금융 금액 띄어쓰기 표준화
+    cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*만\s+원/g, '$1만원');
+    cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*억\s+원/g, '$1억원');
+    return cleaned;
   });
   return processed.join('\n');
 }

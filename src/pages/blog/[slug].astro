@@ -200,17 +200,6 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
       <!-- 본문 하단 광고 -->
       <AdSlot format="rectangle" />
 
-      <!-- 하단 저작권 및 작성팀 서명 -->
-      <div class="mt-10 p-5 rounded-2xl bg-neutral-50 dark:bg-slate-900/80 border border-neutral-200/70 dark:border-neutral-800 flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-          🏛️
-        </div>
-        <div class="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          <span class="font-bold text-neutral-900 dark:text-white block mb-0.5">스마트 라이프 &amp; 머니 정책팀</span>
-          본 가이드는 기획재정부, 금융위원회 및 각 은행의 공식 고시 기준을 기반으로 작성되었습니다. 조건 변경 등 최신 정보는 매월 정기 점검을 통해 업데이트됩니다.
-        </div>
-      </div>
-
       <!-- 하단 태그 및 맨 위로 이동 -->
       <footer class="mt-8 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {post.tags && post.tags.length > 0 ? (
