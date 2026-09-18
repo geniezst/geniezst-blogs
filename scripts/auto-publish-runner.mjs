@@ -210,13 +210,28 @@ HTML 구조 규격:
   },
   {
     type: 'step-pipeline',
-    name: '단계별 파이프라인 퍼널 차트 (Step Progression Flow)',
-    instruction: `[선정된 차트 유형: 단계별 파이프라인 누적 차트]
-제도 참여 단계별, 근속 기간별 또는 연차별 누적 수령액 흐름을 '단계별 파이프라인 차트'로 작성하세요.
+    name: '단계별 파이프라인 퍼널 차트 & 비교 막대 그래프 (Step Progression & Bar Chart)',
+    instruction: `[선정된 차트 유형: 단계별 파이프라인 로드맵 + 비교 막대 그래프]
+제도 참여 단계별 누적 수령액 로드맵과 함께, 일반 상품 대비 수혜액 격차를 시각적으로 비교하는 수평 막대 그래프를 함께 작성하세요.
 HTML 구조 규격:
 <div class="financial-chart-box">
 <div class="chart-header">
-<div class="chart-title"><span>🚀</span><span>[차트 제목: 단계별 누적 혜택 로드맵]</span></div>
+<div class="chart-title"><span>📈</span><span>[차트 제목 1: 구간별/상품별 실수령액 비교]</span></div>
+<div class="chart-subtitle">[상세 비교 기준 및 분석]</div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>비교 대상 1</span><span class="font-bold">수치 1</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-neutral-400" style="width: 60%;">60%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span class="text-emerald-700 dark:text-emerald-300 font-bold">최대 혜택 대상</span><span class="font-bold text-emerald-600">최대 수치</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100% (최고)</div></div>
+</div>
+</div>
+
+<div class="financial-chart-box">
+<div class="chart-header">
+<div class="chart-title"><span>🚀</span><span>[차트 제목 2: 단계별 누적 혜택 로드맵]</span></div>
 <div class="chart-subtitle">[단계별 혜택 지급 조건 및 누적 합산액]</div>
 </div>
 <div class="pipeline-flow-wrapper">
@@ -243,13 +258,13 @@ HTML 구조 규격:
   },
   {
     type: 'stat-grid',
-    name: '통계 지표 비교 카드 그리드 (Stat Metric Comparison Grid)',
-    instruction: `[선정된 차트 유형: 통계 지표 비교 카드 그리드]
-핵심 3대 혜택 지표(금리, 월 지원금, 비과세 절세액 등)를 '통계 지표 카드 그리드'로 작성하세요.
+    name: '통계 지표 비교 카드 그리드 & 비교 막대 그래프 (Stat Metric Grid & Bar Chart)',
+    instruction: `[선정된 차트 유형: 핵심 통계 지표 카드 + 수치 비교 막대 그래프]
+핵심 3대 혜택 지표 카드와 함께, 지원 구간별 차등 혜택을 시각적으로 보여주는 수평 가로 막대 차트를 함께 작성하세요.
 HTML 구조 규격:
 <div class="financial-chart-box">
 <div class="chart-header">
-<div class="chart-title"><span>⚡</span><span>[차트 제목: 핵심 3대 수혜 지표 요약]</span></div>
+<div class="chart-title"><span>⚡</span><span>[차트 제목 1: 핵심 3대 수혜 지표 요약]</span></div>
 <div class="chart-subtitle">[공식 고시 기준 핵심 데이터 분석]</div>
 </div>
 <div class="stat-grid-wrapper">
@@ -268,6 +283,21 @@ HTML 구조 규격:
 <div class="stat-card-metric text-amber-700 dark:text-amber-300">15.4% 비과세</div>
 <div class="text-xs text-neutral-600 dark:text-neutral-400">이자 소득세 전액 면제</div>
 </div>
+</div>
+</div>
+
+<div class="financial-chart-box">
+<div class="chart-header">
+<div class="chart-title"><span>📈</span><span>[차트 제목 2: 구간별 수치 비교 막대 그래프]</span></div>
+<div class="chart-subtitle">[상세 비교 기준 및 분석]</div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>비교 대상 1</span><span class="font-bold">수치 1</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-neutral-400" style="width: 50%;">50%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span class="text-emerald-700 dark:text-emerald-300 font-bold">최대 혜택 대상</span><span class="font-bold text-emerald-600">최대 수치</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100% (최고)</div></div>
 </div>
 </div>`,
   },
@@ -372,7 +402,7 @@ export async function runPublishPipeline(sessionName) {
   2. [금액 띄어쓰기 규범] '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원'처럼 붙여 쓰세요.
   3. [데이터 시각화 차트 필수 - 이번 세션 지정 유형: ${selectedChart.name}]
 ${selectedChart.instruction}
-반드시 본문 중간에 해당 반응형 차트 컴포넌트를 최소 1개 이상 HTML 구조로 삽입하세요.
+반드시 본문 중간에 해당 반응형 차트 컴포넌트를 최소 1개 이상 HTML 구조로 삽입하세요. (수치 비교를 위한 막대 바/도넛 등 시각화 그래프 요소를 반드시 1~2개 포함)
   4. [테이블 가독성 최적화] 표 안의 글자가 뜬금없이 잘리지 않도록 셀 내용을 핵심 요약 문구 위주로 작성하고, 문장 길이와 줄바꿈을 깔끔하게 정돈하세요.
   5. [필수 구조] 본문 내 최소 5개 이상의 깊이 있는 대주제(H2)를 구성하고, 다음 요소를 모두 포함하세요:
      - 지원 대상 자격 요건 정밀 분석표(Table: 연령, 개인소득, 가구 중위소득 250% 등)

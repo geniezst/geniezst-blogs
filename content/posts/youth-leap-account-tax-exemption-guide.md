@@ -52,28 +52,44 @@ affiliate: false
 
 <div class="financial-chart-box">
 <div class="chart-header">
-<div class="chart-title"><span>🚀</span><span>청년도약계좌 단계별 누적 혜택 로드맵</span></div>
-<div class="chart-subtitle">납입 연차별 누적 원금, 정부 기여금 가산 및 만기 ISA 연계 절세 파이프라인</div>
+<div class="chart-title"><span>📊</span><span>월 납입액별 5년간 이자소득세(15.4%) 전액 감면 절세액 비교</span></div>
+<div class="chart-subtitle">조세특례제한법 제91조의22 비과세 혜택 적용 시 일반 과세 적금 대비 순수 절세 효과</div>
 </div>
-<div class="pipeline-flow-wrapper">
-<div class="pipeline-step">
-<span class="pipeline-step-badge bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">1단계</span>
-<div class="pipeline-step-title">초기 자산 형성</div>
-<div class="pipeline-step-amount text-blue-600 dark:text-blue-400 font-mono">1,680만원</div>
-<div class="pipeline-step-desc">1~2년차 원금 적립 및 15.4% 비과세 개시</div>
+<div class="column-chart-wrapper">
+<div class="column-chart-item">
+<span class="column-value text-blue-600 font-bold">+56.4만원</span>
+<div class="column-track"><div class="column-fill bg-neutral-400" style="height: 57%;">57%</div></div>
+<span class="column-label">월 40만원 납입</span>
 </div>
-<div class="pipeline-step">
-<span class="pipeline-step-badge bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300">2단계</span>
-<div class="pipeline-step-title">기여금 복리 증식</div>
-<div class="pipeline-step-amount text-teal-600 dark:text-teal-400 font-mono">+1,794만원</div>
-<div class="pipeline-step-desc">3~4년차 매칭지원금 누적 및 이자 복리화</div>
+<div class="column-chart-item">
+<span class="column-value text-teal-600 font-bold">+70.5만원</span>
+<div class="column-track"><div class="column-fill bg-teal-600" style="height: 71%;">71%</div></div>
+<span class="column-label">월 50만원 납입</span>
 </div>
-<div class="pipeline-step border-emerald-300 dark:border-emerald-700">
-<span class="pipeline-step-badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">최종 단계</span>
-<div class="pipeline-step-title">만기/연계 환승</div>
-<div class="pipeline-step-amount text-emerald-600 dark:text-emerald-400 font-mono">+1,526만원</div>
-<div class="pipeline-step-desc font-bold text-emerald-700 dark:text-emerald-300">최종 누적 약 5,000만원+세액공제 300만원</div>
+<div class="column-chart-item">
+<span class="column-value text-emerald-600 font-bold">+98.6만원</span>
+<div class="column-track"><div class="column-fill bg-gradient-to-t from-emerald-600 to-teal-500" style="height: 100%;">최대 절세</div></div>
+<span class="column-label font-bold text-emerald-700 dark:text-emerald-300">월 70만원 납입</span>
 </div>
+</div>
+</div>
+
+<div class="financial-chart-box">
+<div class="chart-header">
+<div class="chart-title"><span>📈</span><span>5년 만기 시 일반 과세 적금 vs 청년도약계좌 실효 수령액 격차 비교</span></div>
+<div class="chart-subtitle">월 70만원 불입 기준 만기 총 실수령액 (이자소득세 15.4% 비과세 + 정부 기여금 효과)</div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>일반 시중 적금 (연 3.5%, 이자소득세 15.4% 원천징수)</span><span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,495만원</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-neutral-400" style="width: 89.9%;">89.9%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>우대형 시중 적금 (연 4.5%, 이자소득세 15.4% 원천징수)</span><span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,580만원</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-slate-500" style="width: 91.6%;">91.6%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span class="text-emerald-700 dark:text-emerald-300 font-bold">청년도약계좌 (최고 연 6.0% 전액 비과세 + 정부 지원금)</span><span class="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">약 5,000만원 (최고)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100% (최대 실수령)</div></div>
 </div>
 </div>
 
@@ -112,6 +128,33 @@ affiliate: false
 - `실질 환급 세액 계산`: 만기 수령액 중 `3,000만원`을 연금계좌로 전환할 경우 최대 공제 한도인 `300만원`이 즉시 인정된다. 총급여 `5,500만원 이하` 근로자라면 지방소득세를 포함하여 `16.5%` 공제율이 적용되어 연말정산 시 `49만5,000원`의 현금 세액을 즉시 환급받게 된다.
 
 이로써 청년도약계좌 불입 기간의 `15.4%` 비과세 혜택에 더해, 만기 시점의 연금계좌 전환 세액공제 `300만원` 혜택까지 완벽히 연결되는 복합 절세 파이프라인을 완성할 수 있다.
+
+<div class="financial-chart-box">
+<div class="chart-header">
+<div class="chart-title"><span>🚀</span><span>청년도약계좌 만기금 ISA 및 연금계좌 연계 환승 절세 파이프라인</span></div>
+<div class="chart-subtitle">5년 만기 달성 후 추가 세액공제 300만원을 완성하는 3단계 자산 로드맵</div>
+</div>
+<div class="pipeline-flow-wrapper">
+<div class="pipeline-step">
+<span class="pipeline-step-badge bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">1단계: 만기 수령</span>
+<div class="pipeline-step-title">비과세 목돈 수령</div>
+<div class="pipeline-step-amount text-blue-600 dark:text-blue-400 font-mono">약 5,000만원</div>
+<div class="pipeline-step-desc">이자소득세 15.4%(98.6만원) 전액 감면 완료</div>
+</div>
+<div class="pipeline-step">
+<span class="pipeline-step-badge bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300">2단계: ISA 전환</span>
+<div class="pipeline-step-title">ISA 비과세 환승</div>
+<div class="pipeline-step-amount text-teal-600 dark:text-teal-400 font-mono">전액 입금 가능</div>
+<div class="pipeline-step-desc">연간 납입 한도(2,000만원) 예외 특별 한도 인정</div>
+</div>
+<div class="pipeline-step border-emerald-300 dark:border-emerald-700">
+<span class="pipeline-step-badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">3단계: 연금 이전</span>
+<div class="pipeline-step-title">추가 세액공제 환급</div>
+<div class="pipeline-step-amount text-emerald-600 dark:text-emerald-400 font-mono">+49.5만원 환급</div>
+<div class="pipeline-step-desc font-bold text-emerald-700 dark:text-emerald-300">전환액 10%(최대 300만원)에 대해 16.5% 세액공제</div>
+</div>
+</div>
+</div>
 
 ## 청년도약계좌 세제 혜택 관련 실전 질의응답 (FAQ)
 
