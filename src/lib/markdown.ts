@@ -51,6 +51,12 @@ const marked = new Marked({
 });
 
 marked.use({
+  // 4칸 띄어쓰기 인덴트 코드 블록 비활성화 (HTML 마크업이 실수로 코드 블록으로 변환되는 것 방지)
+  tokenizer: {
+    code() {
+      return undefined;
+    },
+  },
   renderer: {
     // 1. 프리미엄 macOS 스타일 코드 블록 + 복사 버튼
     code({ text, lang }) {

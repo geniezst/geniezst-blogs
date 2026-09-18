@@ -49,63 +49,30 @@ affiliate: false
 정부 기여금 매칭 한도를 초과하는 금액을 납입하더라도 초과분에 대해서는 기여금이 나오지 않지만, 최고 연 6.0% 수준의 은행 이자와 비과세 혜택은 월 최대 70만원 전액에 대해 온전히 적용됩니다.
 
 <div class="financial-chart-box">
-  <div class="chart-header">
-    <div class="chart-title">
-      <span>📊</span>
-      <span>소득 구간별 월 최대 정부 기여금 비교</span>
-    </div>
-    <div class="chart-subtitle">서민금융진흥원 고시 기준 (월 납입 한도 충족 시)</div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>총급여 2,400만원 이하 (매칭률 6.0%)</span>
-      <span class="text-emerald-600 dark:text-emerald-400 font-bold">월 24,000원 (최대 144만원)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>총급여 3,600만원 이하 (매칭률 4.6%)</span>
-      <span class="text-emerald-600 dark:text-emerald-400 font-bold">월 23,000원 (최대 138만원)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 95.8%;">95.8%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>총급여 4,800만원 이하 (매칭률 3.7%)</span>
-      <span class="text-emerald-600 dark:text-emerald-400 font-bold">월 22,000원 (최대 132만원)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-gradient-to-r from-teal-600 to-cyan-500" style="width: 91.7%;">91.7%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>총급여 6,000만원 이하 (매칭률 3.0%)</span>
-      <span class="text-emerald-600 dark:text-emerald-400 font-bold">월 21,000원 (최대 126만원)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-gradient-to-r from-teal-600 to-cyan-500" style="width: 87.5%;">87.5%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>총급여 6,000만원 초과 ~ 7,500만원</span>
-      <span class="text-neutral-500 dark:text-neutral-400">기여금 없음 (비과세 전용)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-neutral-400" style="width: 15%;">비과세</div>
-    </div>
-  </div>
+<div class="chart-header">
+<div class="chart-title"><span>📊</span><span>소득 구간별 월 최대 정부 기여금 비교</span></div>
+<div class="chart-subtitle">서민금융진흥원 고시 기준 (월 납입 한도 충족 시)</div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>총급여 2,400만원 이하 (매칭률 6.0%)</span><span class="text-emerald-600 dark:text-emerald-400 font-bold">월 24,000원 (최대 144만원)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>총급여 3,600만원 이하 (매칭률 4.6%)</span><span class="text-emerald-600 dark:text-emerald-400 font-bold">월 23,000원 (최대 138만원)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 95.8%;">95.8%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>총급여 4,800만원 이하 (매칭률 3.7%)</span><span class="text-emerald-600 dark:text-emerald-400 font-bold">월 22,000원 (최대 132만원)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-teal-600 to-cyan-500" style="width: 91.7%;">91.7%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>총급여 6,000만원 이하 (매칭률 3.0%)</span><span class="text-emerald-600 dark:text-emerald-400 font-bold">월 21,000원 (최대 126만원)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-teal-600 to-cyan-500" style="width: 87.5%;">87.5%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>총급여 6,000만원 초과 ~ 7,500만원</span><span class="text-neutral-500 dark:text-neutral-400">기여금 없음 (비과세 전용)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-neutral-400" style="width: 15%;">비과세</div></div>
+</div>
 </div>
 
 ## 5년 만기 예상 실수령액 시뮬레이션
@@ -121,63 +88,42 @@ affiliate: false
 매월 여유 자금이 부족한 달에는 최소 1,000원 단위로 자유롭게 감액하여 납입할 수 있으며, 일시적으로 납입을 쉬더라도 계좌가 자동으로 해지되지 않고 유지됩니다.
 
 <div class="financial-chart-box">
-  <div class="chart-header">
-    <div class="chart-title">
-      <span>🥧</span>
-      <span>청년도약계좌 5년 만기 수령액 구성 분석 (월 70만원 납입 기준)</span>
-    </div>
-    <div class="chart-subtitle">만기 예상 실수령액 5,000만원의 세부 항목별 비중</div>
-  </div>
-
-  <div class="donut-chart-wrapper">
-    <div class="donut-graphic">
-      <svg viewBox="0 0 42 42">
-        <!-- 배경 원 -->
-        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="currentColor" stroke-width="5" class="text-neutral-200 dark:text-neutral-800" />
-        <!-- 원금 (84%) -->
-        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#059669" stroke-width="5" stroke-dasharray="84 16" stroke-dashoffset="0" />
-        <!-- 이자 수익 (12.8%) -->
-        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#0d9488" stroke-width="5" stroke-dasharray="12.8 87.2" stroke-dashoffset="-84" />
-        <!-- 정부 기여금 (3.2%) -->
-        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#d97706" stroke-width="5" stroke-dasharray="3.2 96.8" stroke-dashoffset="-96.8" />
-      </svg>
-      <div class="donut-center-text">
-        <span class="text-xs text-neutral-400 font-medium">총 수령액</span>
-        <span class="text-base font-black text-neutral-900 dark:text-white font-mono leading-none mt-0.5">5,000만</span>
-        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">비과세 적용</span>
-      </div>
-    </div>
-
-    <div class="donut-legend">
-      <div class="donut-legend-item">
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-emerald-600 shrink-0"></span>
-          <span class="font-medium text-neutral-700 dark:text-neutral-300">본인 납입 원금 (84.0%)</span>
-        </div>
-        <span class="font-bold text-neutral-900 dark:text-white font-mono">4,200만원</span>
-      </div>
-
-      <div class="donut-legend-item">
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-teal-600 shrink-0"></span>
-          <span class="font-medium text-neutral-700 dark:text-neutral-300">은행 비과세 이자 (12.8%)</span>
-        </div>
-        <span class="font-bold text-teal-700 dark:text-teal-400 font-mono">약 640만원</span>
-      </div>
-
-      <div class="donut-legend-item">
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-amber-600 shrink-0"></span>
-          <span class="font-medium text-neutral-700 dark:text-neutral-300">정부 기여금 원리금 (3.2%)</span>
-        </div>
-        <span class="font-bold text-amber-700 dark:text-amber-400 font-mono">약 160만원</span>
-      </div>
-
-      <div class="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 leading-snug">
-        💡 <strong>15.4% 비과세 혜택:</strong> 일반 적금 가입 시 납부해야 할 이자소득세 약 98만원을 전액 감면받아 실질 수익률이 더욱 높아집니다.
-      </div>
-    </div>
-  </div>
+<div class="chart-header">
+<div class="chart-title"><span>🥧</span><span>청년도약계좌 5년 만기 수령액 구성 분석 (월 70만원 납입 기준)</span></div>
+<div class="chart-subtitle">만기 예상 실수령액 5,000만원의 세부 항목별 비중</div>
+</div>
+<div class="donut-chart-wrapper">
+<div class="donut-graphic">
+<svg viewBox="0 0 42 42">
+<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="currentColor" stroke-width="5" class="text-neutral-200 dark:text-neutral-800" />
+<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#059669" stroke-width="5" stroke-dasharray="84 16" stroke-dashoffset="0" />
+<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#0d9488" stroke-width="5" stroke-dasharray="12.8 87.2" stroke-dashoffset="-84" />
+<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#d97706" stroke-width="5" stroke-dasharray="3.2 96.8" stroke-dashoffset="-96.8" />
+</svg>
+<div class="donut-center-text">
+<span class="text-xs text-neutral-400 font-medium">총 수령액</span>
+<span class="text-base font-black text-neutral-900 dark:text-white font-mono leading-none mt-0.5">5,000만</span>
+<span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">비과세 적용</span>
+</div>
+</div>
+<div class="donut-legend">
+<div class="donut-legend-item">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">본인 납입 원금 (84.0%)</span></div>
+<span class="font-bold text-neutral-900 dark:text-white font-mono">4,200만원</span>
+</div>
+<div class="donut-legend-item">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-teal-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">은행 비과세 이자 (12.8%)</span></div>
+<span class="font-bold text-teal-700 dark:text-teal-400 font-mono">약 640만원</span>
+</div>
+<div class="donut-legend-item">
+<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">정부 기여금 원리금 (3.2%)</span></div>
+<span class="font-bold text-amber-700 dark:text-amber-400 font-mono">약 160만원</span>
+</div>
+<div class="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300 leading-snug">
+💡 <strong>15.4% 비과세 혜택:</strong> 일반 적금 가입 시 납부해야 할 이자소득세 약 98만원을 전액 감면받아 실질 수익률이 더욱 높아집니다.
+</div>
+</div>
+</div>
 </div>
 
 ## 일반 시중 적금과의 수익 비교 분석
@@ -185,43 +131,22 @@ affiliate: false
 일반 은행에서 출시된 5년 만기 정기적금과 비교할 때 청년도약계좌가 지닌 실질적인 금리 경쟁력을 비교한 데이터입니다.
 
 <div class="financial-chart-box">
-  <div class="chart-header">
-    <div class="chart-title">
-      <span>📈</span>
-      <span>5년 만기 시 일반 적금 vs 청년도약계좌 실수령액 격차</span>
-    </div>
-    <div class="chart-subtitle">월 70만원 성실 납입 기준 5년 만기 총 수령액 비교</div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>일반 시중 적금 (연 3.5%, 이자소득세 15.4% 차감)</span>
-      <span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,495만원</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-neutral-400" style="width: 89.9%;">89.9%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span>우대형 시중 적금 (연 4.5%, 이자소득세 15.4% 차감)</span>
-      <span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,580만원</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-slate-500" style="width: 91.6%;">91.6%</div>
-    </div>
-  </div>
-
-  <div class="bar-chart-row">
-    <div class="bar-chart-label">
-      <span class="text-emerald-700 dark:text-emerald-300 font-bold">청년도약계좌 (연 6.0% + 정부기여금 + 전액 비과세)</span>
-      <span class="text-emerald-600 dark:text-emerald-400 font-mono font-extrabold text-sm">약 5,000만원 (+420~505만원 추가)</span>
-    </div>
-    <div class="bar-chart-track">
-      <div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100% (최고 혜택)</div>
-    </div>
-  </div>
+<div class="chart-header">
+<div class="chart-title"><span>📈</span><span>5년 만기 시 일반 적금 vs 청년도약계좌 실수령액 격차</span></div>
+<div class="chart-subtitle">월 70만원 성실 납입 기준 5년 만기 총 수령액 비교</div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>일반 시중 적금 (연 3.5%, 이자소득세 15.4% 차감)</span><span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,495만원</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-neutral-400" style="width: 89.9%;">89.9%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span>우대형 시중 적금 (연 4.5%, 이자소득세 15.4% 차감)</span><span class="text-neutral-600 dark:text-neutral-400 font-mono font-bold">약 4,580만원</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-slate-500" style="width: 91.6%;">91.6%</div></div>
+</div>
+<div class="bar-chart-row">
+<div class="bar-chart-label"><span class="text-emerald-700 dark:text-emerald-300 font-bold">청년도약계좌 (연 6.0% + 정부기여금 + 전액 비과세)</span><span class="text-emerald-600 dark:text-emerald-400 font-mono font-extrabold text-sm">약 5,000만원 (+420~505만원 추가)</span></div>
+<div class="bar-chart-track"><div class="bar-chart-fill bg-gradient-to-r from-emerald-600 to-teal-500" style="width: 100%;">100% (최고 혜택)</div></div>
+</div>
 </div>
 
 ## 시중 11개 주요 은행별 금리 조건 및 선택 전략
