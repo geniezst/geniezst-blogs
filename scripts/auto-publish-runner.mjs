@@ -389,19 +389,37 @@ ${selectedChart.instruction}
   12. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 
-    // agy 명령어로 글 생성 실행
+    // agy 명령어로 글 생성 실행 (타임아웃 10분 설정 및 스마트 폴백 복구 지원)
     const agyCmd = `/usr/local/bin/agy --dangerously-skip-permissions -p="${prompt.replace(/"/g, '\\"')}"`;
-    const agyOutput = execSync(agyCmd, {
-      cwd: BLOG_ROOT,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        PATH: `/usr/local/bin:/root/.local/bin:${process.env.PATH || ''}`,
-      },
-      timeout: 300000, // 최대 5분
-    });
+    try {
+      const agyOutput = execSync(agyCmd, {
+        cwd: BLOG_ROOT,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `/usr/local/bin:/root/.local/bin:${process.env.PATH || ''}`,
+        },
+        timeout: 600000, // 최대 10분 (장문 포스트 생성 및 자체 검증에 충분한 시간 부여)
+      });
+      console.log(`AI 생성 응답:\n`, agyOutput.slice(0, 300), '...');
+    } catch (cmdErr) {
+      // agy 프로세스가 타임아웃 또는 경고로 종료되었더라도 포스트 파일이 정상 생성되었는지 확인
+      const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
+      const recentMds = fs.readdirSync(postsDir)
+        .filter((f) => f.endsWith('.md') && f !== 'template.md')
+        .map((f) => ({
+          file: f,
+          mtime: fs.statSync(path.join(postsDir, f)).mtimeMs,
+        }))
+        .filter((f) => Date.now() - f.mtime < 15 * 60 * 1000) // 최근 15분 이내 생성
+        .sort((a, b) => b.mtime - a.mtime);
 
-    console.log(`AI 생성 응답:\n`, agyOutput.slice(0, 300), '...');
+      if (recentMds.length > 0) {
+        log(`⚠️ agy 프로세스에서 예외가 발생했으나(${cmdErr.message}), 신규 포스트 파일('${recentMds[0].file}')이 정상 감지되어 복구 발행 파이프라인으로 전환합니다.`);
+      } else {
+        throw cmdErr;
+      }
+    }
 
     // 생성된 최신 마크다운 파일 탐색
     const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
