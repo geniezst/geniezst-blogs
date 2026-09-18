@@ -110,39 +110,35 @@ affiliate: false
 
 <div class="financial-chart-box">
 <div class="chart-header">
-<div class="chart-title"><span>🥧</span><span>국민취업지원제도 1유형 최대 690만원 수혜액 구성 분석</span></div>
-<div class="chart-subtitle">최대 가족 가산 수당 및 1년 취업성공수당 합산 기준</div>
+<div class="chart-title"><span>📊</span><span>국민취업지원제도 1유형 최대 690만원 수혜액 구성 분석</span></div>
+<div class="chart-subtitle">기본 구직촉진수당 + 부양가족 가산금 + 취업성공수당 항목별 비중</div>
 </div>
-<div class="donut-chart-wrapper">
-<div class="donut-graphic">
-<svg viewBox="0 0 42 42">
-<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="currentColor" stroke-width="5" class="text-neutral-200 dark:text-neutral-800" />
-<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#2563eb" stroke-width="5" stroke-dasharray="43.5 56.5" stroke-dashoffset="0" />
-<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#0d9488" stroke-width="5" stroke-dasharray="34.8 65.2" stroke-dashoffset="-43.5" />
-<circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#d97706" stroke-width="5" stroke-dasharray="21.7 78.3" stroke-dashoffset="-78.3" />
-</svg>
-<div class="donut-center-text">
-<span class="text-xs text-neutral-400 font-medium">최대 지원금</span>
-<span class="text-base font-black text-neutral-900 dark:text-white font-mono leading-none mt-0.5">690만원</span>
-<span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">정부 전액 지원</span>
+<div class="stacked-bar-wrapper">
+<div class="stacked-bar-track">
+<div class="stacked-bar-segment bg-blue-600" style="width: 43.5%;">43.5%</div>
+<div class="stacked-bar-segment bg-teal-600" style="width: 34.8%;">34.8%</div>
+<div class="stacked-bar-segment bg-amber-500" style="width: 21.7%;">21.7%</div>
+</div>
+<div class="stacked-bar-cards">
+<div class="stacked-card-item">
+<div class="stacked-card-header"><span class="font-medium text-neutral-700 dark:text-neutral-300">기본 구직촉진수당</span><span class="text-xs font-bold text-blue-600 dark:text-blue-400 font-mono">43.5%</span></div>
+<div class="stacked-card-amount text-blue-600 dark:text-blue-400 font-mono">300만원</div>
+<div class="stacked-card-desc">월 50만원 × 6회 전액 지급</div>
+</div>
+<div class="stacked-card-item">
+<div class="stacked-card-header"><span class="font-medium text-neutral-700 dark:text-neutral-300">부양가족 가산수당</span><span class="text-xs font-bold text-teal-600 dark:text-teal-400 font-mono">34.8%</span></div>
+<div class="stacked-card-amount text-teal-600 dark:text-teal-400 font-mono">최대 240만원</div>
+<div class="stacked-card-desc">월 최대 40만원 × 6회 (4인 이상)</div>
+</div>
+<div class="stacked-card-item">
+<div class="stacked-card-header"><span class="font-medium text-neutral-700 dark:text-neutral-300">1년 근속 취업성공수당</span><span class="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">21.7%</span></div>
+<div class="stacked-card-amount text-amber-600 dark:text-amber-400 font-mono">150만원</div>
+<div class="stacked-card-desc">6개월 50만 + 12개월 100만원</div>
 </div>
 </div>
-<div class="donut-legend">
-<div class="donut-legend-item">
-<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">기본 구직촉진수당 (43.5%)</span></div>
-<span class="font-bold text-neutral-900 dark:text-white font-mono">300만원 (월 50만원×6회)</span>
-</div>
-<div class="donut-legend-item">
-<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-teal-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">부양가족 가산수당 (34.8%)</span></div>
-<span class="font-bold text-teal-700 dark:text-teal-400 font-mono">최대 240만원 (월 40만원×6회)</span>
-</div>
-<div class="donut-legend-item">
-<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-600 shrink-0"></span><span class="font-medium text-neutral-700 dark:text-neutral-300">1년 근속 취업성공수당 (21.7%)</span></div>
-<span class="font-bold text-amber-700 dark:text-amber-400 font-mono">150만원 (6개월 50만+12개월 100만)</span>
-</div>
-<div class="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 text-[11px] text-blue-800 dark:text-blue-300 leading-snug">
-💡 수당 수급 중 소득 기준을 준수하고 성실히 구직활동을 이행하면 세금 감면 없이 전액 비과세로 본인 통장에 현금 입금됩니다.
-</div>
+<div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
+<span>💡 <strong>총 최대 지원금: 690만원</strong> (소득세 비과세 전액 현금 지급)</span>
+<span class="font-mono font-bold text-blue-700 dark:text-blue-300 text-sm">합계 100%</span>
 </div>
 </div>
 </div>
