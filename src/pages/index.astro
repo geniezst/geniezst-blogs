@@ -51,11 +51,13 @@ const categoryQuickPills = [
 
     <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 w-full flex flex-col gap-8">
-      <!-- 이달의 핵심 정책 가이드 히어로 카드 (최신 1위 포스트) -->
+      <!-- 이달의 핵심 정책 가이드 히어로 카드 (최신 1위 포스트 - 모바일에서는 숨김, 데스크톱 lg에서만 표시) -->
       {featuredPost ? (
-        <HeroFeatured post={featuredPost} />
+        <div class="hidden lg:block">
+          <HeroFeatured post={featuredPost} />
+        </div>
       ) : (
-        <div class="editorial-card p-6 sm:p-8 bg-gradient-to-br from-emerald-500/15 via-teal-500/8 to-transparent border-emerald-200/70 dark:border-emerald-900/50">
+        <div class="hidden lg:block editorial-card p-6 sm:p-8 bg-gradient-to-br from-emerald-500/15 via-teal-500/8 to-transparent border-emerald-200/70 dark:border-emerald-900/50">
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white mb-3">
             <span>🏛️</span>
             <span>대한민국 복지 &amp; 알뜰 금융 가이드</span>
