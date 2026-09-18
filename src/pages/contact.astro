@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="문의하기"
+  description="geniezst 블로그에 제휴, 기술 질문 및 피드백을 전달할 수 있는 문의 페이지입니다."
+>
+  <div class="max-w-2xl mx-auto py-8">
+    <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-6">
+      문의하기 (Contact)
+    </h1>
+
+    <div class="bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-6 mb-8">
+      <p class="text-sm text-gray-600 dark:text-neutral-300 leading-relaxed mb-4">
+        기술적인 질문, 오탈자 제보, 콘텐츠 피드백, 제휴 문의는 아래 이메일 주소로 연락해 주시면 빠르게 확인 후 답변드리겠습니다.
+      </p>
+
+      <div class="flex items-center gap-3 p-3 bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700">
+        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span class="font-mono text-sm text-gray-800 dark:text-neutral-200 font-semibold">
+          contact@geniezst.com
+        </span>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

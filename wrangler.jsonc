@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blogs",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "account_id": "875ed0ea82cff1960433efce7b4d2cf1",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blogs",
+      "database_id": "cda318ea-89f1-45f8-84a6-11b44f758d6e"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "blogs"
+    }
+  ]
+}

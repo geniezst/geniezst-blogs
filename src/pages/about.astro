@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Sidebar from '../components/Sidebar.astro';
+import { getDb, getCategories } from '../lib/db';
+import type { Category } from '../types/blog';
+
+const db = await getDb(Astro.locals);
+let categories: Category[] = [];
+if (db) {
+  categories = await getCategories(db);
+}
+---
+
+<BaseLayout
+  title="블로그 소개 - geniezst"
+  description="geniezst 블로그의 운영 철학과 기술 소개입니다."
+>
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
+    <Sidebar categories={categories} />
+
+    <div class="flex-1 w-full fuwari-card p-6 sm:p-10">
+      <h1 class="text-3xl font-black text-neutral-900 dark:text-white mb-4">
+        About geniezst
+      </h1>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400 pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
+        경험과 트러블슈팅을 기록하는 테크 아카이브
+      </p>
+
+      <div class="prose prose-neutral dark:prose-invert max-w-none text-base leading-relaxed
+                  prose-headings:font-bold prose-a:text-blue-600 dark:prose-a:text-blue-400">
+        <p>
+          <strong>geniezst</strong>는 홈랩, 서버 인프라, 전자기기, 그리고 최신 AI 도구를 실무와 일상에 직접 적용하며 겪은 문제와 해결책을 체계적으로 아카이빙하는 공간입니다.
+        </p>
+
+        <h2>다루는 주제</h2>
+        <ul>
+          <li><strong>NAS &amp; Home Server:</strong> 시놀로지, 커스텀 NAS, 네트워크 스토리지 구축 및 문제 해결</li>
+          <li><strong>Docker &amp; Infrastructure:</strong> 컨테이너 네트워크 분리, 홈랩 서비스 운영 노하우</li>
+          <li><strong>Cloudflare &amp; Serverless:</strong> Workers, D1, R2를 활용한 초고속 웹 아키텍처</li>
+          <li><strong>Mac &amp; Windows:</strong> OS 환경 최적화 팁 및 생산성 도구 가이드</li>
+          <li><strong>Hardware &amp; Gadgets:</strong> 배터리, 충전기, 오디오 등 검증된 IT 기기 실사용 리뷰</li>
+        </ul>
+
+        <h2>디자인 &amp; 기술 스택</h2>
+        <p>
+          본 사이트는 트렌디한 카드 기반 UI와 애니메이션을 제공하는 <strong>Fuwari 테마 스타일</strong>을 기반으로 제작되었습니다.
+          Astro 7 프레임워크와 Cloudflare의 글로벌 Edge 네트워크(Workers + D1 + R2) 위에서 완벽히 구동되며,
+          빠른 반응 속도와 부드러운 다크/라이트 모드 경험을 선사합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,31 @@
+{
+  "name": "blogs",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "d1:migrate": "wrangler d1 migrations apply blog --remote",
+    "d1:migrate:local": "wrangler d1 migrations apply blog --local"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.3.1",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.3.2",
+    "highlight.js": "^11.12.0",
+    "marked": "^15.0.7",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260915.1"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}

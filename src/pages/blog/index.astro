@@ -1,0 +1,111 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import { getDb, getPublishedPosts, getCategories } from '../../lib/db';
+import type { BlogPost, Category } from '../../types/blog';
+
+const page = Number(Astro.url.searchParams.get('page') || '1');
+const limit = 10;
+const offset = (page - 1) * limit;
+
+let posts: BlogPost[] = [];
+let total = 0;
+let categories: Category[] = [];
+
+const db = await getDb(Astro.locals);
+
+if (db) {
+  try {
+    const [postsRes, categoriesRes] = await Promise.all([
+      getPublishedPosts(db, { limit, offset }),
+      getCategories(db),
+    ]);
+    posts = postsRes.posts;
+    total = postsRes.total;
+    categories = categoriesRes;
+  } catch (err) {
+    console.error('Failed to fetch posts:', err);
+  }
+}
+
+const totalPages = Math.ceil(total / limit);
+---
+
+<BaseLayout
+  title="글 목록 - geniezst"
+  description="geniezst 블로그의 모든 포스트 목록입니다."
+>
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
+    <Sidebar categories={categories} totalPosts={total} />
+
+    <div class="flex-1 w-full flex flex-col gap-6">
+      <div class="fuwari-card p-6">
+        <h1 class="text-2xl font-black text-neutral-900 dark:text-white">
+          전체 글 목록
+        </h1>
+        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          총 {total}개의 기술 가이드가 발행되었습니다.
+        </p>
+
+        <!-- 카테고리 칩 -->
+        {categories.length > 0 && (
+          <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-wrap gap-1.5">
+            <a
+              href="/blog"
+              class="px-3 py-1 rounded-xl text-xs font-semibold bg-blue-600 text-white"
+            >
+              전체
+            </a>
+            {categories.map((c) => (
+              <a
+                href={`/category/${c.slug}`}
+                class="px-3 py-1 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                {c.name}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- 포스트 카드 목록 -->
+      {posts.length > 0 ? (
+        <div class="flex flex-col gap-5">
+          {posts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      ) : (
+        <div class="fuwari-card p-12 text-center">
+          <p class="text-neutral-500 dark:text-neutral-400 text-sm">아직 등록된 글이 없습니다.</p>
+        </div>
+      )}
+
+      <!-- 페이지네이션 -->
+      {totalPages > 1 && (
+        <div class="fuwari-card p-4 flex items-center justify-center gap-3 text-xs font-medium">
+          {page > 1 && (
+            <a
+              href={`/blog?page=${page - 1}`}
+              class="px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:text-blue-600 transition"
+            >
+              &larr; 이전
+            </a>
+          )}
+          <span class="text-neutral-500">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages && (
+            <a
+              href={`/blog?page=${page + 1}`}
+              class="px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:text-blue-600 transition"
+            >
+              다음 &rarr;
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>

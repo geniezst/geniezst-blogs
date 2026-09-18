@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "./article.css";
+
+@layer base {
+  :root {
+    --bg-page: #f4f6f9;
+    --bg-card: rgba(255, 255, 255, 0.92);
+    --bg-card-subtle: #f8fafc;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --color-primary: #3b82f6; /* Fuwari Blue */
+    --color-primary-rgb: 59, 130, 246;
+    --border-card: rgba(226, 232, 240, 0.8);
+    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --card-shadow-hover: 0 12px 28px -4px rgba(59, 130, 246, 0.12);
+  }
+
+  html[data-theme="dark"],
+  html.dark {
+    --bg-page: #0f1117;
+    --bg-card: rgba(22, 25, 35, 0.9);
+    --bg-card-subtle: #1a1e29;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --color-primary: #60a5fa; /* Sky Blue */
+    --color-primary-rgb: 96, 165, 250;
+    --border-card: rgba(45, 52, 70, 0.7);
+    --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.35);
+    --card-shadow-hover: 0 12px 32px -4px rgba(0, 0, 0, 0.55);
+  }
+
+  html {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+  }
+
+  code, kbd, samp, pre {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* Fuwari 시그니처 글래스모피즘 카드 */
+  .fuwari-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 1.25rem; /* rounded-2xl */
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .fuwari-card:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: rgba(var(--color-primary-rgb), 0.35);
+  }
+}

@@ -1,0 +1,235 @@
+@import "highlight.js/styles/tokyo-night-dark.css";
+
+/* Article Container & Typography */
+.article-content {
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.85;
+  color: var(--text-primary);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .article-content {
+    font-size: 1rem; /* 16px */
+    line-height: 1.75;
+  }
+}
+
+/* Headings */
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  color: var(--text-primary);
+  font-weight: 800;
+  line-height: 1.35;
+  scroll-margin-top: 5rem;
+}
+
+.article-content h1 {
+  font-size: 2rem;
+  margin-top: 3.5rem;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+.article-content h2 {
+  font-size: 1.625rem;
+  margin-top: 3.25rem;
+  margin-bottom: 1.25rem;
+  padding-left: 0.875rem;
+  border-left: 4px solid var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+.article-content h3 {
+  font-size: 1.3125rem;
+  margin-top: 2.25rem;
+  margin-bottom: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.article-content h4 {
+  font-size: 1.125rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+/* Paragraphs */
+.article-content p {
+  margin-bottom: 1.75rem;
+  color: #334155;
+}
+
+html[data-theme="dark"] .article-content p,
+html.dark .article-content p {
+  color: #cbd5e1;
+}
+
+/* Bold & Strong */
+.article-content strong,
+.article-content b {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Links */
+.article-content a,
+.article-content .article-link {
+  color: #2563eb;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.article-content a:hover,
+.article-content .article-link:hover {
+  color: #1d4ed8;
+  opacity: 0.9;
+}
+
+html[data-theme="dark"] .article-content a,
+html.dark .article-content a,
+html[data-theme="dark"] .article-content .article-link,
+html.dark .article-content .article-link {
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .article-content a:hover,
+html.dark .article-content a:hover {
+  color: #93c5fd;
+}
+
+/* Blockquotes / Callouts */
+.article-content blockquote {
+  position: relative;
+  margin: 2rem 0;
+  padding: 1.25rem 1.5rem;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-left: 4px solid var(--color-primary);
+  border-radius: 0 1rem 1rem 0;
+  color: #475569;
+}
+
+html[data-theme="dark"] .article-content blockquote,
+html.dark .article-content blockquote {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #94a3b8;
+}
+
+.article-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lists */
+.article-content ul,
+.article-content ol {
+  margin-top: 0.75rem;
+  margin-bottom: 1.75rem;
+  padding-left: 1.5rem;
+}
+
+.article-content ul {
+  list-style-type: disc;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+}
+
+.article-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.75;
+  color: #334155;
+}
+
+html[data-theme="dark"] .article-content li,
+html.dark .article-content li {
+  color: #cbd5e1;
+}
+
+.article-content li::marker {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.article-content li > ul,
+.article-content li > ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  padding-left: 1.25rem;
+}
+
+/* Inline Code (not in pre) */
+.article-content :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.88em;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.375rem;
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #dbeafe;
+}
+
+html[data-theme="dark"] .article-content :not(pre) > code,
+html.dark .article-content :not(pre) > code {
+  background-color: rgba(30, 41, 59, 0.8);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+/* Horizontal Divider */
+.article-content hr {
+  margin: 3rem 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(148, 163, 184, 0.3), transparent);
+}
+
+/* Code Container Custom Styles */
+.code-block-container {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25);
+}
+
+.code-block-container pre code.hljs {
+  padding: 0;
+  background: transparent;
+}
+
+/* Custom Scrollbar for code block */
+.code-content pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.code-content pre::-webkit-scrollbar-track {
+  background: #161822;
+}
+
+.code-content pre::-webkit-scrollbar-thumb {
+  background: #33384f;
+  border-radius: 3px;
+}
+
+.code-content pre::-webkit-scrollbar-thumb:hover {
+  background: #474f6e;
+}
+
+/* Table Styles */
+.article-table-wrapper table th {
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  text-align: inherit;
+  color: var(--text-primary);
+}
+
+.article-table-wrapper table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
