@@ -47,7 +47,7 @@ if (!currentCategory) {
     <Sidebar categories={categories} totalPosts={totalAllPosts} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="editorial-card p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+      <div class="card-base p-6 sm:p-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
         <div class="flex items-center justify-between gap-2 mb-2">
           <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
             <span>🏛️</span>
@@ -72,7 +72,7 @@ if (!currentCategory) {
           ))}
         </div>
       ) : (
-        <div class="editorial-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
+        <div class="card-base p-12 text-center">
           <p class="text-neutral-500 dark:text-neutral-400 text-sm">이 카테고리에는 아직 등록된 가이드가 없습니다.</p>
         </div>
       )}

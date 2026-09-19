@@ -16,9 +16,9 @@ const formattedDate = post.published_at
   : '';
 ---
 
-<div class="hidden lg:block editorial-card overflow-hidden border-emerald-200/80 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white dark:to-slate-900/90 relative group">
+<div class="hidden lg:block card-base overflow-hidden relative group">
   <!-- 상단 액센트 라인 -->
-  <div class="h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500 w-full"></div>
+  <div class="h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500 w-full"></div>
 
   <div class="p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row gap-8 items-center">
     <!-- 텍스트 영역 -->
@@ -32,7 +32,7 @@ const formattedDate = post.published_at
         {post.category_name && (
           <a
             href={`/category/${post.category_slug}`}
-            class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/40 hover:bg-emerald-200/80 transition"
+            class="badge-pill bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/40 hover:bg-emerald-100 transition"
           >
             <span>🏛️</span>
             <span>{post.category_name}</span>
@@ -54,19 +54,19 @@ const formattedDate = post.published_at
 
       <!-- 3대 핵심 혜택 하이라이트 칩 -->
       <div class="mt-5 flex flex-wrap gap-2 text-xs">
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 정부 기여금 최대 수령
         </span>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 이자소득 전액 비과세
         </span>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 모바일 3분 비대면 신청
         </span>
       </div>
 
       <!-- 메타 및 액션 버튼 -->
-      <div class="mt-6 pt-5 border-t border-neutral-200/70 dark:border-neutral-800 w-full flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+      <div class="mt-6 pt-5 border-t border-neutral-100 dark:border-neutral-800/80 w-full flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400 font-mono">
         <div class="flex items-center gap-3">
           <time datetime={post.published_at || ''}>{formattedDate}</time>
           <span>•</span>
@@ -85,7 +85,7 @@ const formattedDate = post.published_at
 
     <!-- 썸네일/삽화 영역 -->
     {post.featured_image && (
-      <div class="w-full lg:w-96 shrink-0 aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3] rounded-2xl overflow-hidden border border-emerald-200/60 dark:border-emerald-900/60 shadow-lg relative">
+      <div class="w-full lg:w-96 shrink-0 aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3] rounded-2xl overflow-hidden border border-neutral-200/60 dark:border-neutral-800/80 shadow-md relative">
         <a href={`/blog/${post.slug}`} class="block w-full h-full">
           <img
             src={post.featured_image}

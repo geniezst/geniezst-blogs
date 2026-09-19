@@ -40,7 +40,7 @@ if (db) {
     <Sidebar categories={categories} />
 
     <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="fuwari-card p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50">
+      <div class="card-base p-6 sm:p-8 border-emerald-100/80 dark:border-emerald-950/50">
         <h1 class="text-2xl font-black text-neutral-900 dark:text-white mb-2">
           생활 금융 가이드 검색
         </h1>
@@ -85,7 +85,7 @@ if (db) {
               ))}
             </div>
           ) : (
-            <div class="fuwari-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
+            <div class="card-base p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
               <p class="text-sm text-neutral-500 dark:text-neutral-400">
                 일치하는 글을 찾을 수 없습니다. 다른 키워드로 검색해 보세요.
               </p>
@@ -93,7 +93,7 @@ if (db) {
           )}
         </div>
       ) : (
-        <div class="fuwari-card p-12 text-center text-sm text-neutral-400 dark:text-neutral-500 border-emerald-100/60 dark:border-emerald-950/40">
+        <div class="card-base p-12 text-center text-sm text-neutral-400 dark:text-neutral-500 border-emerald-100/60 dark:border-emerald-950/40">
           검색어를 입력하고 Enter를 누르세요.
         </div>
       )}

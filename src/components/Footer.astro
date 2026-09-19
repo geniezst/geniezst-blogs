@@ -4,10 +4,10 @@ import { siteConfig } from '../site.config';
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="mt-20 border-t border-emerald-200/50 dark:border-emerald-900/30 pt-10 pb-12 text-xs text-neutral-500 dark:text-neutral-400 bg-white/40 dark:bg-slate-950/40">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col gap-6">
+<footer class="mt-16 sm:mt-20 pb-12 text-xs text-neutral-500 dark:text-neutral-400 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto card-base p-6 sm:p-8 flex flex-col gap-6">
     <!-- 상단 링크 & 저작권 -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-neutral-200/60 dark:border-neutral-800">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-5 border-b border-neutral-100 dark:border-neutral-800/80">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
         <span class="font-bold text-neutral-800 dark:text-neutral-200">{siteConfig.title}</span>
@@ -16,15 +16,15 @@ const currentYear = new Date().getFullYear();
       </div>
 
       <div class="flex items-center gap-4">
-        <a href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">소개</a>
+        <a href="/about" class="btn-plain scale-animation px-2 py-1 rounded-lg hover:text-emerald-600 dark:hover:text-emerald-400 transition">소개</a>
         <span>•</span>
-        <a href="/privacy" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">개인정보처리방침</a>
+        <a href="/privacy" class="btn-plain scale-animation px-2 py-1 rounded-lg hover:text-emerald-600 dark:hover:text-emerald-400 transition">개인정보처리방침</a>
         <span>•</span>
-        <a href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition">문의하기</a>
+        <a href="/contact" class="btn-plain scale-animation px-2 py-1 rounded-lg hover:text-emerald-600 dark:hover:text-emerald-400 transition">문의하기</a>
         <span>•</span>
         <a
           href="/rss.xml"
-          class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition font-semibold"
+          class="btn-plain scale-animation px-2 py-1 rounded-lg inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold"
           title="RSS 피드"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -35,7 +35,7 @@ const currentYear = new Date().getFullYear();
       </div>
     </div>
 
-    <!-- 신뢰도 강화 면책 안내문 (애드센스 승인 및 신뢰도 향상) -->
+    <!-- 신뢰도 강화 면책 안내문 -->
     <div class="text-[11px] leading-relaxed text-neutral-400 dark:text-neutral-500 max-w-4xl mx-auto text-center sm:text-left">
       <p>
         [안내 및 면책 고지] 본 웹사이트의 모든 콘텐츠는 대한민국 정부 부처 및 공공기관(기획재정부, 금융위원회, 서민금융진흥원, 국세청 등)의 공식 보도자료 및 공공누리 출처를 기반으로 일반 이용자가 이해하기 쉽게 정리한 생활 정보입니다. 정책 및 금리 조건은 관련 법령 개정 및 금융기관 사정에 따라 수시로 변동될 수 있으므로, 최종 신청 전 각 소관 부처 및 은행의 공식 창구를 반드시 재확인하시기 바랍니다.

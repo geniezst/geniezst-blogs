@@ -25,8 +25,8 @@ const categoryDotColors: Record<string, string> = {
 ---
 
 <aside class="w-full lg:w-72 shrink-0 flex flex-col gap-6">
-  <!-- 프로필 카드 (스마트 머니 에디토리얼 연구팀) -->
-  <div class="editorial-card p-4 sm:p-5 lg:p-6 pb-0 sm:pb-0 lg:pb-0 text-center border-emerald-100/80 dark:border-emerald-950/50">
+  <!-- Fumika 프로필 카드 -->
+  <div class="card-base p-4 sm:p-5 lg:p-6 pb-0 sm:pb-0 lg:pb-0 text-center">
     <!-- 모바일에서는 아바타 및 이름/소개 숨김, 데스크톱(lg)에서만 표시 -->
     <div class="hidden lg:block">
       <!-- 아바타 및 검증 마크 -->
@@ -79,9 +79,9 @@ const categoryDotColors: Record<string, string> = {
     </div>
   </div>
 
-  <!-- 카테고리 카드 (모바일 기본 접힘, 데스크톱 항상 펼침) -->
+  <!-- Fumika 카테고리 카드 (모바일 기본 접힘, 데스크톱 항상 펼침) -->
   {categories.length > 0 && (
-    <div class="editorial-card p-4 sm:p-5 border-emerald-100/70 dark:border-emerald-950/40">
+    <div class="card-base p-4 sm:p-5">
       <!-- 반응형 헤더 (모바일 토글 버튼) -->
       <button
         type="button"
@@ -97,7 +97,7 @@ const categoryDotColors: Record<string, string> = {
           <h4 class="text-xs font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">
             생활 금융 카테고리
           </h4>
-          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 font-semibold">
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 font-semibold">
             {categories.length}
           </span>
         </div>
@@ -127,7 +127,7 @@ const categoryDotColors: Record<string, string> = {
               <li>
                 <a
                   href={`/category/${c.slug}`}
-                  class="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 transition group"
+                  class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 transition group"
                 >
                   <span class="flex items-center gap-2 truncate">
                     <span class={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
@@ -145,11 +145,11 @@ const categoryDotColors: Record<string, string> = {
     </div>
   )}
 
-  <!-- RSS 피드 카드 -->
-  <div class="editorial-card p-4 text-center border-neutral-200/60 dark:border-neutral-800">
+  <!-- Fumika RSS 피드 카드 -->
+  <div class="card-base p-4 text-center">
     <a
       href="/rss.xml"
-      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold transition"
+      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold transition scale-animation"
     >
       <svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
@@ -188,4 +188,3 @@ const categoryDotColors: Record<string, string> = {
   initBlogsCategoryToggle();
   document.addEventListener('astro:page-load', initBlogsCategoryToggle);
 </script>
-

@@ -4,36 +4,56 @@
 
 @layer base {
   :root {
+    --radius-large: 1.25rem;
+    --radius-full: 9999px;
     --bg-page: #f8fafc;
-    --bg-card: rgba(255, 255, 255, 0.98);
-    --bg-card-subtle: #f1f5f9;
+    --card-bg: rgba(255, 255, 255, 0.94);
+    --card-bg-subtle: #f1f5f9;
     --text-primary: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #64748b;
-    --color-primary: #059669; /* Financial Emerald */
-    --color-primary-rgb: 5, 150, 105;
-    --color-primary-dark: #065f46;
-    --color-accent: #d97706; /* Financial Amber / Gold */
-    --border-card: rgba(226, 232, 240, 0.95);
-    --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
-    --card-shadow-hover: 0 16px 32px -4px rgba(5, 150, 105, 0.14);
+    --text-muted: #94a3b8;
+    
+    /* Fumika Modern Emerald Theme */
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-hover: #047857;
+    --primary-light: #ecfdf5;
+    --color-primary: var(--primary);
+    --color-primary-rgb: var(--primary-rgb);
+    --color-accent: #d97706;
+    
+    --btn-plain-bg-hover: rgba(5, 150, 105, 0.08);
+    --btn-plain-bg-active: rgba(5, 150, 105, 0.16);
+    
+    --border-card: rgba(226, 232, 240, 0.85);
+    --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+    --card-shadow-hover: 0 16px 32px -4px rgba(5, 150, 105, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
   }
 
   html[data-theme="dark"],
   html.dark {
-    --bg-page: #0a101d;
-    --bg-card: rgba(16, 26, 44, 0.94);
-    --bg-card-subtle: #121e33;
+    --bg-page: #0d121c;
+    --card-bg: rgba(20, 28, 42, 0.90);
+    --card-bg-subtle: #162236;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
-    --color-primary: #10b981; /* Mint Emerald */
-    --color-primary-rgb: 16, 185, 129;
-    --color-primary-dark: #059669;
+    --text-muted: #64748b;
+    
+    /* Fumika Dark Mint Emerald Theme */
+    --primary: #10b981;
+    --primary-rgb: 16, 185, 129;
+    --primary-hover: #34d399;
+    --primary-light: rgba(16, 185, 129, 0.12);
+    --color-primary: var(--primary);
+    --color-primary-rgb: var(--primary-rgb);
     --color-accent: #fbbf24;
-    --border-card: rgba(30, 48, 77, 0.85);
-    --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
-    --card-shadow-hover: 0 16px 36px -4px rgba(16, 185, 129, 0.2);
+    
+    --btn-plain-bg-hover: rgba(16, 185, 129, 0.12);
+    --btn-plain-bg-active: rgba(16, 185, 129, 0.22);
+    
+    --border-card: rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
+    --card-shadow-hover: 0 16px 36px -4px rgba(16, 185, 129, 0.18);
   }
 
   html {
@@ -54,24 +74,84 @@
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 
-  /* 에디토리얼 매거진 카드 */
+  /* Fumika Card Base */
+  .card-base {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-large);
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-base:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: rgba(var(--primary-rgb), 0.38);
+  }
+
+  /* Aliases for backwards compatibility */
   .editorial-card,
   .fuwari-card {
-    background-color: var(--bg-card);
+    background-color: var(--card-bg);
     border: 1px solid var(--border-card);
-    border-radius: 1.25rem; /* rounded-2xl */
+    border-radius: var(--radius-large);
     box-shadow: var(--card-shadow);
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .editorial-card:hover,
   .fuwari-card:hover {
     box-shadow: var(--card-shadow-hover);
-    border-color: rgba(var(--color-primary-rgb), 0.45);
+    border-color: rgba(var(--primary-rgb), 0.38);
   }
 
-  /* 핀테크 헤드라인 폰트 */
+  /* Fumika Scale Animation */
+  .scale-animation {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
+  }
+  .scale-animation:hover {
+    transform: scale(1.02);
+  }
+  .scale-animation:active {
+    transform: scale(0.98);
+  }
+
+  /* Fumika Button Plain */
+  .btn-plain {
+    position: relative;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-plain:hover {
+    background-color: var(--btn-plain-bg-hover);
+    color: var(--primary);
+  }
+
+  /* Fumika Floating Panel */
+  .float-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-large);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Fumika Badge Pill */
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  /* Headings */
   .font-heading {
     letter-spacing: -0.025em;
     word-break: keep-all;

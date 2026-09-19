@@ -57,7 +57,7 @@ const categoryQuickPills = [
           <HeroFeatured post={featuredPost} />
         </div>
       ) : (
-        <div class="hidden lg:block editorial-card p-6 sm:p-8 bg-gradient-to-br from-emerald-500/15 via-teal-500/8 to-transparent border-emerald-200/70 dark:border-emerald-900/50">
+        <div class="hidden lg:block card-base p-6 sm:p-8 bg-gradient-to-br from-emerald-500/15 via-teal-500/8 to-transparent border-emerald-200/70 dark:border-emerald-900/50">
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white mb-3">
             <span>🏛️</span>
             <span>대한민국 복지 &amp; 알뜰 금융 가이드</span>
@@ -72,10 +72,10 @@ const categoryQuickPills = [
       )}
 
       <!-- 카테고리 퀵 필터 칩 바 (모바일에서는 숨김, 데스크톱 lg에서만 표시) -->
-      <div class="hidden lg:flex editorial-card p-3 sm:p-4 border-emerald-100/70 dark:border-emerald-950/40 items-center gap-2 overflow-x-auto scrollbar-none">
+      <div class="hidden lg:flex card-base p-3 sm:p-4 items-center gap-2 overflow-x-auto scrollbar-none">
         <a
           href="/blog"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shrink-0 hover:bg-emerald-700 transition"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shrink-0 hover:bg-emerald-700 transition scale-animation"
         >
           전체 보기 ({total})
         </a>
@@ -85,7 +85,7 @@ const categoryQuickPills = [
           return (
             <a
               href={`/category/${pill.slug}`}
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 dark:bg-slate-800/70 text-neutral-700 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 border border-neutral-200/60 dark:border-neutral-700/60 shrink-0 transition"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 dark:bg-slate-800/70 text-neutral-700 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 border border-neutral-200/60 dark:border-neutral-700/60 shrink-0 transition scale-animation"
             >
               <span>{pill.icon}</span>
               <span>{pill.name}</span>
@@ -121,7 +121,7 @@ const categoryQuickPills = [
             ))}
           </div>
         ) : (
-          <div class="editorial-card p-12 text-center border-emerald-100/60 dark:border-emerald-950/40">
+          <div class="card-base p-12 text-center">
             <p class="text-neutral-500 dark:text-neutral-400 text-sm">등록된 가이드가 준비 중입니다.</p>
           </div>
         )}
