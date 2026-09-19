@@ -161,9 +161,24 @@
 
 ---
 
-## 15. 최종 승인 서명 (Approval Signature)
+## 16. Shirone 공식 테마 (Material 3 Expressive) 전면 전환 감사 (2026-09-19)
 
-> 본 작업(Fumika 공식 테마 레이아웃 정리 및 컴포넌트 일원화)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
+| 점검 영역 | 상태 | 세부 검증 내용 |
+|---|:---:|---|
+| **디자인 시스템 (Material 3 Expressive)** | **PASS** | Shirone 테마 공식 Rose/Sakura Pink 팔레트(Hue 315, `--primary: #be185d`, `--primary-container: #fce7f3`, `--secondary: #9333ea`) 및 M3 State Layer, Elevation, Corner Radius 완전 구축 |
+| **Shirone 공식 에셋 탑재** | **PASS** | 공식 Hero Banner(`/assets/images/banner-shirone.webp`) 및 공식 Avatar(`/assets/images/avatar-shirone.webp`) 탑재 및 레이아웃 반영 확인 |
+| **Top App Bar (헤더)** | **PASS** | Shirone 시그니처 Pill 인디케이터(확장 애니메이션 `group-hover:h-7`), M3 State Layer pill 내비게이션 버튼, 검색 및 테마 토글 완비 |
+| **Shirone PostCard** | **PASS** | 좌측 Signature AccentBar 인디케이터, 28% 데스크톱 우측 커버 + 핑크 호버 오버레이 & Chevron 화살표, 썸네일 미보유 시 M3 엔터 버튼, M3 카테고리 뱃지 필, 모바일 대시 구분선 완비 |
+| **사이드바 프로필 & 카테고리** | **PASS** | Shirone 공식 아바타, 이름 하단 M3 Accent Line(`h-1 w-6 bg-[var(--primary)]`), 통계 바(글 수, 카테고리 수), 모바일 기본 접힘 아코디언 및 🛡️ 공공데이터 상하 14px 균등 여백 완비 |
+| **BaseLayout & Footer** | **PASS** | 상단 Shirone Hero Banner(`/assets/images/banner-shirone.webp`), M3 Card Base 컨테이너, 하단 Shirone 크레딧(`Shirone • Material 3 Expressive Theme`) 및 M3 푸터 완비 |
+| **페이지 전역 테마 동기화** | **PASS** | 홈(`/`), 글 목록(`/blog`), 카테고리(`/category/*`), 상세(`/blog/*`) 전역 Shirone Rose M3 토큰 적용 |
+| **프로덕션 빌드 검증** | **PASS** | `npm run build` 결과 0 errors 정상 완료 (Server built in 4.92s) |
+
+---
+
+## 17. 최종 승인 서명 (Approval Signature)
+
+> 본 작업(Shirone 공식 Material 3 Expressive 테마 전면 전환)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
 
 **서명:** `@qa - Approved (2026-09-19)`
 

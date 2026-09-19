@@ -16,7 +16,7 @@ export const siteConfig = {
     name: '스마트 머니',
     bio: '놓치기 쉬운 정부 지원금, 숨은 환급금, 생활 절세 및 필수 금융 혜택을 알기 쉽게 정리합니다.',
     avatarText: 'M',
-    avatarImage: '',
+    avatarImage: '/assets/images/avatar-shirone.webp',
     github: 'https://github.com/geniezst',
     email: '',
   },

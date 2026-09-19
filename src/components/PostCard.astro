@@ -15,50 +15,44 @@ const formattedDate = post.published_at
     })
   : '';
 
-// 6대 카테고리별 맞춤형 뱃지 스타일 (Fumika Badge Pill)
-const categoryBadgeStyles: Record<string, { bg: string; dot: string; icon: string }> = {
+// 6대 카테고리별 맞춤형 뱃지 스타일 (Shirone M3 Pill Style)
+const categoryBadgeStyles: Record<string, { bg: string; icon: string }> = {
   welfare: {
-    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40',
-    dot: 'bg-emerald-500',
+    bg: 'bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40',
     icon: '🏛️',
   },
   tax: {
     bg: 'bg-amber-50 text-amber-700 border-amber-200/70 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40',
-    dot: 'bg-amber-500',
     icon: '💰',
   },
   finance: {
-    bg: 'bg-blue-50 text-blue-700 border-blue-200/70 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/40',
-    dot: 'bg-blue-500',
+    bg: 'bg-purple-50 text-purple-700 border-purple-200/70 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/40',
     icon: '📈',
   },
   saving: {
-    bg: 'bg-teal-50 text-teal-700 border-teal-200/70 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/40',
-    dot: 'bg-teal-500',
+    bg: 'bg-pink-50 text-pink-700 border-pink-200/70 dark:bg-pink-950/60 dark:text-pink-300 dark:border-pink-800/40',
     icon: '⚡',
   },
   subsidy: {
     bg: 'bg-violet-50 text-violet-700 border-violet-200/70 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/40',
-    dot: 'bg-violet-500',
     icon: '🏪',
   },
   'life-tips': {
-    bg: 'bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40',
-    dot: 'bg-rose-500',
+    bg: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/70 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:border-fuchsia-800/40',
     icon: '📋',
   },
 };
 
 const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug]) || {
-  bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40',
-  dot: 'bg-emerald-500',
+  bg: 'bg-pink-50 text-pink-700 border-pink-200/70 dark:bg-pink-950/60 dark:text-pink-300 dark:border-pink-800/40',
   icon: '💡',
 };
 ---
 
+<!-- Shirone M3 PostCard -->
 <div class="card-base flex flex-col-reverse md:flex-col w-full rounded-2xl overflow-hidden relative group hover:shadow-xl transition-all duration-300 p-5 sm:p-6">
-  <!-- 상단 호버 시 나타나는 에메랄드 액센트 라인 -->
-  <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+  <!-- 상단 호버 시 나타나는 Shirone 로즈-퍼플 액센트 라인 -->
+  <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
   <!-- 카드 본문 정보 영역 -->
   <div class:list={[
@@ -66,18 +60,18 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
     { "w-full md:w-[calc(100%_-_52px_-_16px)]": !post.featured_image, "w-full md:w-[calc(100%_-_28%_-_16px)]": post.featured_image }
   ]}>
     <div>
-      <!-- 포스트 제목 (Fumika 시그니처 세로 에메랄드 인디케이터 적용) -->
+      <!-- 포스트 제목 (Shirone 시그니처 AccentBar 적용) -->
       <a
         href={`/blog/${post.slug}`}
-        class="transition group/title w-full block font-bold mb-3 text-lg sm:text-2xl text-neutral-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 font-heading relative md:pl-0 before:w-1.5 before:h-5 before:rounded-md before:bg-emerald-600 dark:before:bg-emerald-400 before:absolute before:top-1.5 before:-left-4 before:hidden md:before:block"
+        class="transition group/title w-full block font-bold mb-3 text-lg sm:text-2xl text-neutral-900 dark:text-white hover:text-[var(--primary)] font-heading relative md:pl-0 before:w-1.5 before:h-5 before:rounded-md before:bg-[var(--primary)] before:absolute before:top-1.5 before:-left-4 before:hidden md:before:block"
       >
         <span>{post.title}</span>
-        <svg class="inline w-5 h-5 text-emerald-600 dark:text-emerald-400 md:hidden translate-y-0.5 ml-1 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <svg class="inline w-5 h-5 text-[var(--primary)] md:hidden translate-y-0.5 ml-1 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </a>
 
-      <!-- Fumika 메타데이터 (카테고리 뱃지, 발행일, 정독 시간) -->
+      <!-- Shirone 메타데이터 (카테고리 뱃지, 발행일, 정독 시간) -->
       <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs text-neutral-400 dark:text-neutral-500 font-mono mb-3">
         {post.category_name && (
           <a
@@ -118,7 +112,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
     </div>
   </div>
 
-  <!-- Fumika 데스크톱 28% 우측 커버 썸네일 & 줌 오버레이 -->
+  <!-- Shirone 데스크톱 28% 우측 커버 썸네일 & 줌 오버레이 -->
   {post.featured_image && (
     <a
       href={`/blog/${post.slug}`}
@@ -140,12 +134,12 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
     </a>
   )}
 
-  <!-- 커버 이미지가 없을 때: Fumika 우측 엔터 화살표 버튼 -->
+  <!-- 커버 이미지가 없을 때: Shirone M3 우측 엔터 화살표 버튼 -->
   {!post.featured_image && (
     <a
       href={`/blog/${post.slug}`}
       aria-label={post.title}
-      class="hidden md:flex w-12 absolute right-3 top-3 bottom-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-95 items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-all"
+      class="hidden md:flex w-12 absolute right-3 top-3 bottom-3 rounded-xl bg-[var(--primary-container)] text-[var(--on-primary-container)] hover:bg-[var(--primary)] hover:text-white active:scale-95 items-center justify-center group-hover:translate-x-0.5 transition-all"
     >
       <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />

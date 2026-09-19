@@ -10,48 +10,41 @@ interface Props {
 const { categories = [], totalPosts } = Astro.props;
 const { profile } = siteConfig;
 
-// post_count 합산 또는 전달받은 totalPosts 사용 (0으로 고정되는 문제 완전 해결)
 const calculatedTotal = categories.reduce((sum, c) => sum + (Number(c.post_count) || 0), 0);
 const displayTotalPosts = (totalPosts !== undefined && totalPosts > 0) ? totalPosts : calculatedTotal;
 
 const categoryDotColors: Record<string, string> = {
-  welfare: 'bg-emerald-500',
+  welfare: 'bg-rose-500',
   tax: 'bg-amber-500',
-  finance: 'bg-blue-500',
-  saving: 'bg-teal-500',
+  finance: 'bg-purple-500',
+  saving: 'bg-pink-500',
   subsidy: 'bg-violet-500',
-  'life-tips': 'bg-rose-500',
+  'life-tips': 'bg-fuchsia-500',
 };
+
+const avatarSrc = profile.avatarImage || '/assets/images/avatar-shirone.webp';
 ---
 
 <aside class="w-full lg:w-72 shrink-0 flex flex-col gap-6">
-  <!-- Fumika 프로필 카드 -->
+  <!-- Shirone M3 프로필 카드 -->
   <div class="card-base p-4 sm:p-5 lg:p-6 pb-0 sm:pb-0 lg:pb-0 text-center">
     <!-- 모바일에서는 아바타 및 이름/소개 숨김, 데스크톱(lg)에서만 표시 -->
     <div class="hidden lg:block">
       <!-- 아바타 및 검증 마크 -->
       <div class="relative w-20 h-20 mx-auto mb-4">
-        {profile.avatarImage ? (
-          <img
-            src={profile.avatarImage}
-            alt={profile.name}
-            class="w-20 h-20 rounded-2xl object-cover shadow-md"
-          />
-        ) : (
-          <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20">
-            <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-        )}
-        <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-white font-bold" title="공식 정책 검증 완료">✓</span>
+        <img
+          src={avatarSrc}
+          alt={profile.name}
+          class="w-20 h-20 rounded-2xl object-cover shadow-md border border-[var(--border-card)]"
+        />
+        <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--primary)] border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-white font-bold" title="공식 정책 검증 완료">✓</span>
       </div>
 
-      <!-- 이름 & 소개 (Fumika 시그니처 언더라인 바) -->
+      <!-- 이름 & 소개 (Shirone 시그니처 언더라인 바) -->
       <h3 class="text-base font-bold text-neutral-900 dark:text-white">
         {profile.name}
       </h3>
-      <div class="h-1 w-6 bg-emerald-600 dark:bg-emerald-400 mx-auto rounded-full my-2.5 transition"></div>
+      <div class="h-1 w-6 bg-[var(--primary)] mx-auto rounded-full my-2.5 transition"></div>
       <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
         {profile.bio}
       </p>
@@ -60,7 +53,7 @@ const categoryDotColors: Record<string, string> = {
     <!-- 통계 수치 바 (포스트 수 정확히 표시 - 모바일에서는 카드 상단에 바로 배치) -->
     <div class="lg:mt-5 lg:pt-4 lg:border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-around text-center">
       <a href="/blog" class="group">
-        <span class="block text-lg font-black text-neutral-800 dark:text-neutral-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition font-mono">
+        <span class="block text-lg font-black text-neutral-800 dark:text-neutral-200 group-hover:text-[var(--primary)] transition font-mono">
           {displayTotalPosts}
         </span>
         <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">포스트</span>
@@ -75,12 +68,12 @@ const categoryDotColors: Record<string, string> = {
     </div>
 
     <!-- 신뢰 보증 뱃지 (상하 여백 14px 균등화) -->
-    <div class="mt-3.5 py-3.5 border-t border-dashed border-neutral-200/70 dark:border-neutral-800/60 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center justify-center gap-1">
+    <div class="mt-3.5 py-3.5 border-t border-dashed border-neutral-200/70 dark:border-neutral-800/60 text-[11px] text-[var(--primary)] font-medium flex items-center justify-center gap-1">
       <span>🛡️ 100% 공공데이터 기준 검증</span>
     </div>
   </div>
 
-  <!-- Fumika 카테고리 카드 (모바일 기본 접힘, 데스크톱 항상 펼침) -->
+  <!-- Shirone 카테고리 카드 (모바일 기본 접힘, 데스크톱 항상 펼침) -->
   {categories.length > 0 && (
     <div class="card-base p-4 sm:p-5">
       <!-- 반응형 헤더 (모바일 토글 버튼) -->
@@ -92,7 +85,7 @@ const categoryDotColors: Record<string, string> = {
         aria-controls="blogs-category-list"
       >
         <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg class="w-4 h-4 text-[var(--primary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
           <h4 class="text-xs font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">
@@ -123,18 +116,18 @@ const categoryDotColors: Record<string, string> = {
       <div id="blogs-category-list" class="hidden lg:block pt-3 mt-2.5 border-t border-neutral-100 dark:border-neutral-800">
         <ul class="space-y-1">
           {categories.map((c) => {
-            const dotColor = categoryDotColors[c.slug] || 'bg-emerald-500';
+            const dotColor = categoryDotColors[c.slug] || 'bg-pink-500';
             return (
               <li>
                 <a
                   href={`/category/${c.slug}`}
-                  class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 transition group"
+                  class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-[var(--primary)] hover:bg-[var(--primary-container)]/70 dark:hover:bg-[var(--primary-container)]/50 transition group"
                 >
                   <span class="flex items-center gap-2 truncate">
                     <span class={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
                     <span class="truncate">{c.name}</span>
                   </span>
-                  <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-950 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition shrink-0 font-semibold">
+                  <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 group-hover:bg-[var(--primary)] group-hover:text-white transition shrink-0 font-semibold">
                     {c.post_count ?? 0}
                   </span>
                 </a>
@@ -146,11 +139,11 @@ const categoryDotColors: Record<string, string> = {
     </div>
   )}
 
-  <!-- Fumika RSS 피드 카드 -->
+  <!-- Shirone RSS 피드 카드 -->
   <div class="card-base p-4 text-center">
     <a
       href="/rss.xml"
-      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold transition scale-animation"
+      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[var(--primary-container)]/80 text-[var(--on-primary-container)] hover:bg-[var(--primary)] hover:text-white text-xs font-bold transition scale-animation"
     >
       <svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z" />
