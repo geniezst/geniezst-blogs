@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-18T10:13:30.000Z",
+  "last_updated": "2026-09-19T02:29:32.660Z",
   "category_counts": {
     "welfare": 1,
     "tax": 1,
-    "finance": 0,
+    "finance": 1,
     "saving": 0,
     "subsidy": 0,
     "life-tips": 0
   },
-  "last_session": "evening",
+  "last_session": "lunch",
   "history": [
     {
       "date": "2026-09-18",
@@ -28,7 +28,17 @@
       "title": "2026년 청년도약계좌 세제 혜택과 비과세 요건 총정리: 이자소득세 15.4% 감면과 ISA 연계 절세 전략",
       "slug": "youth-leap-account-tax-exemption-guide",
       "chart_type": "column-chart"
+    },
+    {
+      "date": "2026-09-19",
+      "session": "lunch",
+      "time": "11:27",
+      "category": "finance",
+      "title": "2026년 청년도약계좌 만기 5,000만원 실수령액과 은행별 금리 비교: 원금·이자·정부기여금 3대 항목 시뮬레이션",
+      "slug": "youth-leap-account-maturity-return-simulation-2026",
+      "chart_type": "donut-chart",
+      "status": "success"
     }
   ],
-  "last_chart_type": "column-chart"
+  "last_chart_type": "donut-chart"
 }
