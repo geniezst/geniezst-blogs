@@ -47,11 +47,12 @@ const categoryDotColors: Record<string, string> = {
         <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-white font-bold" title="공식 정책 검증 완료">✓</span>
       </div>
 
-      <!-- 이름 & 소개 -->
+      <!-- 이름 & 소개 (Fumika 시그니처 언더라인 바) -->
       <h3 class="text-base font-bold text-neutral-900 dark:text-white">
         {profile.name}
       </h3>
-      <p class="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
+      <div class="h-1 w-6 bg-emerald-600 dark:bg-emerald-400 mx-auto rounded-full my-2.5 transition"></div>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed px-1">
         {profile.bio}
       </p>
     </div>

@@ -56,83 +56,101 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
 };
 ---
 
-<!-- Fumika PostCard -->
-<article class="card-base p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1.5 transition-all duration-300 cursor-pointer">
-  <!-- Fumika Hover Accent Line -->
+<div class="card-base flex flex-col-reverse md:flex-col w-full rounded-2xl overflow-hidden relative group hover:shadow-xl transition-all duration-300 p-5 sm:p-6">
+  <!-- 상단 호버 시 나타나는 에메랄드 액센트 라인 -->
   <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-  <div class="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
-    <!-- 썸네일 이미지 (Fumika Zoom Effect) -->
-    {post.featured_image && (
-      <div class="w-full sm:w-48 lg:w-56 shrink-0 aspect-[16/10] sm:aspect-[4/3] rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800/80 bg-neutral-100 dark:bg-slate-800 relative">
-        <img
-          src={post.featured_image}
-          alt={post.title}
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
-      </div>
-    )}
+  <!-- 카드 본문 정보 영역 -->
+  <div class:list={[
+    "relative flex flex-col justify-between",
+    { "w-full md:w-[calc(100%_-_52px_-_16px)]": !post.featured_image, "w-full md:w-[calc(100%_-_28%_-_16px)]": post.featured_image }
+  ]}>
+    <div>
+      <!-- 포스트 제목 (Fumika 시그니처 세로 에메랄드 인디케이터 적용) -->
+      <a
+        href={`/blog/${post.slug}`}
+        class="transition group/title w-full block font-bold mb-3 text-lg sm:text-2xl text-neutral-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 font-heading relative md:pl-0 before:w-1.5 before:h-5 before:rounded-md before:bg-emerald-600 dark:before:bg-emerald-400 before:absolute before:top-1.5 before:-left-4 before:hidden md:before:block"
+      >
+        <span>{post.title}</span>
+        <svg class="inline w-5 h-5 text-emerald-600 dark:text-emerald-400 md:hidden translate-y-0.5 ml-1 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
 
-    <!-- 카드 본문 정보 -->
-    <div class="flex-1 w-full flex flex-col justify-between">
-      <div>
-        <!-- 상단 카테고리 & 읽는 시간 -->
-        <div class="flex items-center justify-between gap-2 mb-2.5">
-          {post.category_name ? (
-            <a
-              href={`/category/${post.category_slug}`}
-              class={`badge-pill border relative z-10 hover:opacity-85 transition ${badgeStyle.bg}`}
-            >
-              <span>{badgeStyle.icon}</span>
-              <span>{post.category_name}</span>
-            </a>
-          ) : <div></div>}
-
-          <span class="inline-flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 font-mono">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{post.reading_time_minutes || 4}분 정독</span>
-          </span>
-        </div>
-
-        <!-- 포스트 제목 -->
-        <h3 class="text-lg sm:text-xl font-bold tracking-tight text-neutral-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-snug mb-2 font-heading">
-          <a href={`/blog/${post.slug}`} class="focus:outline-none">
-            <span class="absolute inset-0 z-0"></span>
-            {post.title}
+      <!-- Fumika 메타데이터 (카테고리 뱃지, 발행일, 정독 시간) -->
+      <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs text-neutral-400 dark:text-neutral-500 font-mono mb-3">
+        {post.category_name && (
+          <a
+            href={`/category/${post.category_slug}`}
+            class={`badge-pill border relative z-10 hover:opacity-85 transition ${badgeStyle.bg}`}
+          >
+            <span>{badgeStyle.icon}</span>
+            <span>{post.category_name}</span>
           </a>
-        </h3>
+        )}
 
-        <!-- 포스트 요약 설명 -->
-        <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 leading-relaxed mb-3">
-          {post.description}
-        </p>
-      </div>
-
-      <!-- 하단 푸터 메타 -->
-      <div class="pt-3 border-t border-neutral-100 dark:border-neutral-800/70 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500 font-mono">
-        <div class="flex items-center gap-2.5">
-          <span class="inline-flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <time datetime={post.published_at || ''}>{formattedDate}</time>
-          </span>
-          {post.view_count > 0 && (
-            <>
-              <span>•</span>
-              <span>조회 {post.view_count}</span>
-            </>
-          )}
-        </div>
-
-        <span class="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
-          <span>가이드 확인</span>
-          <span>&rarr;</span>
+        <span class="inline-flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <time datetime={post.published_at || ''}>{formattedDate}</time>
         </span>
+
+        <span class="inline-flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{post.reading_time_minutes || 4}분 정독</span>
+        </span>
+
+        {post.view_count > 0 && (
+          <span class="hidden sm:inline-flex items-center gap-1">
+            <span>•</span>
+            <span>조회 {post.view_count}</span>
+          </span>
+        )}
       </div>
+
+      <!-- 포스트 요약 설명 -->
+      <p class="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 leading-relaxed mb-1 pr-2">
+        {post.description}
+      </p>
     </div>
   </div>
-</article>
+
+  <!-- Fumika 데스크톱 28% 우측 커버 썸네일 & 줌 오버레이 -->
+  {post.featured_image && (
+    <a
+      href={`/blog/${post.slug}`}
+      aria-label={post.title}
+      class="group/cover max-h-48 md:max-h-none mx-0 mt-3 md:mt-0 md:w-[28%] relative md:absolute md:top-3 md:bottom-3 md:right-3 rounded-xl overflow-hidden active:scale-95 bg-neutral-100 dark:bg-slate-800 shrink-0"
+    >
+      <div class="absolute inset-0 pointer-events-none z-10 group-hover/cover:bg-black/30 transition-colors duration-300"></div>
+      <div class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+        <svg class="w-10 h-10 text-white opacity-0 group-hover/cover:opacity-100 scale-50 group-hover/cover:scale-100 transition-all duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+      <img
+        src={post.featured_image}
+        alt={post.title}
+        class="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-500"
+        loading="lazy"
+      />
+    </a>
+  )}
+
+  <!-- 커버 이미지가 없을 때: Fumika 우측 엔터 화살표 버튼 -->
+  {!post.featured_image && (
+    <a
+      href={`/blog/${post.slug}`}
+      aria-label={post.title}
+      class="hidden md:flex w-12 absolute right-3 top-3 bottom-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-95 items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-all"
+    >
+      <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+  )}
+</div>
+<div class="transition border-t border-dashed mx-6 border-neutral-200/60 dark:border-neutral-800/80 last:border-t-0 md:hidden"></div>
