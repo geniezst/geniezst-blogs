@@ -18,7 +18,7 @@ const formattedDate = post.published_at
 
 <div class="hidden lg:block card-base overflow-hidden relative group">
   <!-- 상단 액센트 라인 -->
-  <div class="h-1 bg-gradient-to-r from-pink-600 via-purple-500 to-rose-400 w-full"></div>
+  <div class="h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 w-full"></div>
 
   <div class="p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row gap-8 items-center">
     <!-- 텍스트 영역 -->
@@ -32,7 +32,7 @@ const formattedDate = post.published_at
         {post.category_name && (
           <a
             href={`/category/${post.category_slug}`}
-            class="badge-pill bg-pink-50 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-300/60 dark:border-pink-800/40 hover:bg-pink-100 transition"
+            class="badge-pill bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/40 hover:bg-emerald-100 transition"
           >
             <span>🏛️</span>
             <span>{post.category_name}</span>
@@ -54,13 +54,13 @@ const formattedDate = post.published_at
 
       <!-- 3대 핵심 혜택 하이라이트 칩 -->
       <div class="mt-5 flex flex-wrap gap-2 text-xs">
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-pink-800 dark:text-pink-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 정부 기여금 최대 수령
         </span>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-pink-800 dark:text-pink-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 이자소득 전액 비과세
         </span>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-pink-800 dark:text-pink-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 font-semibold border border-neutral-200/60 dark:border-neutral-700/50 shadow-xs">
           ✓ 모바일 3분 비대면 신청
         </span>
       </div>
@@ -75,7 +75,7 @@ const formattedDate = post.published_at
 
         <a
           href={`/blog/${post.slug}`}
-          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:opacity-90 text-white font-bold text-xs shadow-md shadow-pink-600/20 hover:shadow-pink-600/30 hover:-translate-y-0.5 transition-all"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:opacity-90 text-white font-bold text-xs shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 hover:-translate-y-0.5 transition-all"
         >
           <span>신청 가이드 확인하기</span>
           <span>&rarr;</span>

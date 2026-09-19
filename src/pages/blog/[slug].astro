@@ -107,7 +107,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
 
         <button
           onclick="history.back()"
-          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800 hover:text-[var(--primary)] hover:bg-pink-50 dark:hover:bg-pink-950/50 transition cursor-pointer shrink-0"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-slate-800 hover:text-[var(--primary)] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer shrink-0"
         >
           <span>&larr;</span>
           <span>목록으로</span>
@@ -146,7 +146,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
           </div>
           <span>•</span>
           <div class="flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-pink-600 to-purple-600 text-white flex items-center justify-center text-[10px] font-bold">
+            <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center text-[10px] font-bold">
               ✓
             </span>
             <span>{post.author}</span>
@@ -160,10 +160,10 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
         </div>
 
         <!-- 핵심 요약 체크포인트 박스 -->
-        <div class="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-pink-500/10 via-purple-500/5 to-transparent border border-pink-200/60 dark:border-pink-900/40">
+        <div class="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/60 dark:border-emerald-900/40">
           <div class="flex items-center gap-2 mb-1.5">
             <span class="text-base">📌</span>
-            <span class="text-xs font-bold text-pink-900 dark:text-pink-300 uppercase tracking-wider">
+            <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
               가이드 핵심 요약
             </span>
           </div>
@@ -178,7 +178,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
 
       <!-- 대표 삽화 (R2 연동 고화질 에디토리얼 일러스트) -->
       {post.featured_image && (
-        <div class="my-8 overflow-hidden rounded-2xl border border-pink-100 dark:border-pink-950/60 shadow-lg bg-neutral-100 dark:bg-slate-900">
+        <div class="my-8 overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-950/60 shadow-lg bg-neutral-100 dark:bg-slate-900">
           <img
             src={post.featured_image}
             alt={post.title}
@@ -205,7 +205,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
         {post.tags && post.tags.length > 0 ? (
           <div class="flex flex-wrap gap-2">
             {post.tags.map((t) => (
-              <span class="px-3 py-1 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200/50 dark:border-pink-900/40 font-mono text-xs font-semibold text-pink-700 dark:text-pink-300">
+              <span class="px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/40 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 #{t.name}
               </span>
             ))}

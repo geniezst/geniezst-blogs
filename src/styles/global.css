@@ -13,94 +13,94 @@
     --radius-large: var(--shape-corner-l);
     --radius-full: var(--shape-corner-full);
 
-    --bg-page: #fdf4f8;
+    --bg-page: #f8fafc;
     --card-bg: #ffffff;
-    --card-bg-subtle: #fbf0f5;
-    --surface: #fdf4f8;
+    --card-bg-subtle: #f1f5f9;
+    --surface: #f8fafc;
     --surface-container-lowest: #ffffff;
-    --surface-container-low: #f9eaf1;
-    --surface-container: #f4e1eb;
-    --surface-container-high: #eed7e4;
-    --surface-container-highest: #e8cddc;
-    --on-surface: #1f141f;
-    --on-surface-variant: #574652;
-    --outline: #8c7684;
-    --outline-variant: rgba(140, 118, 132, 0.18);
+    --surface-container-low: #f1f5f9;
+    --surface-container: #e2e8f0;
+    --surface-container-high: #cbd5e1;
+    --surface-container-highest: #94a3b8;
+    --on-surface: #0f172a;
+    --on-surface-variant: #475569;
+    --outline: #64748b;
+    --outline-variant: rgba(100, 116, 139, 0.18);
     
-    /* Shirone Material 3 Expressive (Rose / Pink-Purple / M3E 2025) */
-    --primary: #be185d;
-    --primary-rgb: 190, 24, 93;
-    --primary-hover: #9d174d;
+    /* Financial Emerald / Green Palette (M3 Expressive) */
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-hover: #047857;
     --on-primary: #ffffff;
-    --primary-container: #fce7f3;
-    --on-primary-container: #500724;
-    --primary-light: #fdf2f8;
+    --primary-container: #d1fae5;
+    --on-primary-container: #064e3b;
+    --primary-light: #ecfdf5;
     
-    --secondary: #9333ea;
-    --secondary-container: #f3e8ff;
-    --on-secondary-container: #3b0764;
+    --secondary: #0d9488;
+    --secondary-container: #ccfbf1;
+    --on-secondary-container: #134e4a;
     
-    --tertiary: #0284c7;
-    --tertiary-container: #e0f2fe;
+    --tertiary: #d97706;
+    --tertiary-container: #fef3c7;
     
     --color-primary: var(--primary);
     --color-primary-rgb: var(--primary-rgb);
     --color-accent: var(--secondary);
     
-    --btn-plain-bg-hover: rgba(190, 24, 93, 0.08);
-    --btn-plain-bg-active: rgba(190, 24, 93, 0.16);
+    --btn-plain-bg-hover: rgba(5, 150, 105, 0.08);
+    --btn-plain-bg-active: rgba(5, 150, 105, 0.16);
     --btn-regular-bg: var(--surface-container-low);
     --btn-content: var(--on-surface-variant);
     
     --border-card: var(--outline-variant);
     --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-    --card-shadow-hover: 0 8px 24px -4px rgba(190, 24, 93, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+    --card-shadow-hover: 0 8px 24px -4px rgba(5, 150, 105, 0.16), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
   }
 
   html[data-theme="dark"],
   html.dark {
-    --bg-page: #140c14;
-    --card-bg: #1f141f;
-    --card-bg-subtle: #291a29;
-    --surface: #140c14;
-    --surface-container-lowest: #0f080f;
-    --surface-container-low: #1a101a;
-    --surface-container: #231623;
-    --surface-container-high: #2c1c2c;
-    --surface-container-highest: #372337;
-    --on-surface: #f7edf4;
-    --on-surface-variant: #d8c4d1;
-    --outline: #a08c9a;
-    --outline-variant: rgba(160, 140, 154, 0.18);
+    --bg-page: #0a101d;
+    --card-bg: #101a2c;
+    --card-bg-subtle: #121e33;
+    --surface: #0a101d;
+    --surface-container-lowest: #070c16;
+    --surface-container-low: #0f1726;
+    --surface-container: #162338;
+    --surface-container-high: #1e2f4a;
+    --surface-container-highest: #283d5f;
+    --on-surface: #f8fafc;
+    --on-surface-variant: #cbd5e1;
+    --outline: #64748b;
+    --outline-variant: rgba(100, 116, 139, 0.22);
     
-    /* Shirone Dark Material 3 Palette */
-    --primary: #f472b6;
-    --primary-rgb: 244, 114, 182;
-    --primary-hover: #f9a8d4;
-    --on-primary: #500724;
-    --primary-container: #831843;
-    --on-primary-container: #fbcfe8;
-    --primary-light: rgba(244, 114, 182, 0.12);
+    /* Dark Mint Emerald Palette */
+    --primary: #10b981;
+    --primary-rgb: 16, 185, 129;
+    --primary-hover: #34d399;
+    --on-primary: #064e3b;
+    --primary-container: #065f46;
+    --on-primary-container: #a7f3d0;
+    --primary-light: rgba(16, 185, 129, 0.14);
     
-    --secondary: #c084fc;
-    --secondary-container: #581c87;
-    --on-secondary-container: #f3e8ff;
+    --secondary: #2dd4bf;
+    --secondary-container: #115e59;
+    --on-secondary-container: #ccfbf1;
     
-    --tertiary: #38bdf8;
-    --tertiary-container: #075985;
+    --tertiary: #fbbf24;
+    --tertiary-container: #78350f;
     
     --color-primary: var(--primary);
     --color-primary-rgb: var(--primary-rgb);
     --color-accent: var(--secondary);
     
-    --btn-plain-bg-hover: rgba(244, 114, 182, 0.12);
-    --btn-plain-bg-active: rgba(244, 114, 182, 0.22);
+    --btn-plain-bg-hover: rgba(16, 185, 129, 0.12);
+    --btn-plain-bg-active: rgba(16, 185, 129, 0.22);
     --btn-regular-bg: var(--surface-container-low);
     --btn-content: var(--on-surface-variant);
     
     --border-card: var(--outline-variant);
     --card-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.35);
-    --card-shadow-hover: 0 8px 28px -4px rgba(244, 114, 182, 0.18);
+    --card-shadow-hover: 0 8px 28px -4px rgba(16, 185, 129, 0.2);
   }
 
   html {

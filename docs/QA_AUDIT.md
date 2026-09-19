@@ -201,11 +201,24 @@
 
 ---
 
-## 20. 최종 승인 서명 (Approval Signature)
+## 20. blogs 고유 초록 계열(Financial Emerald & Mint) 테마 복원 감사 (2026-09-19)
 
-> 본 작업(게시글 제목 콜론 부제 제거, 발행 파이프라인 가드레일 수립, 신규 핀테크 배너/아바타 적용 및 D1 원격 동기화)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
+| 점검 영역 | 상태 | 세부 검증 내용 |
+|---|:---:|---|
+| **디자인 토큰 (Material 3 Expressive)** | **PASS** | `src/styles/global.css` 루트 토큰을 로즈/핑크에서 원래 고유 주제색상인 Financial Emerald(`--primary: #059669`, `--primary-container: #d1fae5`, `--secondary: #0d9488`), 다크 모드 Mint Emerald(`--primary: #10b981`, `--primary-container: #065f46`)로 전면 복원 완료 |
+| **서페이스 & 섀도우 토큰** | **PASS** | 라이트 모드 클린 슬레이트/화이트(`--bg-page: #f8fafc`), 다크 모드 딥 네이비(`--bg-page: #0a101d`) 및 에메랄드 호버 섀도우(`rgba(5, 150, 105, 0.16)`) 복원 확인 |
+| **HeroFeatured 컴포넌트** | **PASS** | 상단 액센트 바(`from-emerald-600 via-teal-500 to-emerald-400`), 뱃지, 혜택 칩, CTA 버튼 그림자(`shadow-emerald-600/20`) 에메랄드 통일 적용 완료 |
+| **상세 페이지 (blog/[slug].astro)** | **PASS** | 브레드크럼 뒤로가기 버튼 호버, 작성자 검증 뱃지, 가이드 핵심 요약 박스, 대표 삽화 보더, 태그 칩 전역 에메랄드 팔레트 적용 완료 |
+| **프로덕션 빌드 검증** | **PASS** | `npm run build` 결과 0 errors 정상 통과 (Server built in 5.27s) |
+
+---
+
+## 21. 최종 승인 서명 (Approval Signature)
+
+> 본 작업(blogs 고유 초록 계열 테마 복원 및 UI 컴포넌트 전면 동기화)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
 
 **서명:** `@qa - Approved (2026-09-19)`
+
 
 
 
