@@ -176,9 +176,22 @@
 
 ---
 
-## 17. 최종 승인 서명 (Approval Signature)
+## 18. Shirone Top App Bar, CategoryBar 및 M3 박스 디자인 전면 동기화 감사 (2026-09-19)
 
-> 본 작업(Shirone 공식 Material 3 Expressive 테마 전면 전환)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
+| 점검 영역 | 상태 | 세부 검증 내용 |
+|---|:---:|---|
+| **Top App Bar (상단메뉴)** | **PASS** | Fuwari식 플로팅 카드 제거, 화면 전폭 고정 `fixed top-0 left-0 right-0`, 배너 상단 투명 헤더(`top-app-bar--transparent`), 스크롤 시 블러 서페이스(`top-app-bar--scrolled`), 활성 언더라인 인디케이터, 모바일 슬라이드아웃 드로어 완비 |
+| **CategoryBar (카테고리 칩 바)** | **PASS** | 포스트 상단 가로 스크롤 M3 칩 바(`CategoryBar.astro`), 홈·전체·카테고리별 칩 및 실시간 포스트 수 뱃지(`category-bar__count`) 탑재 |
+| **M3 Box / Card Base 디자인** | **PASS** | 불투명 다크 보더 제거, M3 공식 16px 라운딩(`--shape-corner-l`), `1px solid var(--outline-variant)`, M3 표고 그림자(`--card-shadow`), 호버 핑크 틴트 및 음영 융합 |
+| **PostCard (포스트 박스)** | **PASS** | 제목 좌측 Shirone `AccentBar` + 호버 슬라이딩 Chevron 화살표, 우측 28% 데스크톱 커버 + 호버 딤 틴트 & 대형 화살표, 썸네일 미보유 시 엔터 버튼 완비 |
+| **사이드바 위젯 박스** | **PASS** | 프로필 및 카테고리 헤더에 Shirone `AccentBar` 통일 적용, 모바일 아코디언 및 🛡️ 100% 공공데이터 상하 14px 균등 여백 유지 |
+| **프로덕션 빌드 검증** | **PASS** | `npm run build` 결과 0 errors 정상 완료 (Server built in 5.14s) |
+
+---
+
+## 19. 최종 승인 서명 (Approval Signature)
+
+> 본 작업(Shirone Top App Bar, CategoryBar 및 M3 박스 디자인 전면 동기화)은 `AGENTS.md`의 협업 규정을 완벽하게 준수하여 수행되었으며, 모든 코드 감사 및 빌드 테스트를 통과하였으므로 최종 배포 상태로 승인합니다.
 
 **서명:** `@qa - Approved (2026-09-19)`
 

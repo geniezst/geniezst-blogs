@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import Sidebar from '../../components/Sidebar.astro';
+import CategoryBar from '../../components/CategoryBar.astro';
 import { getDb, getPublishedPosts, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import type { BlogPost, Category } from '../../types/blog';
 
@@ -37,46 +38,19 @@ const totalPages = Math.ceil(total / limit);
   title="전체 가이드 목록 - 스마트 라이프 & 머니"
   description="놓치면 손해보는 정부 지원금, 환급금, 예적금, 생활 절세 가이드 전체 목록입니다."
 >
-  <div class="flex flex-col lg:flex-row gap-8 items-start">
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} totalPosts={total} />
 
-    <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="card-base p-6 sm:p-8 bg-gradient-to-r from-pink-500/10 via-purple-500/5 to-transparent">
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] uppercase tracking-wider mb-2">
-          <span>📚</span>
-          <span>생활 금융 공식 아카이브</span>
-        </span>
-        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white font-heading">
-          생활 금융 전체 가이드
-        </h1>
-        <p class="mt-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-          총 {total}개의 실전 혜택 및 지원금 가이드가 등록되어 있습니다.
-        </p>
+    <div class="flex-1 w-full flex flex-col gap-4">
+      <!-- Shirone CategoryBar (가로 스크롤 카테고리 칩 바) -->
+      <CategoryBar categories={categories} totalPosts={total} />
 
-        <!-- 카테고리 칩 -->
-        {categories.length > 0 && (
-          <div class="mt-5 pt-4 border-t border-neutral-200/70 dark:border-neutral-800 flex flex-wrap gap-2">
-            <a
-              href="/blog"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--primary)] text-white shadow-xs scale-animation"
-            >
-              전체 보기 ({total})
-            </a>
-            {categories.map((c) => (
-              <a
-                href={`/category/${c.slug}`}
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 hover:bg-pink-50 dark:hover:bg-pink-950/40 hover:text-[var(--primary)] transition scale-animation"
-              >
-                <span>{c.name}</span>
-                {c.post_count !== undefined && c.post_count > 0 && (
-                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-pink-100 dark:bg-pink-950 text-pink-800 dark:text-pink-300">
-                    {c.post_count}
-                  </span>
-                )}
-              </a>
-            ))}
-          </div>
-        )}
+      <!-- 헤더 -->
+      <div class="flex items-center justify-between px-1">
+        <h1 class="text-base font-bold text-[var(--on-surface)] flex items-center gap-2 font-heading">
+          <span class="w-1 h-4 rounded-full bg-[var(--primary)]"></span>
+          <span>전체 가이드 ({total})</span>
+        </h1>
       </div>
 
       <!-- 포스트 카드 목록 -->
@@ -88,7 +62,7 @@ const totalPages = Math.ceil(total / limit);
         </div>
       ) : (
         <div class="card-base p-12 text-center">
-          <p class="text-neutral-500 dark:text-neutral-400 text-sm">아직 등록된 가이드가 없습니다.</p>
+          <p class="text-[var(--on-surface-variant)] text-sm">아직 등록된 가이드가 없습니다.</p>
         </div>
       )}
 
@@ -98,18 +72,18 @@ const totalPages = Math.ceil(total / limit);
           {page > 1 && (
             <a
               href={`/blog?page=${page - 1}`}
-              class="px-3.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
+              class="px-3.5 py-1.5 rounded-xl bg-[var(--surface-container-low)] text-[var(--on-surface-variant)] hover:bg-[var(--primary-container)] hover:text-[var(--primary)] transition"
             >
               &larr; 이전
             </a>
           )}
-          <span class="text-neutral-500 font-mono">
+          <span class="text-[var(--on-surface-variant)] font-mono">
             {page} / {totalPages}
           </span>
           {page < totalPages && (
             <a
               href={`/blog?page=${page + 1}`}
-              class="px-3.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 hover:text-emerald-600 transition"
+              class="px-3.5 py-1.5 rounded-xl bg-[var(--surface-container-low)] text-[var(--on-surface-variant)] hover:bg-[var(--primary-container)] hover:text-[var(--primary)] transition"
             >
               다음 &rarr;
             </a>

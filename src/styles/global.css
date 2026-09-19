@@ -4,19 +4,34 @@
 
 @layer base {
   :root {
-    --radius-large: 1.25rem;
-    --radius-full: 9999px;
+    --shape-corner-xs: 4px;
+    --shape-corner-s: 8px;
+    --shape-corner-m: 12px;
+    --shape-corner-l: 16px;
+    --shape-corner-xl: 28px;
+    --shape-corner-full: 9999px;
+    --radius-large: var(--shape-corner-l);
+    --radius-full: var(--shape-corner-full);
+
     --bg-page: #fdf4f8;
-    --card-bg: rgba(255, 255, 255, 0.96);
+    --card-bg: #ffffff;
     --card-bg-subtle: #fbf0f5;
-    --text-primary: #1c1917;
-    --text-secondary: #57534e;
-    --text-muted: #78716c;
+    --surface: #fdf4f8;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f9eaf1;
+    --surface-container: #f4e1eb;
+    --surface-container-high: #eed7e4;
+    --surface-container-highest: #e8cddc;
+    --on-surface: #1f141f;
+    --on-surface-variant: #574652;
+    --outline: #8c7684;
+    --outline-variant: rgba(140, 118, 132, 0.18);
     
     /* Shirone Material 3 Expressive (Rose / Pink-Purple / M3E 2025) */
     --primary: #be185d;
     --primary-rgb: 190, 24, 93;
     --primary-hover: #9d174d;
+    --on-primary: #ffffff;
     --primary-container: #fce7f3;
     --on-primary-container: #500724;
     --primary-light: #fdf2f8;
@@ -34,25 +49,35 @@
     
     --btn-plain-bg-hover: rgba(190, 24, 93, 0.08);
     --btn-plain-bg-active: rgba(190, 24, 93, 0.16);
+    --btn-regular-bg: var(--surface-container-low);
+    --btn-content: var(--on-surface-variant);
     
-    --border-card: rgba(226, 232, 240, 0.85);
-    --card-shadow: 0 4px 20px -2px rgba(190, 24, 93, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-    --card-shadow-hover: 0 16px 32px -4px rgba(190, 24, 93, 0.14), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+    --border-card: var(--outline-variant);
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+    --card-shadow-hover: 0 8px 24px -4px rgba(190, 24, 93, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
   }
 
   html[data-theme="dark"],
   html.dark {
     --bg-page: #140c14;
-    --card-bg: rgba(31, 20, 31, 0.94);
-    --card-bg-subtle: #261826;
-    --text-primary: #faf5f8;
-    --text-secondary: #d6cfd4;
-    --text-muted: #a89fa5;
+    --card-bg: #1f141f;
+    --card-bg-subtle: #291a29;
+    --surface: #140c14;
+    --surface-container-lowest: #0f080f;
+    --surface-container-low: #1a101a;
+    --surface-container: #231623;
+    --surface-container-high: #2c1c2c;
+    --surface-container-highest: #372337;
+    --on-surface: #f7edf4;
+    --on-surface-variant: #d8c4d1;
+    --outline: #a08c9a;
+    --outline-variant: rgba(160, 140, 154, 0.18);
     
     /* Shirone Dark Material 3 Palette */
     --primary: #f472b6;
     --primary-rgb: 244, 114, 182;
     --primary-hover: #f9a8d4;
+    --on-primary: #500724;
     --primary-container: #831843;
     --on-primary-container: #fbcfe8;
     --primary-light: rgba(244, 114, 182, 0.12);
@@ -70,15 +95,17 @@
     
     --btn-plain-bg-hover: rgba(244, 114, 182, 0.12);
     --btn-plain-bg-active: rgba(244, 114, 182, 0.22);
+    --btn-regular-bg: var(--surface-container-low);
+    --btn-content: var(--on-surface-variant);
     
-    --border-card: rgba(255, 255, 255, 0.08);
-    --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
-    --card-shadow-hover: 0 16px 36px -4px rgba(244, 114, 182, 0.18);
+    --border-card: var(--outline-variant);
+    --card-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.35);
+    --card-shadow-hover: 0 8px 28px -4px rgba(244, 114, 182, 0.18);
   }
 
   html {
     background-color: var(--bg-page);
-    color: var(--text-primary);
+    color: var(--on-surface);
     font-family: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
     transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     scroll-behavior: smooth;
@@ -86,7 +113,7 @@
 
   body {
     background-color: var(--bg-page);
-    color: var(--text-primary);
+    color: var(--on-surface);
     min-height: 100vh;
   }
 
@@ -97,17 +124,65 @@
   /* Shirone M3 Card Base */
   .card-base {
     background-color: var(--card-bg);
-    border: 1px solid var(--border-card);
-    border-radius: var(--radius-large);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--shape-corner-l);
     box-shadow: var(--card-shadow);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .card-base:hover {
     box-shadow: var(--card-shadow-hover);
-    border-color: rgba(var(--primary-rgb), 0.38);
+    border-color: rgba(var(--primary-rgb), 0.35);
+  }
+
+  /* Shirone Top App Bar Styles */
+  .top-app-bar {
+    background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--outline-variant);
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .top-app-bar--scrolled {
+    background-color: color-mix(in srgb, var(--surface-container) 94%, transparent);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+  }
+  .top-app-bar--transparent {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .top-app-bar__nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s ease;
+  }
+  .top-app-bar__nav-link--active {
+    color: var(--primary) !important;
+  }
+  .top-app-bar__nav-link--active::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0.75rem;
+    bottom: 0;
+    height: 3px;
+    border-radius: 9999px;
+    background-color: var(--primary);
+  }
+  .top-app-bar--transparent .top-app-bar__nav-link {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  .top-app-bar--transparent .top-app-bar__nav-link:hover {
+    color: #ffffff;
+  }
+  .top-app-bar--transparent .top-app-bar__nav-link--active {
+    color: #ffffff !important;
+  }
+  .top-app-bar--transparent .top-app-bar__nav-link--active::after {
+    background-color: #ffffff;
   }
 
   /* Shirone Scale Animation */

@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import Sidebar from '../../components/Sidebar.astro';
+import CategoryBar from '../../components/CategoryBar.astro';
 import { getDb, getPublishedPosts, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import type { BlogPost, Category } from '../../types/blog';
 
@@ -43,28 +44,37 @@ if (!currentCategory) {
   title={`${currentCategory.name} - 스마트 라이프 & 머니`}
   description={currentCategory.description || `${currentCategory.name} 관련 아티클 모음`}
 >
-  <div class="flex flex-col lg:flex-row gap-8 items-start">
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} totalPosts={totalAllPosts} />
 
-    <div class="flex-1 w-full flex flex-col gap-6">
-      <div class="card-base p-6 sm:p-8 bg-gradient-to-r from-pink-500/10 via-purple-500/5 to-transparent">
+    <div class="flex-1 w-full flex flex-col gap-4">
+      <!-- Shirone CategoryBar (현재 카테고리 활성화) -->
+      <CategoryBar categories={categories} currentCategory={categorySlug} totalPosts={totalAllPosts} />
+
+      <!-- 카테고리 헤더 -->
+      <div class="card-base p-5 sm:p-6">
         <div class="flex items-center justify-between gap-2 mb-2">
-          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] uppercase tracking-wider">
-            <span>🏛️</span>
-            <span>카테고리 공식 가이드</span>
-          </span>
-          <span class="text-xs font-mono font-bold text-neutral-500 dark:text-neutral-400">
+          <div class="flex items-center gap-2">
+            <span class="w-1 h-4 rounded-full bg-[var(--primary)] shrink-0"></span>
+            <span class="text-xs font-bold text-[var(--primary)] uppercase tracking-wider">
+              카테고리 아카이브
+            </span>
+          </div>
+          <span class="text-xs font-mono font-bold text-[var(--on-surface-variant)]">
             총 {total}편 등록
           </span>
         </div>
-        <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white font-heading">
+        <h1 class="text-xl sm:text-2xl font-black text-[var(--on-surface)] font-heading">
           {currentCategory.name}
         </h1>
-        <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-          {currentCategory.description || '정부 정책 및 실전 재테크 알짜 가이드 목록'}
-        </p>
+        {currentCategory.description && (
+          <p class="mt-2 text-sm text-[var(--on-surface-variant)] leading-relaxed">
+            {currentCategory.description}
+          </p>
+        )}
       </div>
 
+      <!-- 포스트 카드 목록 -->
       {posts.length > 0 ? (
         <div class="flex flex-col gap-4">
           {posts.map((post) => (
@@ -73,7 +83,7 @@ if (!currentCategory) {
         </div>
       ) : (
         <div class="card-base p-12 text-center">
-          <p class="text-neutral-500 dark:text-neutral-400 text-sm">이 카테고리에는 아직 등록된 가이드가 없습니다.</p>
+          <p class="text-[var(--on-surface-variant)] text-sm">이 카테고리에는 아직 등록된 가이드가 없습니다.</p>
         </div>
       )}
     </div>
