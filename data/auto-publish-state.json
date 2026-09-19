@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-19T02:29:32.660Z",
+  "last_updated": "2026-09-19T09:35:33.100Z",
   "category_counts": {
     "welfare": 1,
     "tax": 1,
     "finance": 1,
-    "saving": 0,
+    "saving": 1,
     "subsidy": 0,
     "life-tips": 0
   },
-  "last_session": "lunch",
+  "last_session": "evening",
   "history": [
     {
       "date": "2026-09-18",
@@ -38,7 +38,17 @@
       "slug": "youth-leap-account-maturity-return-simulation-2026",
       "chart_type": "donut-chart",
       "status": "success"
+    },
+    {
+      "date": "2026-09-19",
+      "session": "evening",
+      "time": "18:34",
+      "category": "saving",
+      "title": "2026년 청년도약계좌 소득구간별 정부기여금 매칭과 저축 전략: 월 70만원 납입 시 만기 5,000만원 목돈 로드맵",
+      "slug": "youth-leap-account-saving-contribution-strategy-2026",
+      "chart_type": "column-chart",
+      "status": "success"
     }
   ],
-  "last_chart_type": "donut-chart"
+  "last_chart_type": "column-chart"
 }
