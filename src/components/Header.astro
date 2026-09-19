@@ -3,36 +3,11 @@ import ThemeToggle from './ThemeToggle.astro';
 import { siteConfig } from '../site.config';
 
 const navItems = siteConfig.nav;
-
-const today = new Date();
-const formattedToday = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 ---
 
 <header class="sticky top-0 z-50 w-full mb-6">
-  <!-- 상단 에디토리얼 티커 바 -->
-  <div class="bg-gradient-to-r from-emerald-900 via-teal-950 to-emerald-950 text-emerald-100 text-[11px] py-1.5 px-4 sm:px-6 border-b border-emerald-800/40">
-    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
-      <div class="flex items-center gap-2 truncate">
-        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-700/80 text-[10px] font-bold text-white uppercase tracking-wider shrink-0">
-          공식 가이드
-        </span>
-        <span class="truncate font-medium text-emerald-200">
-          2026년 청년·서민 정책금융, 숨은 환급금 및 알뜰 재테크 실시간 업데이트
-        </span>
-      </div>
-      <div class="hidden sm:flex items-center gap-3 shrink-0 text-emerald-300/80 font-mono text-[11px]">
-        <span>📅 {formattedToday}</span>
-        <span>•</span>
-        <span class="inline-flex items-center gap-1 text-emerald-300">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>공공데이터 검증</span>
-        </span>
-      </div>
-    </div>
-  </div>
-
   <!-- 메인 내비게이션 바 -->
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 mt-3">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-3 sm:pt-4">
     <div class="editorial-card px-4 sm:px-6 h-16 flex items-center justify-between border-emerald-200/50 dark:border-emerald-900/40">
       <!-- 로고 -->
       <a href="/" class="flex items-center gap-3 group">
