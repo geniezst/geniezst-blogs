@@ -510,19 +510,25 @@ ${selectedChart.instruction}
     // 7. GitHub commit & push (Cloudflare Workers 자동 배포)
     log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
     try {
-      execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
-    } catch (_) {}
+      const filesToStage = ['content/posts/'];
+      if (fs.existsSync(STATE_FILE)) {
+        filesToStage.push('data/auto-publish-state.json');
+      }
+      execSync(`git add ${filesToStage.join(' ')}`, { cwd: BLOG_ROOT });
 
-    const filesToStage = ['content/posts/'];
-    if (fs.existsSync(STATE_FILE)) {
-      filesToStage.push('data/auto-publish-state.json');
-    }
-    execSync(`git add ${filesToStage.join(' ')}`, { cwd: BLOG_ROOT });
+      const stagedChanges = execSync(`git status --porcelain`, { cwd: BLOG_ROOT }).toString().trim();
+      if (stagedChanges) {
+        execSync(`git commit -m "feat(post): auto publish [${sessionName}] ${generatedSlug}"`, { cwd: BLOG_ROOT });
+      }
 
-    const stagedChanges = execSync(`git status --porcelain`, { cwd: BLOG_ROOT }).toString().trim();
-    if (stagedChanges) {
-      execSync(`git commit -m "feat(post): auto publish [${sessionName}] ${generatedSlug}"`, { cwd: BLOG_ROOT });
+      // 커밋 완료 후 안전하게 최신 원격 변경사항 rebase 및 push
+      try {
+        execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
+      } catch (_) {}
+
       execSync(`git push origin main`, { cwd: BLOG_ROOT });
+    } catch (gitErr) {
+      log(`⚠️ GitHub push 중 경고 발생 (D1 배포는 정상 완료됨): ${gitErr.message}`);
     }
 
     // 8. 텔레그램 성공 보고 발송
