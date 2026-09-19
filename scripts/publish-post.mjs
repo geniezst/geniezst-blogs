@@ -99,7 +99,11 @@ async function main() {
 
   // 다중 공백 정제
   content = sanitizeProseSpaces(content);
-  const title = (metadata.title || '').replace(/\s{2,}/g, ' ').trim();
+  let title = (metadata.title || '').replace(/\s{2,}/g, ' ').trim();
+  // 콜론(:) 및 장황한 부제 자동 제거 (간결한 단일 제목 원칙)
+  if (title.includes(':')) {
+    title = title.split(':')[0].trim();
+  }
   const slug = (metadata.slug || '').trim();
   const description = (metadata.description || '').replace(/\s{2,}/g, ' ').trim();
   const categorySlug = metadata.category || 'welfare';
