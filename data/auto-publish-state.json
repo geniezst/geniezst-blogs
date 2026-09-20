@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-20T02:19:24.769Z",
+  "last_updated": "2026-09-20T09:21:05.560Z",
   "category_counts": {
     "welfare": 1,
     "tax": 1,
     "finance": 1,
     "saving": 1,
     "subsidy": 1,
-    "life-tips": 0
+    "life-tips": 1
   },
-  "last_session": "lunch",
+  "last_session": "evening",
   "history": [
     {
       "date": "2026-09-18",
@@ -58,7 +58,17 @@
       "slug": "youth-tomorrow-savings-account-2026-guide",
       "chart_type": "stacked-bar",
       "status": "success"
+    },
+    {
+      "date": "2026-09-20",
+      "session": "evening",
+      "time": "18:19",
+      "category": "life-tips",
+      "title": "2026년 청년도약계좌 중도해지 방지와 특별중도해지 가이드",
+      "slug": "youth-leap-account-early-termination-tips-2026",
+      "chart_type": "donut-chart",
+      "status": "success"
     }
   ],
-  "last_chart_type": "stacked-bar"
+  "last_chart_type": "donut-chart"
 }
