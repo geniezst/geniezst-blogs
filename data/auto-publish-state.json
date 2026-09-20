@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-19T09:35:33.100Z",
+  "last_updated": "2026-09-20T02:19:24.769Z",
   "category_counts": {
     "welfare": 1,
     "tax": 1,
     "finance": 1,
     "saving": 1,
-    "subsidy": 0,
+    "subsidy": 1,
     "life-tips": 0
   },
-  "last_session": "evening",
+  "last_session": "lunch",
   "history": [
     {
       "date": "2026-09-18",
@@ -48,7 +48,17 @@
       "slug": "youth-leap-account-saving-contribution-strategy-2026",
       "chart_type": "column-chart",
       "status": "success"
+    },
+    {
+      "date": "2026-09-20",
+      "session": "lunch",
+      "time": "11:18",
+      "category": "subsidy",
+      "title": "2026년 청년내일저축계좌 신청 조건과 만기 수령액 총정리",
+      "slug": "youth-tomorrow-savings-account-2026-guide",
+      "chart_type": "stacked-bar",
+      "status": "success"
     }
   ],
-  "last_chart_type": "column-chart"
+  "last_chart_type": "stacked-bar"
 }
