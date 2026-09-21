@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-20T09:21:05.560Z",
+  "last_updated": "2026-09-21T02:41:47.789Z",
   "category_counts": {
-    "welfare": 1,
+    "welfare": 2,
     "tax": 1,
     "finance": 1,
     "saving": 1,
     "subsidy": 1,
     "life-tips": 1
   },
-  "last_session": "evening",
+  "last_session": "lunch",
   "history": [
     {
       "date": "2026-09-18",
@@ -68,7 +68,17 @@
       "slug": "youth-leap-account-early-termination-tips-2026",
       "chart_type": "donut-chart",
       "status": "success"
+    },
+    {
+      "date": "2026-09-21",
+      "session": "lunch",
+      "time": "11:39",
+      "category": "welfare",
+      "title": "2026년 청년도약계좌 정부지원금 혜택과 가입 자격 총정리",
+      "slug": "youth-leap-account-welfare-benefits-2026",
+      "chart_type": "stacked-bar",
+      "status": "success"
     }
   ],
-  "last_chart_type": "donut-chart"
+  "last_chart_type": "stacked-bar"
 }
