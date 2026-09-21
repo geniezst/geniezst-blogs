@@ -125,7 +125,41 @@ function getKSTDate() {
   const hours = parseInt(parts.hour, 10);
   const minutes = parseInt(parts.minute, 10);
   const timeStr = `${parts.hour}:${parts.minute}`;
-  return { now, dateStr, hours, minutes, timeStr };
+  const dayOfWeek = new Date(`${dateStr}T12:00:00Z`).getUTCDay(); // 0: 일, 1: 월, ..., 6: 토
+  return { now, dateStr, hours, minutes, timeStr, dayOfWeek };
+}
+
+const DAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+/**
+ * 주차 식별자 계산 (ISO 8601 기준 연-주차, 예: 2026-W39)
+ */
+function getYearWeek(dateStr) {
+  const date = new Date(`${dateStr}T12:00:00Z`);
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+/**
+ * 주 1회 점심(첫 세션) 스킵 요일 선정 및 유지 (자연스러운 휴식일 시뮬레이션)
+ */
+function checkOrUpdateWeeklySkip(state, dateStr) {
+  const currentWeek = getYearWeek(dateStr);
+  if (!state.weekly_skip_config || state.weekly_skip_config.current_week !== currentWeek) {
+    const randomDay = Math.floor(Math.random() * 7); // 0~6 중 랜덤 요일
+    state.weekly_skip_config = {
+      current_week: currentWeek,
+      skip_first_session_day: randomDay,
+      skip_day_name: DAY_NAMES[randomDay],
+    };
+    saveState(state);
+    log(`🎲 [주간 변칙 스케줄 갱신] ${currentWeek} 주간 1회 점심 휴식 요일 배정: ${DAY_NAMES[randomDay]}`);
+  }
+  return state.weekly_skip_config;
 }
 
 /**
@@ -416,7 +450,7 @@ ${selectedChart.instruction}
   9. [절대 금지] 문장마다 키워드에 볼드체(**단어**)를 남발하지 마세요. 메뉴 경로나 액수는 인라인 코드(\`code\`)로 표기하고, 볼드는 본문 전체에서 가장 중요한 결론 1~2개에만 극도로 절제하세요.
   10. 소제목에 '1.', '1.1', '2.' 식의 관료적 번호 매기기를 하지 말고 직관적인 텍스트 소제목을 쓰세요.
   11. 대충 쓴 글처럼 보이지 않도록 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
-  12. 완성된 글은 '/workspace/blogs/content/posts/[고유-영문-슬러그].md' 파일로 저장하세요.
+  12. 완성된 글은 '/workspace/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 26092101-[고유-영문-슬러그].md, 해당 날짜의 일련번호 01, 02...) 파일로 저장하세요.
   13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 
@@ -586,34 +620,45 @@ async function startDaemon() {
   log(`🤖 [blogs 생활경제 자동화 스케줄러 데몬 가동]`);
   log(`- 점심 범위: 11:15 ~ 11:45 KST`);
   log(`- 저녁 범위: 18:15 ~ 18:45 KST`);
+  log(`- 주간 변칙 규칙: 주 1회 랜덤 요일에는 점심을 건너뛰고 저녁에만 1회 발행`);
 
   let currentLunchTarget = getRandomTargetMinutes(11, 15, 11, 45);
   let currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
   let lastCheckedDay = '';
+  let isFirstSessionSkippedToday = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
   log(`📅 오늘의 랜덤 목표 시간: 점심 ${formatTarget(currentLunchTarget)}, 저녁 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
-    const { dateStr, hours, minutes } = getKSTDate();
+    const { dateStr, hours, minutes, dayOfWeek } = getKSTDate();
 
-    // 날짜가 바뀌면 새로운 랜덤 시간 배정
+    // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
     if (lastCheckedDay !== dateStr) {
       currentLunchTarget = getRandomTargetMinutes(11, 15, 11, 45);
       currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
       lastCheckedDay = dateStr;
-      log(`\n🌅 [새 날짜 감지: ${dateStr}] 새로운 랜덤 목표 배정:`);
-      log(`- 점심: ${formatTarget(currentLunchTarget)} KST`);
+
+      const state = loadState();
+      const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
+      isFirstSessionSkippedToday = (dayOfWeek === weeklyConfig.skip_first_session_day);
+
+      log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 새로운 랜덤 목표 배정:`);
+      if (isFirstSessionSkippedToday) {
+        log(`- 🎲 오늘은 주 1회 점심 휴식일(${weeklyConfig.skip_day_name})입니다! 점심 세션을 건너뛰고 저녁에만 1회 발행합니다.`);
+      } else {
+        log(`- 점심: ${formatTarget(currentLunchTarget)} KST`);
+      }
       log(`- 저녁: ${formatTarget(currentEveningTarget)} KST`);
     }
 
-    // 점심 타깃 시간 도달 확인
-    if (hours === currentLunchTarget.hour && minutes === currentLunchTarget.minute) {
+    // 점심 타깃 시간 도달 확인 (단, 이번 주 휴식일이 아닐 때만 실행)
+    if (!isFirstSessionSkippedToday && hours === currentLunchTarget.hour && minutes === currentLunchTarget.minute) {
       await runPublishPipeline('lunch');
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
 
-    // 저녁 타깃 시간 도달 확인
+    // 저녁 타깃 시간 도달 확인 (항상 수행)
     if (hours === currentEveningTarget.hour && minutes === currentEveningTarget.minute) {
       await runPublishPipeline('evening');
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지

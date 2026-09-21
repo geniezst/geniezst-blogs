@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-21T02:41:47.789Z",
+  "last_updated": "2026-09-21T03:55:55.889Z",
   "category_counts": {
     "welfare": 2,
     "tax": 1,
@@ -80,5 +80,10 @@
       "status": "success"
     }
   ],
-  "last_chart_type": "stacked-bar"
+  "last_chart_type": "stacked-bar",
+  "weekly_skip_config": {
+    "current_week": "2026-W39",
+    "skip_first_session_day": 3,
+    "skip_day_name": "수요일"
+  }
 }
