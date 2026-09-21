@@ -9,6 +9,7 @@ const { post } = Astro.props;
 
 const formattedDate = post.published_at
   ? new Date(post.published_at).toLocaleDateString('ko-KR', {
+      timeZone: 'Asia/Seoul',
       year: 'numeric',
       month: 'short',
       day: 'numeric',

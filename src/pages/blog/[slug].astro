@@ -34,6 +34,7 @@ const contentHtml = await renderMarkdown(post.content);
 
 const formattedDate = post.published_at
   ? new Date(post.published_at).toLocaleDateString('ko-KR', {
+      timeZone: 'Asia/Seoul',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
