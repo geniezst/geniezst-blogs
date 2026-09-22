@@ -18,10 +18,10 @@ const {
   type = 'website',
   publishedTime,
   tags = [],
-  author = 'geniezst',
+  author = '포켓머니',
 } = Astro.props;
 
-const siteName = 'geniezst';
+const siteName = '포켓머니';
 const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
 const fullImageUrl = image.startsWith('http') ? image : new URL(image, Astro.site || 'https://geniezst.com').href;
 

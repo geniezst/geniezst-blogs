@@ -107,7 +107,7 @@ async function main() {
   const slug = (metadata.slug || '').trim();
   const description = (metadata.description || '').replace(/\s{2,}/g, ' ').trim();
   const categorySlug = metadata.category || 'welfare';
-  const author = metadata.author || 'geniezst';
+  const author = metadata.author || '포켓머니';
   const readingTime = Number(metadata.reading_time || 5);
   const affiliate = metadata.affiliate === 'true' || metadata.affiliate === true ? 1 : 0;
   let featuredImage = metadata.featured_image || null;

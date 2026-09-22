@@ -439,7 +439,7 @@ export async function runPublishPipeline(sessionName) {
 블로그 저장소 위치는 /workspace/blogs 입니다.
 /workspace/blogs/docs/POST_STYLE_GUIDE.md 규격을 엄격히 준수하여 신규 포스트를 1개 작성해주세요.
 
-- 대상 블로그: 스마트 라이프 & 머니 (blogs)
+- 대상 블로그: 포켓머니 (blogs, pockemoney)
 - 세션: ${sessionName} (${dateStr})
 - 카테고리: ${category}
 - 작성 지침 (★ 구글 애드센스 고수익 승인 표준 및 AI 패턴 엄격 금지):
@@ -578,7 +578,7 @@ ${selectedChart.instruction}
     }
 
     // 8. 텔레그램 성공 보고 발송
-    const successMsg = `🎉 *[스마트 라이프 & 머니(blogs) 자동 게시 완료]*
+    const successMsg = `🎉 *[포켓머니(pockemoney) 자동 게시 완료]*
 
 ⏰ *실행 시간:* ${timeStr} KST
 🏷️ *구분:* ${sessionName}

@@ -36,11 +36,11 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
 
-    <!-- 웹 폰트 (Pretendard & JetBrains Mono) 최적화 -->
+    <!-- 웹 폰트 (Pretendard, JetBrains Mono, Titan One) 최적화 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Titan+One&display=swap" rel="stylesheet" />
 
     <!-- 테마 깜빡임 방지 스크립트 -->
     <script is:inline>
@@ -86,16 +86,62 @@ const {
       <img
         src="/assets/images/banner-shirone.webp"
         alt="Shirone Banner"
-        class="w-full h-full object-cover object-center brightness-95 dark:brightness-85 transition-all duration-700"
+        class="w-full h-full object-cover object-center brightness-90 dark:brightness-75 transition-all duration-700"
       />
       <!-- 하단 자연스러운 그라디언트 페이드 -->
-      <div class="absolute inset-0 bg-gradient-to-b from-black/35 via-black/10 to-[var(--bg-page)]"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-[var(--bg-page)]"></div>
+
+      <!-- 포켓몬 스타일 pockemoney 히어로 로고 -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10 pointer-events-none">
+        <a href="/" class="pointer-events-auto group inline-block transition-transform duration-300 hover:scale-105 active:scale-95">
+          <span class="pokemon-logo-text select-none">
+            pockemoney
+          </span>
+        </a>
+        <div class="mt-2.5 flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-bold text-white bg-black/45 backdrop-blur-md border border-white/20 shadow-lg tracking-wider">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>내 주머니 속 실전 생활 금융 &amp; 지원금 가이드</span>
+          </span>
+        </div>
+      </div>
 
       <!-- 배너 우측 하단 크레딧 -->
-      <div class="absolute bottom-4 right-6 text-[11px] text-white/80 font-mono tracking-wide drop-shadow hidden sm:block">
-        Shirone • Material 3 Expressive
+      <div class="absolute bottom-4 right-6 text-[11px] text-white/70 font-mono tracking-wide drop-shadow hidden sm:block">
+        Pocket Money • M3 Expressive
       </div>
     </div>
+
+    <style is:global>
+      /* 포켓몬 로고 스타일 pockemoney 타이포그래피 */
+      .pokemon-logo-text {
+        font-family: 'Titan One', cursive, sans-serif;
+        font-size: clamp(2.6rem, 7.5vw, 4.6rem);
+        line-height: 1.1;
+        letter-spacing: 0.03em;
+        color: #FFDE00;
+        -webkit-text-stroke: 3.5px #2A75BB;
+        paint-order: stroke fill;
+        text-shadow: 
+          -2px -2px 0 #2A75BB,  
+           2px -2px 0 #2A75BB,
+          -2px  2px 0 #2A75BB,
+           2px  2px 0 #2A75BB,
+           4px  4px 0 #1B3B6F,
+           5px  5px 0 #1B3B6F,
+           6px  6px 0 #0C2340,
+           0 12px 24px rgba(0, 0, 0, 0.6);
+        transform: perspective(500px) rotateX(8deg) skewX(-3deg);
+        transition: transform 0.3s ease, filter 0.3s ease;
+        filter: drop-shadow(0 4px 14px rgba(42, 117, 187, 0.45));
+        display: inline-block;
+      }
+
+      .group:hover .pokemon-logo-text {
+        transform: perspective(500px) rotateX(0deg) skewX(-1deg) scale(1.04);
+        filter: drop-shadow(0 6px 18px rgba(255, 222, 0, 0.65));
+      }
+    </style>
 
     <!-- 메인 컨텐츠 영역 (배너 하단과 오버랩되는 Shirone 레이아웃) -->
     <main class="relative z-20 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 -mt-12 sm:-mt-16 pb-16">

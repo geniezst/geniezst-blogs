@@ -4,18 +4,18 @@
 
 export const siteConfig = {
   // 1. 사이트 기본 메타 정보
-  title: '스마트 라이프 & 머니',
-  subtitle: 'Smart Life & Money Archive',
+  title: '포켓머니',
+  subtitle: 'pockemoney',
   description: '놓치면 손해보는 정부 지원금, 숨은 환급금, 생활 절세 및 스마트 소비 실전 가이드',
   url: 'https://blogs.geniezst.workers.dev',
-  author: 'geniezst',
+  author: '포켓머니',
   lang: 'ko',
 
   // 2. 프로필 카드 정보 (사이드바에 노출)
   profile: {
-    name: '스마트 머니',
+    name: '포켓머니',
     bio: '놓치기 쉬운 정부 지원금, 숨은 환급금, 생활 절세 및 필수 금융 혜택을 알기 쉽게 정리합니다.',
-    avatarText: 'M',
+    avatarText: 'P',
     avatarImage: '/assets/images/avatar-shirone.webp',
     github: 'https://github.com/geniezst',
     email: '',
