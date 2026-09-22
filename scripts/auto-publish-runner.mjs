@@ -18,6 +18,17 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
+// 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
+process.on('uncaughtException', (err) => {
+  const time = new Date().toISOString();
+  console.error(`[${time}] 🚨 [uncaughtException 방어] ${err?.stack || err}`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const time = new Date().toISOString();
+  console.error(`[${time}] 🚨 [unhandledRejection 방어] ${reason?.stack || reason}`);
+});
+
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const STATE_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-state.json');
 const LOG_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish.log');
