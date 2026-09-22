@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ locals }) => {
     }
   }
 
-  const site = 'https://geniezst.com';
+  const site = 'https://pockemoney.com';
   const items = posts
     .map(
       (p) => `
@@ -30,9 +30,9 @@ export const GET: APIRoute = async ({ locals }) => {
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>geniezst</title>
+    <title>포켓머니 (pockemoney)</title>
     <link>${site}</link>
-    <description>실제 경험과 문제 해결을 위한 IT &amp; AI 테크 블로그</description>
+    <description>놓치면 손해보는 정부 지원금, 숨은 환급금, 생활 절세 및 스마트 소비 실전 가이드</description>
     <language>ko</language>
     <atom:link href="${site}/rss.xml" rel="self" type="application/rss+xml"/>
     ${items}

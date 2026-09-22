@@ -4,7 +4,7 @@ export const GET: APIRoute = () => {
   const robots = `User-agent: *
 Allow: /
 
-Sitemap: https://geniezst.com/sitemap-index.xml
+Sitemap: https://pockemoney.com/sitemap-index.xml
 `;
 
   return new Response(robots, {

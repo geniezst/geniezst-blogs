@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb, getPublishedPosts, getCategories } from '../lib/db';
 
 export const GET: APIRoute = async ({ locals }) => {
-  const site = 'https://geniezst.com';
+  const site = 'https://pockemoney.com';
   const db = await getDb(locals);
 
   let posts: any[] = [];

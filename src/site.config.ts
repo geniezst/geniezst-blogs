@@ -7,7 +7,7 @@ export const siteConfig = {
   title: '포켓머니',
   subtitle: 'pockemoney',
   description: '놓치면 손해보는 정부 지원금, 숨은 환급금, 생활 절세 및 스마트 소비 실전 가이드',
-  url: 'https://blogs.geniezst.workers.dev',
+  url: 'https://pockemoney.com',
   author: '포켓머니',
   lang: 'ko',
 
