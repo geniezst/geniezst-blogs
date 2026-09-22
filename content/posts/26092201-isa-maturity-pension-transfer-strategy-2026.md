@@ -1,7 +1,7 @@
 ---
 title: "2026년 ISA 만기 자금 연금계좌 전환 세액공제 혜택 총정리"
 slug: "isa-maturity-pension-transfer-strategy-2026"
-description: "ISA 만기 자금을 연금계좌로 전환해 최대 300만원 추가 세액공제를 받고 연간 최대 198만원을 환급받는 실전 절세 전략을 정밀 분석합니다."
+description: "ISA 만기 자금을 연금계좌로 전환해 최대 300만원 추가 세액공제를 받고 연간 최대 198만원을 되돌려받는 실전 절세 전략을 금액 단위로 분석한 가이드입니다."
 category: "finance"
 tags: [ISA만기, 연금저축, IRP, 세액공제, 연말정산]
 author: "스마트 머니"
