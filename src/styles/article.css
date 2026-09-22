@@ -7,6 +7,8 @@
   color: var(--text-primary);
   word-break: keep-all;
   overflow-wrap: break-word;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -86,6 +88,8 @@ html.dark .article-content p {
   text-decoration: underline;
   text-underline-offset: 3px;
   transition: color 0.15s ease, opacity 0.15s ease;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .article-content a:hover,
@@ -198,6 +202,10 @@ html.dark .article-content li {
   background-color: #ecfdf5;
   color: #047857;
   border: 1px solid #a7f3d0;
+  /* 긴 파일 경로나 기술명으로 인한 가로 뚫림 방지 */
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 html[data-theme="dark"] .article-content :not(pre) > code,
@@ -218,11 +226,18 @@ html.dark .article-content :not(pre) > code {
 /* Code Container Custom Styles */
 .code-block-container {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.code-content pre {
+  max-width: 100%;
 }
 
 .code-block-container pre code.hljs {
   padding: 0;
   background: transparent;
+  white-space: pre; /* 코드 블록 내부는 가로 스크롤 허용 */
 }
 
 /* Custom Scrollbar for code block */
@@ -247,6 +262,10 @@ html.dark .article-content :not(pre) > code {
 .article-table-wrapper {
   margin: 2.25rem 0;
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  display: block;
   border-radius: 1rem;
   border: 1px solid rgba(226, 232, 240, 0.95);
   background: var(--bg-card);
@@ -262,7 +281,7 @@ html.dark .article-table-wrapper {
 
 .article-table-wrapper table {
   width: 100%;
-  min-width: 580px; /* 테이블이 너무 좁아져 텍스트가 찌그러지는 것 방지 */
+  min-width: 540px; /* 테이블이 너무 좁아져 텍스트가 찌그러지는 것 방지 */
   border-collapse: collapse;
   font-size: 0.9375rem;
   line-height: 1.65;
@@ -329,6 +348,9 @@ html[data-theme="dark"] .article-table-wrapper table tr:hover td {
   border: 1px solid rgba(226, 232, 240, 0.95);
   background: var(--bg-card);
   box-shadow: 0 6px 24px -4px rgba(15, 23, 42, 0.06);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 640px) {
@@ -417,6 +439,8 @@ html.dark .bar-chart-track {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
@@ -482,11 +506,15 @@ html.dark .donut-legend-item {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .stacked-bar-track {
   display: flex;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 2.25rem;
   border-radius: 0.75rem;
   overflow: hidden;
@@ -571,6 +599,10 @@ html.dark .stacked-card-item {
   padding-top: 1.5rem;
   padding-bottom: 0.5rem;
   min-height: 220px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .column-chart-item {
@@ -635,6 +667,8 @@ html.dark .column-track {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
@@ -699,6 +733,8 @@ html.dark .pipeline-step {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.85rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {

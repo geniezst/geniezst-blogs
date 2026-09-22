@@ -76,7 +76,7 @@ marked.use({
       }
 
       return `
-<div class="code-block-container my-6 rounded-2xl overflow-hidden border border-neutral-700/60 bg-[#161822] shadow-xl text-neutral-200">
+<div class="code-block-container w-full max-w-full min-w-0 my-6 rounded-2xl overflow-hidden border border-neutral-700/60 bg-[#161822] shadow-xl text-neutral-200">
   <div class="code-header flex items-center justify-between px-4 py-2.5 bg-[#1f2232] border-b border-neutral-700/40 select-none">
     <div class="flex items-center gap-2.5">
       <div class="flex items-center gap-1.5" aria-hidden="true">
@@ -103,8 +103,8 @@ marked.use({
       <span class="copy-label">복사</span>
     </button>
   </div>
-  <div class="code-content relative">
-    <pre class="overflow-x-auto p-4 sm:p-5 text-sm font-mono leading-relaxed m-0 bg-transparent scrollbar-thin"><code class="hljs ${validLang}">${highlightedCode}</code></pre>
+  <div class="code-content w-full max-w-full overflow-hidden relative">
+    <pre class="w-full max-w-full overflow-x-auto p-4 sm:p-5 text-sm font-mono leading-relaxed m-0 bg-transparent scrollbar-thin"><code class="hljs ${validLang}">${highlightedCode}</code></pre>
   </div>
 </div>`.trim();
     },
@@ -132,7 +132,7 @@ marked.use({
       }
 
       return `
-<div class="article-table-wrapper overflow-x-auto my-6 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
+<div class="article-table-wrapper w-full max-w-full min-w-0 block overflow-x-auto my-6 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
   <table class="w-full text-left border-collapse text-sm">
     <thead class="bg-neutral-100 dark:bg-neutral-800/70 border-b border-neutral-200 dark:border-neutral-700 font-semibold text-neutral-900 dark:text-neutral-100">
       ${headerHtml}
@@ -156,7 +156,7 @@ marked.use({
       const titleAttr = title ? ` title="${title}"` : '';
       const altAttr = text ? ` alt="${text}"` : ' alt="image"';
       return `
-<figure class="my-6">
+<figure class="my-6 w-full max-w-full overflow-hidden">
   <img src="${href}"${altAttr}${titleAttr} loading="lazy" class="rounded-2xl shadow-md max-w-full h-auto mx-auto border border-neutral-200/60 dark:border-neutral-800" />
   ${title ? `<figcaption class="text-center text-xs text-neutral-500 mt-2">${title}</figcaption>` : ''}
 </figure>`.trim();

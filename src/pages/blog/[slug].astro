@@ -89,7 +89,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
     <Sidebar categories={categories} totalPosts={totalCount} />
 
     <!-- 본문 카드 영역 (Shirone Card Base) -->
-    <article class="flex-1 w-full card-base p-6 sm:p-10">
+    <article class="flex-1 w-full min-w-0 card-base p-6 sm:p-10 overflow-hidden">
       <!-- 브레드크럼 & 뒤로 가기 -->
       <div class="mb-6 flex items-center justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
         <nav class="flex items-center gap-1.5 truncate">
