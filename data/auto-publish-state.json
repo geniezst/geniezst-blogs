@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-09-22T00:28:33.741Z",
+  "last_updated": "2026-09-22T09:25:09.796Z",
   "category_counts": {
     "welfare": 2,
     "tax": 2,
     "finance": 2,
-    "saving": 1,
+    "saving": 2,
     "subsidy": 1,
     "life-tips": 1
   },
-  "last_session": "lunch",
+  "last_session": "evening",
   "history": [
     {
       "date": "2026-09-18",
@@ -98,9 +98,19 @@
       "slug": "isa-maturity-pension-transfer-strategy-2026",
       "chart_type": "step-pipeline",
       "status": "success"
+    },
+    {
+      "date": "2026-09-22",
+      "session": "evening",
+      "time": "18:23",
+      "category": "saving",
+      "title": "2026년 희망저축계좌 1형 2형 가입 조건과 만기 지원금 혜택 총정리",
+      "slug": "hope-savings-account-eligibility-benefits-2026",
+      "chart_type": "donut-chart",
+      "status": "success"
     }
   ],
-  "last_chart_type": "step-pipeline",
+  "last_chart_type": "donut-chart",
   "weekly_skip_config": {
     "current_week": "2026-W39",
     "skip_first_session_day": 3,
