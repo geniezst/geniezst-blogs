@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-09-21T03:55:55.889Z",
+  "last_updated": "2026-09-22T00:28:33.741Z",
   "category_counts": {
     "welfare": 2,
-    "tax": 1,
-    "finance": 1,
+    "tax": 2,
+    "finance": 2,
     "saving": 1,
     "subsidy": 1,
     "life-tips": 1
@@ -78,9 +78,29 @@
       "slug": "youth-leap-account-welfare-benefits-2026",
       "chart_type": "stacked-bar",
       "status": "success"
+    },
+    {
+      "date": "2026-09-21",
+      "session": "evening",
+      "time": "22:04",
+      "category": "tax",
+      "title": "2026년 연말정산 신용카드·체크카드 소득공제 황금비율과 절세 전략",
+      "slug": "credit-debit-card-income-deduction-strategy-2026",
+      "chart_type": "stat-grid",
+      "status": "success"
+    },
+    {
+      "date": "2026-09-22",
+      "session": "lunch",
+      "time": "09:26",
+      "category": "finance",
+      "title": "2026년 ISA 만기 자금 연금계좌 전환 세액공제 혜택 총정리",
+      "slug": "isa-maturity-pension-transfer-strategy-2026",
+      "chart_type": "step-pipeline",
+      "status": "success"
     }
   ],
-  "last_chart_type": "stacked-bar",
+  "last_chart_type": "step-pipeline",
   "weekly_skip_config": {
     "current_week": "2026-W39",
     "skip_first_session_day": 3,
