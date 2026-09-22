@@ -43,6 +43,52 @@ const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
 };
 
 /**
+ * 테이블 데이터 셀(td) 내의 괄호 부연 설명을 줄바꿈 및 서브텍스트로 안전하게 변환
+ * - <code> 블록 내부 및 HTML 태그 속성값은 철저히 보호
+ * - 셀 선두의 괄호((1), (주) 등)는 보존하고 선행 텍스트가 있는 괄호만 치환
+ */
+export function formatTableSubtext(html: string): string {
+  if (!html || (!html.includes('(') && !html.includes('（'))) {
+    return html;
+  }
+
+  // HTML 태그와 텍스트 노드를 분리 (캡처 그룹 포함 split)
+  // 예: "text1 <a href="...">text2</a> text3" -> ["text1 ", "<a href=\"...\">", "text2", "</a>", " text3"]
+  const tokens = html.split(/(<\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>)/g);
+  let inCode = false;
+
+  const processed = tokens.map((token) => {
+    if (!token) return '';
+
+    // HTML 태그인 경우: 상태 추적 및 원본 유지
+    if (token.startsWith('<')) {
+      if (/^<code\b/i.test(token)) {
+        inCode = true;
+      } else if (/^<\/code>/i.test(token)) {
+        inCode = false;
+      }
+      return token; // 태그 자체(속성 포함)는 절대 수정하지 않음 (EC-1 해결)
+    }
+
+    // <code> 태그 내부 텍스트는 원본 유지 (EC-2 해결)
+    if (inCode) {
+      return token;
+    }
+
+    // 순수 텍스트 노드에서 괄호 패턴 치환
+    // (?<=\S) : 앞에 공백이 아닌 문자가 존재해야 함 (EC-3 해결: 셀 선두 (1), (주) 보호)
+    // \s*     : 선행 문자와 괄호 사이의 공백 흡수
+    // (\([^\(\)]+\)|（[^（）]+）) : 반각/전각 괄호 내용 매칭 (EC-7 해결)
+    return token.replace(
+      /(?<=\S)\s*(\([^\(\)]+\)|（[^（）]+）)/g,
+      '<br><span class="table-subtext block text-xs opacity-75 mt-0.5 text-neutral-500 dark:text-neutral-400 font-normal">$1</span>'
+    );
+  });
+
+  return processed.join('');
+}
+
+/**
  * marked 인스턴스 생성 및 커스텀 렌더러 설정
  */
 const marked = new Marked({
@@ -140,6 +186,14 @@ marked.use({
     ${bodyHtml}
   </table>
 </div>`.trim();
+    },
+
+    tablecell(token) {
+      const content = this.parser.parseInline(token.tokens);
+      const type = token.header ? 'th' : 'td';
+      const tag = token.align ? `<${type} align="${token.align}">` : `<${type}>`;
+      const finalContent = token.header ? content : formatTableSubtext(content);
+      return `${tag}${finalContent}</${type}>\n`;
     },
 
     // 3. 외부 링크 보안 및 새창 열기

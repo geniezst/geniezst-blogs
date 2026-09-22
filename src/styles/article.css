@@ -271,12 +271,66 @@ html.dark .article-content :not(pre) > code {
   background: var(--bg-card);
   box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
   -webkit-overflow-scrolling: touch;
+
+  /* Firefox W3C 표준: 가늘고 투명한 트랙 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
 
+/* 다크 모드 Firefox 표준 스크롤바 */
 html[data-theme="dark"] .article-table-wrapper,
 html.dark .article-table-wrapper {
   border-color: rgba(30, 48, 77, 0.85);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+  scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
+
+/* WebKit 브라우저 (Chrome, Safari, Edge) 커스텀 스크롤바 */
+.article-table-wrapper::-webkit-scrollbar {
+  height: 5px; /* 가로 스크롤바 두께: 5px (슬림 & 심플) */
+  background: transparent;
+}
+
+.article-table-wrapper::-webkit-scrollbar-track {
+  background: transparent; /* 스크롤 불필요 시 완전 투명 */
+  border-radius: 9999px;
+}
+
+.article-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45); /* 라이트 모드 썸 */
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.article-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.75); /* hover 시 선명한 피드백 */
+}
+
+/* 다크 모드 WebKit 스크롤바 */
+html[data-theme="dark"] .article-table-wrapper::-webkit-scrollbar-thumb,
+html.dark .article-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5); /* 다크 모드 썸 */
+}
+
+html[data-theme="dark"] .article-table-wrapper::-webkit-scrollbar-thumb:hover,
+html.dark .article-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}
+
+/* 테이블 서브텍스트 스타일 */
+.article-table-wrapper .table-subtext {
+  display: block;
+  font-size: 0.75rem; /* 12px (text-xs) */
+  line-height: 1.35;
+  margin-top: 0.15rem;
+  opacity: 0.8;
+  font-weight: 400;
+  color: #64748b; /* slate-500 */
+}
+
+html[data-theme="dark"] .article-table-wrapper .table-subtext,
+html.dark .article-table-wrapper .table-subtext {
+  color: #94a3b8; /* slate-400 */
 }
 
 .article-table-wrapper table {
