@@ -1,0 +1,19 @@
+{
+  "last_updated": "2026-09-22T06:09:41.423Z",
+  "last_run": {
+    "noon": null,
+    "midnight": null
+  },
+  "pending": [
+    {
+      "slug": "isa-maturity-pension-transfer-strategy-2026",
+      "file": "/workspace/blogs/content/posts/26092201-isa-maturity-pension-transfer-strategy-2026.md",
+      "publishSession": "manual",
+      "date": "2026-09-22",
+      "session": "noon",
+      "report_file": "/workspace/blogs/data/review-report-isa-maturity-pension-transfer-strategy-2026.json",
+      "sent_at": "2026-09-22T06:09:41.423Z"
+    }
+  ],
+  "history": []
+}
