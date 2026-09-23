@@ -160,12 +160,16 @@ function getYearWeek(dateStr) {
  */
 function checkOrUpdateWeeklySkip(state, dateStr) {
   const currentWeek = getYearWeek(dateStr);
-  state.weekly_skip_config = {
-    current_week: currentWeek,
-    skip_first_session_day: null,
-    skip_day_name: '없음 (매일 2회 정기 발행)',
-  };
-  saveState(state);
+  if (!state.weekly_skip_config || state.weekly_skip_config.current_week !== currentWeek || state.weekly_skip_config.skip_first_session_day === null) {
+    const randomDay = Math.floor(Math.random() * 7); // 0~6 중 랜덤 요일
+    state.weekly_skip_config = {
+      current_week: currentWeek,
+      skip_first_session_day: randomDay,
+      skip_day_name: DAY_NAMES[randomDay],
+    };
+    saveState(state);
+    log(`🎲 [주간 변칙 스케줄 갱신] ${currentWeek} 주간 1회 점심 휴식 요일 배정: ${DAY_NAMES[randomDay]}`);
+  }
   return state.weekly_skip_config;
 }
 
@@ -659,8 +663,8 @@ async function startDaemon() {
       log(`- 저녁: ${formatTarget(currentEveningTarget)} KST`);
     }
 
-    // 점심 타깃 시간 도달 확인 (매일 2회 정기 발행)
-    if (hours === currentLunchTarget.hour && minutes === currentLunchTarget.minute) {
+    // 점심 타깃 시간 도달 확인 (주 1회 랜덤 휴식일 반영)
+    if (!isFirstSessionSkippedToday && hours === currentLunchTarget.hour && minutes === currentLunchTarget.minute) {
       await runPublishPipeline('lunch');
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
