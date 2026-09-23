@@ -5,10 +5,10 @@
     "tax": 2,
     "finance": 2,
     "saving": 2,
-    "subsidy": 1,
+    "subsidy": 2,
     "life-tips": 1
   },
-  "last_session": "evening",
+  "last_session": "lunch",
   "history": [
     {
       "date": "2026-09-18",
@@ -108,12 +108,22 @@
       "slug": "hope-savings-account-eligibility-benefits-2026",
       "chart_type": "donut-chart",
       "status": "success"
+    },
+    {
+      "date": "2026-09-23",
+      "session": "lunch",
+      "time": "12:07",
+      "category": "subsidy",
+      "title": "2026년 소상공인 정책자금 지원 대상과 신청 방법",
+      "slug": "small-business-policy-funds-guide-2026",
+      "chart_type": "stat-grid",
+      "status": "success"
     }
   ],
-  "last_chart_type": "donut-chart",
+  "last_chart_type": "stat-grid",
   "weekly_skip_config": {
     "current_week": "2026-W39",
-    "skip_first_session_day": 3,
-    "skip_day_name": "수요일"
+    "skip_first_session_day": null,
+    "skip_day_name": "없음"
   }
 }
