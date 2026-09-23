@@ -861,5 +861,70 @@ html.dark .digest-tldr-title {
   line-height: 1.65;
 }
 
+/* ===================================================
+   3줄 팩트 브리핑 전용 둥근 모서리 박스 (Fact Brief Box)
+   =================================================== */
+.fact-brief-box {
+  margin: 1.5rem 0;
+  padding: 1.15rem 1.25rem;
+  border-radius: 1rem; /* 16px - rounded-2xl */
+  background-color: rgba(241, 245, 249, 0.65); /* slate-100/65 */
+  border: 1px solid rgba(226, 232, 240, 0.9);   /* slate-200/90 */
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  color: var(--text-primary, #334155);
+}
+
+/* 다크 모드 스타일 */
+html[data-theme="dark"] .fact-brief-box,
+html.dark .fact-brief-box {
+  background-color: rgba(30, 41, 59, 0.5);       /* slate-800/50 */
+  border-color: rgba(51, 65, 85, 0.8);          /* slate-700/80 */
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.25);
+  color: #cbd5e1;
+}
+
+/* 팩트 박스 내부 타이틀 */
+.fact-brief-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 700;
+  margin-bottom: 0.65rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+/* 팩트 박스 내부 불릿 리스트 */
+.fact-brief-box ul {
+  margin: 0 !important;
+  padding-left: 1.25rem !important;
+}
+
+.fact-brief-box li {
+  margin-bottom: 0.4rem !important;
+  line-height: 1.65;
+  font-size: 0.9375rem;
+  color: #334155;
+}
+
+html[data-theme="dark"] .fact-brief-box li,
+html.dark .fact-brief-box li {
+  color: #cbd5e1;
+}
+
+.fact-brief-box li:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Article Inline Images */
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.25rem auto 0.35rem auto;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+
 
 

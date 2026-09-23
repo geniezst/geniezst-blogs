@@ -13,7 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
@@ -94,6 +94,127 @@ function decodeEntities(str) {
 }
 
 /**
+ * 다이제스트 제목 정제 함수 (콜론 치환, 날짜/시점 표기 전면 배제)
+ */
+export function cleanDigestTitle(rawTitle) {
+  if (!rawTitle) return '';
+  let title = rawTitle.trim();
+
+  // 1) 콜론(:) 치환
+  title = title.replace(/:/g, ' |');
+
+  // 2) 괄호로 감싸진 날짜 패턴 제거: (09/24), [9/24], (09.24), (2026-09-24) 등
+  title = title.replace(/\s*[\(\[]\s*\d{1,4}[-.\/]\d{1,2}(?:[-.\/]\d{1,2})?\s*[\)\]]/g, '');
+
+  // 3) 한국어 날짜 패턴 제거: 9월 24일, 09월 24일자 등
+  title = title.replace(/\s*\d{1,2}월\s*\d{1,2}일(?:자)?/g, '');
+
+  // 4) ISO 날짜 패턴 제거: 2026-09-24, 260924 등
+  title = title.replace(/\s*\b\d{4}[-.]\d{2}[-.]\d{2}\b/g, '');
+
+  // 5) '오늘자', '금일' 단어 제거
+  title = title.replace(/(?:오늘자|금일)\s*/g, '');
+
+  // 6) 날짜가 제거되어 빈 괄호가 남은 경우 정리: (), []
+  title = title.replace(/\s*\(\s*\)/g, '');
+  title = title.replace(/\s*\[\s*\]/g, '');
+
+  // 7) 연속된 구분 기호 및 공백 정리
+  title = title.replace(/\s*\|\s*\|+/g, ' |');
+  title = title.replace(/\s{2,}/g, ' ');
+  title = title.trim();
+
+  return title;
+}
+
+/**
+ * Google News CBMi... 암호화 URL을 실제 언론사 원문 URL로 디코딩
+ */
+export function decodeGoogleNewsUrl(googleUrl) {
+  if (!googleUrl) return '';
+  if (!googleUrl.includes('news.google.com')) return googleUrl;
+
+  try {
+    const pyCode = `
+import sys, googlenewsdecoder
+try:
+    res = googlenewsdecoder.gnewsdecoder(sys.argv[1])
+    print(res.get("decoded_url", ""))
+except Exception:
+    pass
+`.trim();
+    const res = spawnSync('python3', ['-c', pyCode, googleUrl], {
+      encoding: 'utf8',
+      timeout: 8000,
+    });
+    const decoded = res.stdout?.trim();
+    if (decoded && decoded.startsWith('http')) {
+      return decoded;
+    }
+  } catch (_) {}
+
+  return googleUrl;
+}
+
+/**
+ * 기사 웹페이지의 og:image 메타 태그 대표 이미지 추출
+ */
+export async function fetchArticleOgImage(articleUrl) {
+  if (!articleUrl || !articleUrl.startsWith('http')) return null;
+
+  try {
+    const res = await fetch(articleUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      signal: AbortSignal.timeout(6000), // 6초 타임아웃
+      redirect: 'follow',
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+
+    // 1) og:image / twitter:image 정규식 검색 (임의의 속성 순서 지원)
+    const ogMatch =
+      html.match(/<meta\s+[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+      html.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+      html.match(/<meta\s+[^>]*name=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["']/i) ||
+      html.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*name=["'](?:og:image|twitter:image)["']/i);
+
+    if (ogMatch && ogMatch[1]) {
+      let imgUrl = decodeEntities(ogMatch[1].trim());
+
+      // 상대 경로면 절대 경로로 변환
+      if (imgUrl.startsWith('//')) {
+        imgUrl = 'https:' + imgUrl;
+      } else if (imgUrl.startsWith('/')) {
+        try {
+          const parsedBase = new URL(articleUrl);
+          imgUrl = `${parsedBase.origin}${imgUrl}`;
+        } catch (_) {}
+      }
+
+      // 유효성 검사 (http/https, 1x1 트래커, svg, ico 제외)
+      if (
+        imgUrl.startsWith('http') &&
+        !imgUrl.includes('1x1') &&
+        !imgUrl.includes('favicon') &&
+        !imgUrl.endsWith('.svg') &&
+        !imgUrl.endsWith('.ico')
+      ) {
+        return imgUrl;
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+/**
  * 4. RSS 피드 파싱
  */
 function parseRssXml(xmlText, defaultSource = '') {
@@ -149,6 +270,115 @@ function parseRssXml(xmlText, defaultSource = '') {
 }
 
 /**
+ * 대한민국 정책브리핑 직접 수집기 (고화질 이미지 100% 확보)
+ */
+async function fetchKoreaPolicyNews() {
+  const items = [];
+  try {
+    const res = await fetch('https://www.korea.kr/news/policyNewsList.do', {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return items;
+    const html = await res.text();
+    const listMatches =
+      html.match(/<a\s+[^>]*href=["\x27](\/news\/policyNewsView\.do\?newsId=\d+)["\x27][^>]*>([\s\S]*?)<\/a>/g) ||
+      [];
+
+    const seenIds = new Set();
+    for (const m of listMatches) {
+      const hrefMatch = m.match(/href=["\x27]([^"\x27]+)["\x27]/);
+      if (!hrefMatch) continue;
+      const href = hrefMatch[1];
+      const idMatch = href.match(/newsId=(\d+)/);
+      if (!idMatch || seenIds.has(idMatch[1])) continue;
+      seenIds.add(idMatch[1]);
+
+      const titleMatch =
+        m.match(/<strong[^>]*>([\s\S]*?)<\/strong>/) ||
+        m.match(/<span[^>]*class=["\x27]title["\x27][^>]*>([\s\S]*?)<\/span>/);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+      if (!title) continue;
+
+      const fullLink = 'https://www.korea.kr' + href;
+      items.push({
+        title: decodeEntities(title),
+        link: fullLink,
+        originalLink: fullLink,
+        pubDate: new Date(),
+        source: '대한민국 정책브리핑',
+        description: `${title} - 대한민국 정책브리핑 공식 발표`,
+      });
+      if (items.length >= 10) break;
+    }
+  } catch (err) {
+    console.warn(`  ⚠️ [대한민국 정책브리핑 직접 수집] 오류 (${err.message})`);
+  }
+  return items;
+}
+
+/**
+ * 대한민국 정책브리핑 카드뉴스/시각뉴스 직접 수집기 (썸네일 이미지 포함)
+ */
+async function fetchKoreaVisualNews() {
+  const items = [];
+  try {
+    const res = await fetch('https://www.korea.kr/multi/visualNewsList.do', {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return items;
+    const html = await res.text();
+    const listMatches =
+      html.match(
+        /<a\s+[^>]*href=["\x27](\/multi\/visualNewsView\.do\?newsId=\d+[^"\x27]*)["\x27][^>]*>([\s\S]*?)<\/a>/g
+      ) || [];
+
+    const seenIds = new Set();
+    for (const m of listMatches) {
+      const hrefMatch = m.match(/href=["\x27]([^"\x27]+)["\x27]/);
+      if (!hrefMatch) continue;
+      const href = hrefMatch[1];
+      const idMatch = href.match(/newsId=(\d+)/);
+      if (!idMatch || seenIds.has(idMatch[1])) continue;
+      seenIds.add(idMatch[1]);
+
+      const imgMatch = m.match(/<img\s+[^>]*src=["\x27]([^"\x27]+)["\x27]/);
+      const titleMatch =
+        m.match(/<strong[^>]*>([\s\S]*?)<\/strong>/) ||
+        m.match(/<span[^>]*class=["\x27]title["\x27][^>]*>([\s\S]*?)<\/span>/);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+      if (!title) continue;
+
+      const fullLink = 'https://www.korea.kr' + href;
+      const imageUrl = imgMatch ? (imgMatch[1].startsWith('http') ? imgMatch[1] : 'https://www.korea.kr' + imgMatch[1]) : '';
+
+      items.push({
+        title: decodeEntities(title),
+        link: fullLink,
+        originalLink: fullLink,
+        imageUrl: imageUrl,
+        pubDate: new Date(),
+        source: '대한민국 정책브리핑',
+        description: `${title} - 대한민국 정책브리핑 카드뉴스`,
+      });
+      if (items.length >= 10) break;
+    }
+  } catch (err) {
+    console.warn(`  ⚠️ [대한민국 정책브리핑 카드뉴스 직접 수집] 오류 (${err.message})`);
+  }
+  return items;
+}
+
+/**
  * 5. 다채널 뉴스 피드 수집기
  */
 async function fetchNewsFeeds() {
@@ -174,11 +404,6 @@ async function fetchNewsFeeds() {
       defaultSource: '대한민국 정책브리핑',
     },
     {
-      name: '대한민국 정책브리핑 RSS 직수신 시도',
-      url: 'https://www.korea.kr/rss/policy.xml',
-      defaultSource: '대한민국 정책브리핑',
-    },
-    {
       name: 'Google News 비즈니스/경제 헤드라인',
       url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ko&gl=KR&ceid=KR:ko',
       defaultSource: '경제 종합',
@@ -190,8 +415,17 @@ async function fetchNewsFeeds() {
     },
   ];
 
-  console.log(`📡 [뉴스 피드 수집] 총 ${feedConfigs.length}개 채널에서 수집을 시작합니다...`);
+  console.log(`📡 [뉴스 피드 수집] 총 ${feedConfigs.length + 2}개 채널에서 수집을 시작합니다...`);
   const allItems = [];
+
+  // 정책브리핑 직접 수집
+  const directPolicy = await fetchKoreaPolicyNews();
+  console.log(`  ✅ [대한민국 정책브리핑 직접] ${directPolicy.length}건 수집 완료`);
+  allItems.push(...directPolicy);
+
+  const directVisual = await fetchKoreaVisualNews();
+  console.log(`  ✅ [대한민국 정책브리핑 카드뉴스] ${directVisual.length}건 수집 완료 (이미지 포함)`);
+  allItems.push(...directVisual);
 
   for (const feed of feedConfigs) {
     try {
@@ -299,6 +533,11 @@ function deduplicateAndRank(items) {
       if (textToMatch.includes(kw.word)) {
         score += kw.score;
       }
+    }
+
+    // 대표 이미지 보유 가산점
+    if (item.imageUrl) {
+      score += 15;
     }
 
     return { ...item, score };
@@ -469,7 +708,7 @@ async function callLLM(messages, env) {
 /**
  * 10. 마크다운 생성 결과 정제 및 검증
  */
-function cleanAndValidateMarkdown(rawContent, dateInfo) {
+function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   let cleaned = rawContent.trim();
 
   // ```markdown 코드 블록 제거 (앞뒤 유연하게)
@@ -500,16 +739,25 @@ function cleanAndValidateMarkdown(rawContent, dateInfo) {
   body = body.replace(/\r?\n```\s*$/i, '');
   body = body.trim();
 
-  // 1) High-CTR 제목에서 콜론(:) 일체 제거 및 치환 (D1 스크립트 절단 방지)
+  // 1) High-CTR 제목 정제 (cleanDigestTitle: 콜론 치환, 날짜 완전 배제)
   const titleMatch = yaml.match(/title:\s*["']?([^"'\n]+)["']?/);
-  let title = titleMatch ? titleMatch[1].trim() : `오늘자 모닝 머니 브리핑 | 생활금융 핫이슈 (${dateInfo.mmdd})`;
-  if (title.includes(':')) {
-    console.log(`⚠️ 제목에 콜론(:) 감지, 하이픈(-)으로 치환합니다: "${title}"`);
-    title = title.replace(/:/g, ' -');
-    yaml = yaml.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title}"`);
+  let title = titleMatch ? cleanDigestTitle(titleMatch[1]) : '놓치면 손해 보는 생활금융 핫이슈 핵심 요약 | 모닝 머니 브리핑';
+  title = cleanDigestTitle(title);
+  yaml = yaml.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title}"`);
+
+  // 2) 카테고리 'news' ('새소식')로 100% 고정
+  if (/category:\s*["']?[^"'\n]+["']?/.test(yaml)) {
+    yaml = yaml.replace(/category:\s*["']?[^"'\n]+["']?/, 'category: "news"');
+  } else {
+    yaml += '\ncategory: "news"';
   }
 
-  // 2) 오늘자 일련번호 및 파일명/슬러그 계산
+  // 3) 태그 기본값 점검 (없거나 빈약할 때 '새소식' 포함)
+  if (!yaml.includes('tags:')) {
+    yaml += '\ntags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]';
+  }
+
+  // 4) 오늘자 일련번호 및 파일명/슬러그 계산
   const existingFiles = fs.existsSync(POSTS_DIR)
     ? fs.readdirSync(POSTS_DIR).filter((f) => f.startsWith(dateInfo.yymmdd))
     : [];
@@ -518,7 +766,6 @@ function cleanAndValidateMarkdown(rawContent, dateInfo) {
   // Slug 추출 및 정규화
   const slugMatch = yaml.match(/slug:\s*["']?([^"'\n]+)["']?/);
   let baseSlug = slugMatch ? slugMatch[1].trim().toLowerCase() : 'morning-money-digest';
-  // 영문 소문자, 숫자, 하이픈만 허용
   baseSlug = baseSlug
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
@@ -545,14 +792,123 @@ function cleanAndValidateMarkdown(rawContent, dateInfo) {
     yaml += `\nreading_time: 4`;
   }
 
-  // 3) 본문 필수 요소 검증 (## 헤딩 4개 이상 확인)
+  // 5) 이모지 및 구 서식 강제 정제
+  body = body.replace(/:::tip\[(?:⚡\s*)?(.*?)\]/g, ':::tip[$1]');
+  body = body.replace(/>\s*(?:🌐\s*)?\*\*공식\s*출처\*\*:/gi, '> **출처**:');
+  body = body.replace(/>\s*(?:🌐\s*)?\*\*출처\*\*:/gi, '> **출처**:');
+  body = body.replace(/>\s*(?:🕒\s*)?\*\*발행\s*시점\*\*:/gi, '> **발행**:');
+  body = body.replace(/>\s*(?:🕒\s*)?\*\*발행\*\*:/gi, '> **발행**:');
+  body = body.replace(/>\s*(?:🔗\s*)?\*\*함께\s*읽으면\s*좋은\s*블로그\s*심층\s*가이드\*\*:/gi, '> **관련 가이드**:');
+  body = body.replace(/>\s*(?:🔗\s*)?\*\*관련\s*가이드\*\*:/gi, '> **관련 가이드**:');
+  body = body.replace(/###\s*(?:💡\s*)?(?:실무\s*가계\/지갑\s*영향\s*실전\s*인사이트|실무\s*시사점|가계\s*영향\s*및\s*실전\s*인사이트)/gi, '### 가계 영향 및 실전 팁');
+
+  // 6) 3줄 팩트 브리핑을 둥근 모서리 박스(:::fact[핵심 팩트 요약])로 변환
+  body = body.replace(
+    /###\s*(?:📌\s*)?(?:3줄\s*팩트\s*브리핑|핵심\s*팩트\s*요약|팩트\s*요약)\r?\n([\s\S]*?)(?=\r?\n###|\r?\n---|\r?\n:::\w+|$)/gi,
+    (_match, listContent) => {
+      return `:::fact[핵심 팩트 요약]\n${listContent.trim()}\n:::\n\n`;
+    }
+  );
+  body = body.replace(/:::fact\[(?:📌\s*)?(.*?)\]/g, ':::fact[$1]');
+
+  // 7) 독자 소통 / 댓글 유도 섹션 완전 삭제
+  body = body.replace(/##\s*(?:💬\s*)?(?:오늘\s*아침\s*여러분의\s*생각은|독자\s*소통|여러분의\s*의견|댓글로\s*이야기)[\s\S]*?(?=\n---|\n##|$)/gi, '');
+  body = body.replace(/추가로\s*궁금한\s*점이나\s*여러분의\s*의견이\s*있다면\s*댓글로.*?나눠주세요!?/gi, '');
+
+  // 8) 헤딩 및 서두의 잔여 이모지(⚡, 📌, 💡, 🌐, 🕒, 💬) 정리
+  body = body.replace(/^([#>]+\s*)[⚡📌💡🌐🕒💬🔗]\s*/gm, '$1');
+
+  // 9) 잘못되거나 깨진 이미지 태그 정리
+  body = body.replace(/!\[.*?\]\((?:없음|none|null|undefined|\s*)\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
+  body = body.replace(/!\[.*?\]\((?!https?:\/\/)[^\)]+\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
+
+  // 10) 이미지 Fallback 보강: 기사 카드에 이미지가 없는데 매칭되는 후보 기사에 대표 이미지가 있는 경우 자동 삽입
+  if (candidates && candidates.length > 0) {
+    const cardSections = body.split(/(?=^##\s+)/gm);
+    const updatedSections = cardSections.map((sec) => {
+      if (!sec.startsWith('## ')) return sec;
+      if (/!\[.*?\]\(https?:\/\/[^\)]+\)/i.test(sec)) return sec;
+
+      const h2EndIdx = sec.indexOf('\n');
+      const h2Line = h2EndIdx !== -1 ? sec.slice(0, h2EndIdx) : sec;
+      const cleanH2Title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
+
+      const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
+      const matchedHref = linkMatch ? linkMatch[2].trim() : '';
+
+      let foundCandidate = null;
+      if (matchedHref) {
+        foundCandidate = candidates.find(
+          (c) =>
+            c.imageUrl &&
+            (c.link === matchedHref ||
+              c.originalLink === matchedHref ||
+              matchedHref.includes(c.link) ||
+              (c.originalLink && (matchedHref.includes(c.originalLink) || c.originalLink.includes(matchedHref))))
+        );
+      }
+
+      // URL 매칭 실패 시 제목 유사도로 매칭 시도
+      if (!foundCandidate) {
+        let bestScore = 0;
+        for (const c of candidates) {
+          if (!c.imageUrl) continue;
+          const score = calculateJaccardSimilarity(cleanH2Title, c.title);
+          if (score > bestScore && score >= 0.2) {
+            bestScore = score;
+            foundCandidate = c;
+          }
+        }
+      }
+
+      // 후보 기사의 뉴스 ID 파라미터 매칭 시도 (예: newsId=148972510)
+      if (!foundCandidate && matchedHref) {
+        const idMatch = matchedHref.match(/newsId=(\d+)/i) || matchedHref.match(/\/(\d+)(?:\?|$)/);
+        if (idMatch) {
+          const targetId = idMatch[1];
+          foundCandidate = candidates.find(
+            (c) =>
+              c.imageUrl &&
+              ((c.originalLink && c.originalLink.includes(targetId)) || (c.link && c.link.includes(targetId)))
+          );
+        }
+      }
+
+      if (foundCandidate && foundCandidate.imageUrl) {
+        if (h2EndIdx !== -1) {
+          const rest = sec.slice(h2EndIdx).trimStart();
+          const imgBlock = `\n\n![${cleanH2Title}](${foundCandidate.imageUrl})\n<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${foundCandidate.originalLink || foundCandidate.link}" target="_blank" rel="noopener noreferrer">${foundCandidate.source}</a></p>\n\n`;
+          return `${h2Line}${imgBlock}${rest}`;
+        }
+      }
+      return sec;
+    });
+    body = updatedSections.join('');
+  }
+
+  // Google News 링크를 디코딩된 실제 언론사 URL로 치환
+  if (candidates && candidates.length > 0) {
+    for (const cand of candidates) {
+      if (cand.originalLink && cand.originalLink !== cand.link) {
+        body = body.replaceAll(cand.link, cand.originalLink);
+      }
+    }
+  }
+
+  // 11) 하단 에디토리얼 푸터 1줄 표준 확인 및 구분선 중복 정리
+  const footerText = '*본 다이제스트는 정부 공식 보도자료, 정책브리핑, 금융당국 고시 및 주요 언론사 보도를 바탕으로 교차 검증 및 큐레이션되었습니다.*';
+  body = body.replace(/\*본 다이제스트는[\s\S]*?큐레이션되었습니다\.\*/g, '').trim();
+  body = body.replace(/(?:\r?\n---\s*)+$/g, '').trim();
+  body = `${body}\n\n---\n\n${footerText}\n`;
+
+  // 12) H2 헤딩 수 검증
   const h2Count = (body.match(/^##\s+/gm) || []).length;
   console.log(`🔍 [포스트 구조 검증] H2 헤딩 수: ${h2Count}개 (기준: 4개 이상)`);
   if (h2Count < 4) {
     console.warn('⚠️ H2 헤딩 수가 4개 미만입니다. 프롬프트 규칙 재점검 요망.');
   }
 
-  const finalMarkdown = `---\n${yaml.trim()}\n---\n\n${body}\n`;
+  const finalMarkdown = `---\n${yaml.trim()}\n---\n\n${body.trim()}\n`;
   const filename = `${baseSlug}.md`;
   const filePath = path.join(POSTS_DIR, filename);
 
@@ -585,11 +941,27 @@ export async function runNewsDigestGeneration(options = {}) {
     throw new Error('수집된 뉴스 아이템이 없습니다. 파이프라인을 중단합니다.');
   }
 
-  // Step 2: 중복 제거 및 상위 20건 선별
+  // Step 2: 중복 제거 및 상위 후보 선별
   const rankedItems = deduplicateAndRank(rawItems);
   if (rankedItems.length === 0) {
     throw new Error('유효한 뉴스 후보가 0건입니다.');
   }
+
+  // Step 2-1: 후보 기사 원문 URL 디코딩 및 대표 이미지 크롤링
+  console.log(`🖼️ [대표 이미지 크롤링] 상위 후보군 원문 URL 디코딩 및 대표 이미지 추출 시작...`);
+  await Promise.allSettled(
+    rankedItems.map(async (item) => {
+      try {
+        const decoded = decodeGoogleNewsUrl(item.link);
+        item.originalLink = decoded;
+        const img = await fetchArticleOgImage(decoded);
+        if (img) {
+          item.imageUrl = img;
+          console.log(`  📸 [이미지 획득] ${item.source}: ${img.slice(0, 80)}...`);
+        }
+      } catch (_) {}
+    })
+  );
 
   // Step 3: 기존 포스트 스캔 (내부 링크 추천용)
   const existingPosts = getExistingPosts();
@@ -604,7 +976,8 @@ export async function runNewsDigestGeneration(options = {}) {
 [후보 ${idx + 1}]
 - 제목: ${item.title}
 - 공식 출처: ${item.source}
-- 원문 링크: ${item.link}
+- 원문 링크: ${item.originalLink || item.link}
+- 대표 이미지: ${item.imageUrl || '없음'}
 - 발행 시점: ${item.pubDate.toISOString().replace('T', ' ').slice(0, 16)} KST
 - 주요 내용: ${item.description || '본문 요약 없음'}
 `.trim()
@@ -616,25 +989,36 @@ export async function runNewsDigestGeneration(options = {}) {
 오늘 아침 출근 및 통근 시간대(08:00~09:00 KST)에 모바일로 빠르게 훑어볼 수 있는 고밀도 "아침 모닝 브리핑 (Morning Money Digest)"을 작성해야 합니다.
 
 [작성 대원칙]
-1. [상위 4개 킬러 뉴스 선정] 제공된 15~20개의 뉴스 후보 중 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑에 즉각적이고 가장 파급력이 큰 최적의 4개 뉴스를 엄선하세요.
-2. [High-CTR 제목 생성 - ★ 절대 규칙]:
-   - **제목(title)에 콜론(:)을 일체 사용하지 마세요!** (배포 시스템에서 콜론 앞부분만 잘리는 치명적 결함이 있으므로 콜론 절대 금지)
+1. [상위 4개 킬러 뉴스 선정]:
+   제공된 뉴스 후보 중 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑에 즉각적이고 가장 파급력이 큰 최적의 4개 뉴스를 엄선하세요.
+2. [High-CTR 제목 네이밍 규칙 - ★ 절대 규칙]:
+   - ⚠️ [절대 금지 1] 제목에 날짜(예: 09/23, (09/24), 2026-09-24, 9월 24일, 오늘자, 금일 등)를 일체 넣지 마세요! 포스트 본문과 메타데이터에 작성일이 표시되므로 제목에 날짜를 쓸 필요가 없습니다.
+   - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다)
    - 파이프(|), 따옴표("..."), 대괄호([...])를 활용하여 클릭률이 폭발하는 매력적인 헤드라인을 구성하세요.
-   - 예시: [놓치면 손해] 청년도약계좌 기여금 확대 오늘부터 접수... 햇살론 개편안 포함 모닝 머니 브리핑 (${dateInfo.mmdd})
-3. [E-E-A-T 40% 인사이트 규칙]:
-   - 단순 기사 요약에 그치면 구글 저품질/비독창적 콘텐츠(Scraped Content)로 분류됩니다.
-   - 각 소식마다 '📌 3줄 팩트 브리핑'으로 사실관계를 깔끔히 정리한 후,
-   - 반드시 **'💡 실무 가계/지갑 영향 실전 인사이트'**를 문단의 **40% 이상 분량**으로 심도 있게 자체 서술하세요. (예: 어떤 독자가 즉시 신청해야 하는지, 주의할 숨은 조건, 실제 아낄 수 있는 이자나 지원액 계산 등 실전 조언).
-4. [기존 포스트 내부 링크 매칭]:
-   - 각 뉴스 카드 하단에 제공된 [블로그 기존 심층 가이드 목록] 중 가장 연관성 높은 포스트를 1개씩 선정하여 내부 링크를 삽입하세요.
-5. [표준 마크다운 포맷 준수]:
-   - 1분 핵심 요약은 ':::tip[⚡ 오늘의 모닝 브리핑 1분 핵심 요약]' 박스로 시작하세요.
-   - 각 뉴스 카드는 '## [카테고리] 제목' 형식의 H2로 작성하세요.
-   - 카테고리 후보: [정부지원], [청년복지], [소상공인], [금융/금리], [세제/환급], [생활경제]
+   - 예시: [놓치면 손해] 청년도약계좌 기여금 확대 오늘부터 접수... 햇살론 개편안 포함 모닝 머니 브리핑
+3. [이모지 전면 배제 및 프로페셔널 톤앤매너 - ★ 엄격 준수]:
+   - ⚡, 📌, 💡, 🌐, 🕒, 💬 등 남발되던 모든 이모지를 절대 사용하지 마세요!
+   - 신뢰도 높은 전문 경제 언론사 스타일의 단정한 텍스트 헤딩과 타이포그래피 구조를 유지하세요.
+4. [3줄 팩트 브리핑 둥근 박스 UI]:
+   - 각 뉴스마다 3줄 팩트 요약은 반드시 ':::fact[핵심 팩트 요약]' 디렉티브 블록으로 작성하세요.
+5. [출처 기사 주요 사진/이미지 임베딩 및 출처 명시]:
+   - 후보에 제공된 '대표 이미지'가 있는 경우, 기사 H2 헤딩 바로 아래에 다음 형식으로 이미지를 삽입하세요:
+     ![헤드라인 핵심 요약 대체텍스트](대표이미지URL)
+     <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="기사원문URL" target="_blank" rel="noopener noreferrer">언론사명</a></p>
+   - 대표 이미지가 없거나 '없음'인 경우, 억지로 가짜 이미지를 넣지 말고 이미지 마크다운과 사진 출처 캡션을 완전히 생략하세요.
+6. [E-E-A-T 40% 인사이트 규칙]:
+   - 단순 기사 요약에 그치면 구글 저품질/비독창적 콘텐츠로 분류됩니다.
+   - 팩트 브리핑 박스 다음에는 반드시 '### 가계 영향 및 실전 팁' 섹션을 문단의 40% 이상 분량으로 심도 있게 자체 서술하세요. (예: 신청 자격, 주의할 숨은 조건, 실제 절감/수혜 금액 계산 등).
+7. [기존 포스트 내부 링크 매칭]:
+   - 각 뉴스 카드 하단에 제공된 [블로그 기존 심층 가이드 목록] 중 가장 연관성 높은 포스트를 1개씩 선정하여 '> **관련 가이드**:' 형식으로 내부 링크를 삽입하세요.
+8. [독자 소통 / 댓글 유도 문구 영구 삭제]:
+   - 블로그 내에 댓글 시스템이 존재하지 않으므로, '오늘 아침 여러분의 생각은?', '댓글로 이야기 나눠주세요' 등의 문구를 절대로 작성하지 마세요.
+   - 본문 맨 하단에는 큐레이션 안내 문구 1줄만 배치하세요:
+     *본 다이제스트는 정부 공식 보도자료, 정책브리핑, 금융당국 고시 및 주요 언론사 보도를 바탕으로 교차 검증 및 큐레이션되었습니다.*
 `.trim();
 
   const userPrompt = `
-오늘 날짜: ${dateInfo.dateStr} (${dateInfo.mmdd})
+오늘 날짜: ${dateInfo.dateStr}
 
 [수집된 최신 뉴스 후보 목록 (상위 4개 엄선 요망)]:
 ${newsCandidatesPromptText}
@@ -645,16 +1029,18 @@ ${existingPostsPromptText}
 [출력 형식 주의사항]
 - 절대로 서론, 결론, 인사말이나 추가 코멘트를 넣지 마세요.
 - 코드 블록 마크다운(\`\`\`markdown)으로 감싸지 말고 반드시 첫 줄을 '---'로 시작하여 Frontmatter와 본문만 그대로 출력하세요.
-- 제목에 콜론(:)은 일체 사용하지 마세요. (파이프 | 또는 따옴표 사용)
+- 제목에 날짜(09/23, 2026-09-24, 오늘자 등) 및 콜론(:)은 일체 사용하지 마세요. (파이프 | 또는 따옴표 사용)
+- category는 무조건 "news"로 고정하세요.
+- ⚡, 📌, 💡, 🌐, 🕒, 💬 등 모든 이모지는 일체 사용하지 마세요.
 
 다음 마크다운 규격을 엄격히 준수하여 포스트 전체 내용을 작성하세요:
 
 ---
-title: "[고효율 High-CTR 제목 - 콜론(:) 절대 금지! | 또는 따옴표 사용]"
+title: "[고효율 High-CTR 제목 - 날짜 일체 배제, 콜론(:) 절대 금지! | 또는 따옴표 사용]"
 slug: "${dateInfo.yymmdd}01-morning-money-digest-[핵심영문슬러그]"
-description: "오늘 아침 꼭 알아야 할 주요 정책/금융 소식 4가지를 핵심 요약합니다. (130자 내외)"
-category: "finance"
-tags: ["모닝브리핑", "생활금융", "정부지원금", "환급금", "금리혜택"]
+description: "오늘 아침 꼭 알아야 할 주요 정책 및 생활 금융 소식 4가지를 핵심 요약합니다. (130자 내외)"
+category: "news"
+tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
 featured_image: ""
@@ -662,7 +1048,7 @@ affiliate: false
 post_type: "digest"
 ---
 
-:::tip[⚡ 오늘의 모닝 브리핑 1분 핵심 요약]
+:::tip[오늘의 모닝 브리핑 1분 핵심 요약]
 - **[헤드라인 1 한줄 요약]**: 핵심 내용 1문장
 - **[헤드라인 2 한줄 요약]**: 핵심 내용 1문장
 - **[헤드라인 3 한줄 요약]**: 핵심 내용 1문장
@@ -673,30 +1059,30 @@ post_type: "digest"
 
 ## [카테고리 1] 소식 제목
 
-> 🌐 **공식 출처**: [출처명](실제뉴스원문URL)  
-> 🕒 **발행 시점**: ${dateInfo.dateStr} 00:00 KST | **신뢰도**: 공식 발표 (또는 보도자료/경제전문지)
+![헤드라인 핵심 대체텍스트](대표이미지URL)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="기사원문URL" target="_blank" rel="noopener noreferrer">언론사명</a></p>
 
-### 📌 3줄 팩트 브리핑
+> **출처**: [언론사명](기사원문URL)  
+> **발행**: ${dateInfo.dateStr} 00:00 KST | **신뢰도**: 공식 발표 (또는 보도자료/경제전문지)
+
+:::fact[핵심 팩트 요약]
 - 핵심 팩트 1
 - 핵심 팩트 2
 - 핵심 팩트 3
+:::
 
-### 💡 실무 가계/지갑 영향 실전 인사이트
+### 가계 영향 및 실전 팁
 (이 소식이 일반 가계나 직장인, 소상공인의 지갑에 미치는 구체적 영향과 실전 팁을 40% 이상 분량으로 상세 서술)
 
-> 🔗 **함께 읽으면 좋은 블로그 심층 가이드**:  
+> **관련 가이드**:  
 > [관련 기존 글 제목](/posts/해당글슬러그)
 
 ---
 
 ## [카테고리 2] 소식 제목
-(동일한 규격으로 4개 소식까지 정확히 4개 카드 작성)
+(동일한 규격으로 4개 소식까지 정확히 4개 카드 작성. 이미지가 없는 후보는 이미지 마크다운과 사진 출처 캡션을 생략)
 
 ---
-
-## 💬 오늘 아침 여러분의 생각은?
-오늘 전해드린 소식 중 가계 지출이나 금융 생활에 가장 큰 영향을 줄 것 같은 이슈는 무엇인가요?  
-추가로 궁금한 점이나 여러분의 의견이 있다면 댓글로 자유롭게 이야기를 나눠주세요!
 
 *본 다이제스트는 정부 공식 보도자료, 정책브리핑, 금융당국 고시 및 주요 언론사 보도를 바탕으로 교차 검증 및 큐레이션되었습니다.*
 `.trim();
@@ -715,7 +1101,7 @@ post_type: "digest"
     fs.mkdirSync(POSTS_DIR, { recursive: true });
   }
 
-  const { title, slug, filename, filePath, content } = cleanAndValidateMarkdown(rawLlmOutput, dateInfo);
+  const { title, slug, filename, filePath, content } = cleanAndValidateMarkdown(rawLlmOutput, dateInfo, rankedItems);
   fs.writeFileSync(filePath, content, 'utf8');
   console.log(`💾 [파일 저장 완료] ${filePath}`);
   console.log(`📝 포스트 제목: "${title}"`);
@@ -766,7 +1152,7 @@ post_type: "digest"
 🔗 *슬러그:* ${slug}
 
 *검증 상태:*
-- 🗄️ D1 DB: 등록 성공 (blogs)
+- 🗄️ D1 DB: 등록 성공 (blogs / news)
 - ⚙️ 빌드: PASS (0 errors)
 - 🚀 배포: Cloudflare Workers 동기화 완료`;
 
@@ -786,3 +1172,4 @@ if (process.argv[1] && process.argv[1].endsWith('generate-news-digest.mjs')) {
       process.exit(1);
     });
 }
+

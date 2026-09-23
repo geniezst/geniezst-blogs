@@ -219,14 +219,32 @@ marked.use({
 });
 
 /**
- * 커스텀 디렉티브(:::tip[...] 등) 전처리
+ * 커스텀 디렉티브(:::tip[...], :::fact[...] 등) 전처리 함수
  */
-function preprocessCustomDirectives(markdown: string): string {
+export function preprocessCustomDirectives(markdown: string): string {
   if (!markdown || !markdown.includes(':::')) return markdown;
-  return markdown.replace(/:::tip(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g, (_match, title, body) => {
-    const titleText = title ? title.trim() : '오늘의 모닝 브리핑 1분 핵심 요약';
-    return `<div class="digest-tldr-box my-6 p-4 sm:p-5 rounded-2xl border-l-4 shadow-sm">\n<div class="digest-tldr-title font-bold text-base mb-2 flex items-center gap-1.5">${titleText}</div>\n\n${body.trim()}\n\n</div>`;
-  });
+
+  let processed = markdown;
+
+  // 1. TL;DR 1분 요약 박스 (:::tip[...])
+  processed = processed.replace(
+    /:::tip(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '오늘의 모닝 브리핑 1분 핵심 요약';
+      return `<div class="digest-tldr-box my-6 p-4 sm:p-5 rounded-2xl border-l-4 shadow-sm">\n<div class="digest-tldr-title font-bold text-base mb-2 flex items-center gap-1.5">${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
+  // 2. 3줄 팩트 브리핑 둥근모서리 박스 (:::fact[...])
+  processed = processed.replace(
+    /:::fact(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '핵심 팩트 요약';
+      return `<div class="fact-brief-box my-5 p-4 sm:p-5 rounded-2xl border shadow-sm">\n<div class="fact-brief-title font-bold text-sm mb-2.5 tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center">${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
+  return processed;
 }
 
 /**

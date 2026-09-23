@@ -439,14 +439,14 @@ export async function runMorningNewsDigestPipeline(options = {}) {
       throw new Error('뉴스 다이제스트 생성에 실패했습니다.');
     }
 
-    // 상태 파일 갱신
+    // 상태 파일 갱신 (오전 다이제스트 전용 카테고리 'news' 고정)
     state.last_session = 'morning';
-    state.category_counts['finance'] = (state.category_counts['finance'] || 0) + 1;
+    state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
     state.history.push({
       date: dateStr,
       session: 'morning',
       time: timeStr,
-      category: 'finance',
+      category: 'news',
       title: res.title,
       slug: res.slug,
       post_type: 'digest',
@@ -463,7 +463,7 @@ export async function runMorningNewsDigestPipeline(options = {}) {
       date: dateStr,
       session: 'morning',
       time: timeStr,
-      category: 'finance',
+      category: 'news',
       status: 'failed',
       error: err.message,
     });
