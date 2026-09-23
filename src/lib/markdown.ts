@@ -219,9 +219,21 @@ marked.use({
 });
 
 /**
+ * 커스텀 디렉티브(:::tip[...] 등) 전처리
+ */
+function preprocessCustomDirectives(markdown: string): string {
+  if (!markdown || !markdown.includes(':::')) return markdown;
+  return markdown.replace(/:::tip(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g, (_match, title, body) => {
+    const titleText = title ? title.trim() : '오늘의 모닝 브리핑 1분 핵심 요약';
+    return `<div class="digest-tldr-box my-6 p-4 sm:p-5 rounded-2xl border-l-4 shadow-sm">\n<div class="digest-tldr-title font-bold text-base mb-2 flex items-center gap-1.5">${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+  });
+}
+
+/**
  * 마크다운 본문을 안전하고 아름다운 HTML로 렌더링
  */
 export async function renderMarkdown(markdown: string): Promise<string> {
   if (!markdown) return '';
-  return await marked.parse(markdown);
+  const preprocessed = preprocessCustomDirectives(markdown);
+  return await marked.parse(preprocessed);
 }

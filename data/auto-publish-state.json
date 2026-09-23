@@ -141,7 +141,7 @@
   "last_chart_type": "donut-chart",
   "weekly_skip_config": {
     "current_week": "2026-W39",
-    "skip_first_session_day": 0,
+    "skip_afternoon_day": 0,
     "skip_day_name": "일요일"
   }
 }

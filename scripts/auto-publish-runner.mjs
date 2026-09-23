@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * blogs 자동 포스팅 오케스트레이터 및 스케줄러 (Auto Publish Runner & Daemon)
- * - 대상 블로그: 스마트 라이프 & 머니 (/workspace/blogs)
- * - 스케줄: 점심(11:15~11:45 KST), 저녁(18:15~18:45 KST)
+ * - 대상 블로그: 포켓머니 (blogs, /workspace/blogs)
+ * - Two-Track 스케줄:
+ *   1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
+ *   2) 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
  * 
  * 사용법:
  *   1) 수동 세션 즉시 실행:
- *      node scripts/auto-publish-runner.mjs lunch
- *      node scripts/auto-publish-runner.mjs evening
+ *      node scripts/auto-publish-runner.mjs morning  # 아침 뉴스 다이제스트
+ *      node scripts/auto-publish-runner.mjs lunch    # 아침 뉴스 다이제스트 (호환성)
+ *      node scripts/auto-publish-runner.mjs evening  # 저녁 심층 가이드
  * 
  *   2) 백그라운드 스케줄러 데몬 모드:
  *      node scripts/auto-publish-runner.mjs daemon
@@ -17,6 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
+import { runNewsDigestGeneration } from './generate-news-digest.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
@@ -156,19 +160,26 @@ function getYearWeek(dateStr) {
 }
 
 /**
- * 주 1회 점심(첫 세션) 스킵 요일 선정 및 유지 (자연스러운 휴식일 시뮬레이션)
+ * 주 1회 오후 심층글 스킵 요일 선정 및 유지 (자연스러운 휴식일 시뮬레이션)
+ * - 오전 뉴스 다이제스트는 매일(주 7일) 무휴식 구동
+ * - 오후 심층글은 주 1회 랜덤 휴식
  */
 function checkOrUpdateWeeklySkip(state, dateStr) {
   const currentWeek = getYearWeek(dateStr);
-  if (!state.weekly_skip_config || state.weekly_skip_config.current_week !== currentWeek || state.weekly_skip_config.skip_first_session_day === null) {
+  if (
+    !state.weekly_skip_config ||
+    state.weekly_skip_config.current_week !== currentWeek ||
+    state.weekly_skip_config.skip_afternoon_day === undefined ||
+    state.weekly_skip_config.skip_afternoon_day === null
+  ) {
     const randomDay = Math.floor(Math.random() * 7); // 0~6 중 랜덤 요일
     state.weekly_skip_config = {
       current_week: currentWeek,
-      skip_first_session_day: randomDay,
+      skip_afternoon_day: randomDay,
       skip_day_name: DAY_NAMES[randomDay],
     };
     saveState(state);
-    log(`🎲 [주간 변칙 스케줄 갱신] ${currentWeek} 주간 1회 점심 휴식 요일 배정: ${DAY_NAMES[randomDay]}`);
+    log(`🎲 [주간 변칙 스케줄 갱신] ${currentWeek} 주간 1회 오후 심층글 휴식 요일 배정: ${DAY_NAMES[randomDay]}`);
   }
   return state.weekly_skip_config;
 }
@@ -399,6 +410,70 @@ HTML 구조 규격:
 </div>`,
   }
 ];
+
+/**
+ * 🌅 아침 뉴스 다이제스트 전용 파이프라인 (Morning News Digest)
+ * - 매일(주 7일) 무휴식 구동
+ * - 다채널 뉴스 피드 수집 + LLM(Groq/Gemini) 큐레이션 + D1 발행 + 텔레그램 연동
+ */
+export async function runMorningNewsDigestPipeline(options = {}) {
+  const { dateStr, timeStr } = getKSTDate();
+  console.log(`\n========================================`);
+  console.log(`🌅 [포켓머니 아침 모닝 브리핑 시작] ${dateStr} (morning) 실행 시각: ${timeStr} KST`);
+  console.log(`========================================`);
+
+  const state = loadState();
+
+  // 1. 중복 실행 검사
+  const isDone = state.history.some(
+    (h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success'
+  );
+  if (isDone && !options.force) {
+    console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 아침 다이제스트 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
+    return true;
+  }
+
+  try {
+    const res = await runNewsDigestGeneration(options);
+    if (!res || !res.success) {
+      throw new Error('뉴스 다이제스트 생성에 실패했습니다.');
+    }
+
+    // 상태 파일 갱신
+    state.last_session = 'morning';
+    state.category_counts['finance'] = (state.category_counts['finance'] || 0) + 1;
+    state.history.push({
+      date: dateStr,
+      session: 'morning',
+      time: timeStr,
+      category: 'finance',
+      title: res.title,
+      slug: res.slug,
+      post_type: 'digest',
+      status: 'success',
+    });
+    saveState(state);
+
+    console.log(`✅ [아침 모닝 브리핑 완료] "${res.title}" (${res.slug})`);
+    return true;
+  } catch (err) {
+    console.error(`❌ [아침 다이제스트 파이프라인 실패]`, err.message);
+
+    state.history.push({
+      date: dateStr,
+      session: 'morning',
+      time: timeStr,
+      category: 'finance',
+      status: 'failed',
+      error: err.message,
+    });
+    saveState(state);
+
+    const failMsg = `⚠️ *[blogs 아침 뉴스 다이제스트 실패]*\n\n⏰ *시간:* ${timeStr} KST\n❌ *오류:* ${err.message}`;
+    await sendTelegramReport(failMsg);
+    return false;
+  }
+}
 
 /**
  * 실제 포스트 생성 및 배포 파이프라인
@@ -632,55 +707,65 @@ ${selectedChart.instruction}
 }
 
 /**
- * 데몬 스케줄러 메인 루프
- * - 점심: 11:15 ~ 11:45 KST
- * - 저녁: 18:15 ~ 18:45 KST
+ * 데몬 스케줄러 메인 루프 (Two-Track 스케줄러)
+ * - 1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
+ * - 2) 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)
  */
 async function startDaemon() {
-  log(`🤖 [blogs 생활경제 자동화 스케줄러 데몬 가동]`);
-  log(`- 점심 범위: 11:15 ~ 11:45 KST`);
-  log(`- 저녁 범위: 18:15 ~ 18:45 KST`);
-  log(`- 주간 변칙 규칙: 주 1회 랜덤 요일에는 점심을 건너뛰고 저녁에만 1회 발행`);
+  log(`🤖 [blogs 포켓머니 2-Track 자동화 스케줄러 데몬 가동]`);
+  log(`- 오전 범위: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식)`);
+  log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
 
-  let currentLunchTarget = getRandomTargetMinutes(11, 15, 11, 45);
+  let currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
   let currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
   let lastCheckedDay = '';
-  let isFirstSessionSkippedToday = false;
+  let isAfternoonSkippedToday = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
-  log(`📅 오늘의 랜덤 목표 시간: 점심 ${formatTarget(currentLunchTarget)}, 저녁 ${formatTarget(currentEveningTarget)}`);
+  log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
     const { dateStr, hours, minutes, dayOfWeek } = getKSTDate();
 
     // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
     if (lastCheckedDay !== dateStr) {
-      currentLunchTarget = getRandomTargetMinutes(11, 15, 11, 45);
+      currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
       currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
       lastCheckedDay = dateStr;
 
       const state = loadState();
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
-      isFirstSessionSkippedToday = (dayOfWeek === weeklyConfig.skip_first_session_day);
+      isAfternoonSkippedToday = (dayOfWeek === weeklyConfig.skip_afternoon_day);
 
       log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 새로운 랜덤 목표 배정:`);
-      if (isFirstSessionSkippedToday) {
-        log(`- 🎲 오늘은 주 1회 점심 휴식일(${weeklyConfig.skip_day_name})입니다! 점심 세션을 건너뛰고 저녁에만 1회 발행합니다.`);
+      log(`- 📰 오전 다이제스트: ${formatTarget(currentMorningTarget)} KST (매일 무휴식)`);
+      if (isAfternoonSkippedToday) {
+        log(`- 🎲 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다! 오후 세션을 건너뜁니다.`);
       } else {
-        log(`- 점심: ${formatTarget(currentLunchTarget)} KST`);
+        log(`- 📚 오후 심층글: ${formatTarget(currentEveningTarget)} KST`);
       }
-      log(`- 저녁: ${formatTarget(currentEveningTarget)} KST`);
     }
 
-    // 점심 타깃 시간 도달 확인 (주 1회 랜덤 휴식일 반영)
-    if (!isFirstSessionSkippedToday && hours === currentLunchTarget.hour && minutes === currentLunchTarget.minute) {
-      await runPublishPipeline('lunch');
+    // 1. 오전 다이제스트 시간 도달 확인 (★ 매일 주 7일 무휴식 구동)
+    if (hours === currentMorningTarget.hour && minutes === currentMorningTarget.minute) {
+      log(`🌅 오전 다이제스트 목표 시간(${formatTarget(currentMorningTarget)} KST) 도달: 파이프라인 가동`);
+      await runMorningNewsDigestPipeline();
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
 
-    // 저녁 타깃 시간 도달 확인 (항상 수행)
+    // 2. 오후 심층글 시간 도달 확인 (주 1회 랜덤 휴식 요일 반영)
     if (hours === currentEveningTarget.hour && minutes === currentEveningTarget.minute) {
-      await runPublishPipeline('evening');
+      if (isAfternoonSkippedToday) {
+        const state = loadState();
+        const weeklyConfig = state.weekly_skip_config || {};
+        log(`💤 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '지정요일'})입니다. 오후 세션을 건너뜁니다.`);
+        await sendTelegramReport(
+          `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오전 뉴스 다이제스트는 매일 무휴식 발행되며, 오후 심층글은 내일부터 다시 정상 발행됩니다.`
+        );
+      } else {
+        log(`📚 오후 심층글 목표 시간(${formatTarget(currentEveningTarget)} KST) 도달: 파이프라인 가동`);
+        await runPublishPipeline('evening');
+      }
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
 
@@ -689,15 +774,20 @@ async function startDaemon() {
   }
 }
 
-// CLI 진입점
-const arg = process.argv[2];
-if (arg === 'lunch' || arg === 'evening') {
-  runPublishPipeline(arg).then((success) => process.exit(success ? 0 : 1));
-} else if (arg === 'daemon') {
-  startDaemon();
-} else {
-  console.log('사용법:');
-  console.log('  node scripts/auto-publish-runner.mjs lunch    # 점심 세션 수동 실행');
-  console.log('  node scripts/auto-publish-runner.mjs evening  # 저녁 세션 수동 실행');
-  console.log('  node scripts/auto-publish-runner.mjs daemon   # 상시 스케줄러 데몬 가동');
+// CLI 직접 실행 시 분기
+if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
+  const arg = process.argv[2];
+  if (arg === 'morning' || arg === 'lunch') {
+    runMorningNewsDigestPipeline().then((success) => process.exit(success ? 0 : 1));
+  } else if (arg === 'evening') {
+    runPublishPipeline(arg).then((success) => process.exit(success ? 0 : 1));
+  } else if (arg === 'daemon') {
+    startDaemon();
+  } else {
+    console.log('사용법:');
+    console.log('  node scripts/auto-publish-runner.mjs morning  # 오전 뉴스 다이제스트 수동 실행');
+    console.log('  node scripts/auto-publish-runner.mjs lunch    # 오전 뉴스 다이제스트 수동 실행 (호환용)');
+    console.log('  node scripts/auto-publish-runner.mjs evening  # 오후 심층 가이드 수동 실행');
+    console.log('  node scripts/auto-publish-runner.mjs daemon   # 상시 Two-Track 스케줄러 데몬 가동');
+  }
 }
