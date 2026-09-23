@@ -777,8 +777,11 @@ async function startDaemon() {
 // CLI 직접 실행 시 분기
 if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
   const arg = process.argv[2];
+  const force = process.argv.includes('--force');
+  const dryRun = process.argv.includes('--dry-run');
+
   if (arg === 'morning' || arg === 'lunch') {
-    runMorningNewsDigestPipeline().then((success) => process.exit(success ? 0 : 1));
+    runMorningNewsDigestPipeline({ force, dryRun }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'evening') {
     runPublishPipeline(arg).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'daemon') {
