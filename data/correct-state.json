@@ -1,8 +1,8 @@
 {
-  "last_updated": "2026-09-23T03:00:12.257Z",
+  "last_updated": "2026-09-23T15:00:29.267Z",
   "last_run": {
     "noon": "2026-09-23",
-    "midnight": "2026-09-23"
+    "midnight": "2026-09-24"
   },
   "pending": [],
   "history": [
@@ -24,6 +24,15 @@
       "date": "2026-09-22",
       "status": "clean",
       "at": "2026-09-22T15:00:00.165Z"
+    },
+    {
+      "slug": "sme-worker-preferential-savings-guide-2026",
+      "file": "/workspace/blogs/content/posts/26092302-sme-worker-preferential-savings-guide-2026.md",
+      "session": "midnight",
+      "publish_session": "evening",
+      "date": "2026-09-23",
+      "status": "clean",
+      "at": "2026-09-23T15:00:29.267Z"
     }
   ]
 }
