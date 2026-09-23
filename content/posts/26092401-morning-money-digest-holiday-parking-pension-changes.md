@@ -1,5 +1,5 @@
 ---
-title: "추석 연휴 주차장 무료 개방 & 퇴직연금 수령 시점 변화 | 당신의 지갑을 지키는 모닝 브리핑"
+title: "추석 연휴 주차장 무료 개방 & 퇴직연금 수령 시점 변화"
 slug: "26092401-morning-money-digest-holiday-parking-pension-changes"
 description: "추석 연휴 공공주차장 무료 개방 소식과 퇴직연금 수령 시점 변화 등 당신의 지갑에 직접적인 영향을 미칠 최신 정책 정보를 핵심 요약해 드립니다."
 category: "news"

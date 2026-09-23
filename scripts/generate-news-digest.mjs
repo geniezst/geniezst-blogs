@@ -119,10 +119,14 @@ export function cleanDigestTitle(rawTitle) {
   title = title.replace(/\s*\(\s*\)/g, '');
   title = title.replace(/\s*\[\s*\]/g, '');
 
+  // 6.5) 상투적인 다이제스트 브랜딩/꼬리표 문구 제거 (예: | 당신의 지갑을 지키는 모닝 브리핑, | 모닝 머니 브리핑, | 핵심 IT 뉴스 TOP 4, TOP 4 등)
+  title = title.replace(/\s*\|\s*(?:당신의\s*지갑을\s*지키는.*|모닝\s*(?:테크\s*)?(?:머니\s*)?(?:다이제스트|브리핑).*|핵심\s*IT\s*뉴스.*|핵심\s*뉴스.*|오늘의\s*모닝.*|TOP\s*\d+.*)$/i, '');
+  title = title.replace(/\s+(?:핵심\s*뉴스|TOP\s*\d+).*$/i, '');
+
   // 7) 연속된 구분 기호 및 공백 정리
   title = title.replace(/\s*\|\s*\|+/g, ' |');
   title = title.replace(/\s{2,}/g, ' ');
-  title = title.trim();
+  title = title.replace(/^\|\s*/, '').replace(/\s*\|$/, '').trim();
 
   return title;
 }
@@ -739,9 +743,9 @@ function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/\r?\n```\s*$/i, '');
   body = body.trim();
 
-  // 1) High-CTR 제목 정제 (cleanDigestTitle: 콜론 치환, 날짜 완전 배제)
+  // 1) High-CTR 제목 정제 (cleanDigestTitle: 콜론 치환, 날짜 및 꼬리표 완전 배제)
   const titleMatch = yaml.match(/title:\s*["']?([^"'\n]+)["']?/);
-  let title = titleMatch ? cleanDigestTitle(titleMatch[1]) : '놓치면 손해 보는 생활금융 핫이슈 핵심 요약 | 모닝 머니 브리핑';
+  let title = titleMatch ? cleanDigestTitle(titleMatch[1]) : '놓치면 손해 보는 생활금융 핫이슈 핵심 요약';
   title = cleanDigestTitle(title);
   yaml = yaml.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title}"`);
 
@@ -992,8 +996,9 @@ export async function runNewsDigestGeneration(options = {}) {
 2. [High-CTR 제목 네이밍 규칙 - ★ 절대 규칙]:
    - ⚠️ [절대 금지 1] 제목에 날짜(예: 09/23, (09/24), 2026-09-24, 9월 24일, 오늘자, 금일 등)를 일체 넣지 마세요! 포스트 본문과 메타데이터에 작성일이 표시되므로 제목에 날짜를 쓸 필요가 없습니다.
    - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다)
-   - 파이프(|), 따옴표("..."), 대괄호([...])를 활용하여 클릭률이 폭발하는 매력적인 헤드라인을 구성하세요.
-   - 예시: [놓치면 손해] 청년도약계좌 기여금 확대 오늘부터 접수... 햇살론 개편안 포함 모닝 머니 브리핑
+   - ⚠️ [절대 금지 3] 제목 끝에 '| 당신의 지갑을 지키는 모닝 브리핑', '| 모닝 머니 브리핑', '| 모닝 브리핑', 'TOP 4' 등과 같은 상투적인 부제나 브랜딩 꼬리표 문구를 절대 붙이지 마세요! 오직 실제 기사의 뉴스 이슈 내용으로만 제목을 작성하세요.
+   - 따옴표("..."), 대괄호([...]), 쉼표와 접속사, & 기호를 활용하여 핵심 뉴스 이슈 2~3개를 명확하고 간결하게 연결하세요.
+   - 예시: [놓치면 손해] 청년도약계좌 기여금 확대 오늘부터 접수 & 햇살론 제도 개편안
 3. [이모지 전면 배제 및 프로페셔널 톤앤매너 - ★ 엄격 준수]:
    - ⚡, 📌, 💡, 🌐, 🕒, 💬 등 남발되던 모든 이모지를 절대 사용하지 마세요!
    - 신뢰도 높은 전문 경제 언론사 스타일의 단정한 텍스트 헤딩과 타이포그래피 구조를 유지하세요.
