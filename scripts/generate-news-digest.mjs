@@ -494,6 +494,12 @@ function cleanAndValidateMarkdown(rawContent, dateInfo) {
   let yaml = cleaned.slice(firstFmIndex + 3, secondFmIndex).trim();
   let body = cleaned.slice(secondFmIndex + 3).trim();
 
+  // body 시작 부분에 남아있는 코드블록 잔여물(``` 또는 ```yaml, ```markdown 등) 제거
+  body = body.replace(/^```[a-z]*\s*\r?\n/i, '');
+  body = body.replace(/^\s*```\s*\r?\n/i, '');
+  body = body.replace(/\r?\n```\s*$/i, '');
+  body = body.trim();
+
   // 1) High-CTR 제목에서 콜론(:) 일체 제거 및 치환 (D1 스크립트 절단 방지)
   const titleMatch = yaml.match(/title:\s*["']?([^"'\n]+)["']?/);
   let title = titleMatch ? titleMatch[1].trim() : `오늘자 모닝 머니 브리핑 | 생활금융 핫이슈 (${dateInfo.mmdd})`;
