@@ -9,7 +9,8 @@ import type { Category } from '../../types/blog';
 
 const { slug } = Astro.params;
 if (!slug) {
-  return Astro.redirect('/404');
+  Astro.response.status = 404;
+  return Astro.rewrite('/404');
 }
 
 const db = await getDb(Astro.locals);
@@ -24,7 +25,8 @@ const [post, categories, totalCount] = await Promise.all([
 ]);
 
 if (!post) {
-  return Astro.redirect('/404');
+  Astro.response.status = 404;
+  return Astro.rewrite('/404');
 }
 
 // 비동기 조회수 증가
