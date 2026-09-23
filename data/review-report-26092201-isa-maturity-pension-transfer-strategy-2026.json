@@ -1,0 +1,14 @@
+{
+  "slug": "26092201-isa-maturity-pension-transfer-strategy-2026",
+  "file": "/workspace/blogs/content/posts/26092201-isa-maturity-pension-transfer-strategy-2026.md",
+  "session": "noon",
+  "date": "2026-09-22",
+  "deep": [
+    {
+      "type": "팩트/용어 오류",
+      "line": 145,
+      "text": "세법상 ISA 만기 전환 자금은 일반 연금계좌 연간 납입 한도(1,800만원)의 적용을 받지 않는 `별도 한도(외화한도)`로 인정된다.",
+      "suggestion": "'외화한도'는 존재하지 않는 용어입니다. ISA 만기 전환분은 연금계좌 연간 납입한도(1,800만원)의 적용을 받지 않는 '별도 한도'로만 표현하세요. 참고로 인터넷 검색(국세청·삼성증권·동아일보 등)에 따르면 이와 같은 별도 한도 인정 및 10%(최대 300만원) 추가 공제, 60일 "
+    }
+  ]
+}

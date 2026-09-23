@@ -39,7 +39,7 @@ function getTelegramConfig() {
   return null;
 }
 
-export async function sendTelegramReport(message) {
+export async function sendTelegramReport(message, extra = {}) {
   const config = getTelegramConfig();
   if (!config) {
     console.warn('⚠️ Telegram 설정이 .env에 없어 알림 발송을 건너뜁니다.');
@@ -54,6 +54,7 @@ export async function sendTelegramReport(message) {
         chat_id: config.chatId,
         text: message,
         parse_mode: 'Markdown',
+        ...extra,
       }),
     });
 
@@ -66,6 +67,7 @@ export async function sendTelegramReport(message) {
         body: JSON.stringify({
           chat_id: config.chatId,
           text: message.replace(/[*_`]/g, ''),
+          ...extra,
         }),
       });
       data = await res.json();

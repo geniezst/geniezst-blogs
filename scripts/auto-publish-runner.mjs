@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
@@ -465,19 +465,28 @@ ${selectedChart.instruction}
   13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 
-    // agy 명령어로 글 생성 실행 (타임아웃 10분 설정 및 스마트 폴백 복구 지원)
-    const agyCmd = `/usr/local/bin/agy --dangerously-skip-permissions -p="${prompt.replace(/"/g, '\\"')}"`;
+    // agy 명령어로 글 생성 실행 (spawnSync로 쉘 파싱 에러 방지)
+    const agyBin = fs.existsSync('/usr/local/bin/agy') ? '/usr/local/bin/agy' : '/root/.local/bin/agy';
     try {
-      const agyOutput = execSync(agyCmd, {
+      const agyProc = spawnSync(agyBin, ['--dangerously-skip-permissions', `-p=${prompt}`], {
         cwd: BLOG_ROOT,
         encoding: 'utf8',
         env: {
           ...process.env,
           PATH: `/usr/local/bin:/root/.local/bin:${process.env.PATH || ''}`,
         },
-        timeout: 600000, // 최대 10분 (장문 포스트 생성 및 자체 검증에 충분한 시간 부여)
+        timeout: 600000, // 최대 10분
+        maxBuffer: 50 * 1024 * 1024,
       });
-      console.log(`AI 생성 응답:\n`, agyOutput.slice(0, 300), '...');
+
+      if (agyProc.error) {
+        throw agyProc.error;
+      }
+      if (agyProc.status !== 0) {
+        throw new Error(agyProc.stderr || agyProc.stdout || `Process exited with code ${agyProc.status}`);
+      }
+
+      console.log(`AI 생성 응답:\n`, (agyProc.stdout || '').slice(0, 300), '...');
     } catch (cmdErr) {
       // agy 프로세스가 타임아웃 또는 경고로 종료되었더라도 포스트 파일이 정상 생성되었는지 확인
       const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
