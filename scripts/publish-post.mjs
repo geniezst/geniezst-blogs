@@ -13,6 +13,26 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import os from 'node:os';
 
+// 환경 변수 자동 로드 (.env)
+for (const envPath of [
+  path.resolve('/workspace/.env'),
+  path.resolve('/workspace/scripts/.env'),
+  path.join(path.resolve(import.meta.dirname, '..'), '.env'),
+]) {
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const k = trimmed.slice(0, eq).trim();
+      let v = trimmed.slice(eq + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      if (!process.env[k]) process.env[k] = v;
+    }
+  }
+}
+
 const TARGET_D1 = 'blogs';
 const TARGET_R2 = 'blogs';
 
