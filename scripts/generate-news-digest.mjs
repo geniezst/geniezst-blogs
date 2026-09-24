@@ -121,7 +121,9 @@ export function cleanDigestTitle(rawTitle) {
 
   // 6.5) 상투적인 다이제스트 브랜딩/꼬리표 문구 제거 (예: | 당신의 지갑을 지키는 모닝 브리핑, | 모닝 머니 브리핑, | 핵심 IT 뉴스 TOP 4, TOP 4 등)
   title = title.replace(/\s*\|\s*(?:당신의\s*지갑을\s*지키는.*|모닝\s*(?:테크\s*)?(?:머니\s*)?(?:다이제스트|브리핑).*|핵심\s*IT\s*뉴스.*|핵심\s*뉴스.*|오늘의\s*모닝.*|TOP\s*\d+.*)$/i, '');
+  title = title.replace(/\s*\[\s*TOP\s*\d+\s*\]/gi, '');
   title = title.replace(/\s+(?:핵심\s*뉴스|TOP\s*\d+).*$/i, '');
+  title = title.replace(/\s*\|\s*TOP\s*\d+.*$/i, '');
 
   // 7) 연속된 구분 기호 및 공백 정리
   title = title.replace(/\s*\|\s*\|+/g, ' |');
@@ -383,24 +385,94 @@ async function fetchKoreaVisualNews() {
 }
 
 /**
+ * 대한민국 정책브리핑 보도자료 직접 수집기 (공식 공공 발표)
+ */
+async function fetchKoreaPressReleases() {
+  const items = [];
+  try {
+    const res = await fetch('https://www.korea.kr/news/pressReleaseList.do', {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return items;
+    const html = await res.text();
+    const listMatches =
+      html.match(
+        /<a\s+[^>]*href=["\x27](\/(?:briefing|news)\/pressReleaseView\.do\?newsId=\d+[^"\x27]*)["\x27][^>]*>([\s\S]*?)<\/a>/g
+      ) || [];
+
+    const seenIds = new Set();
+    for (const m of listMatches) {
+      const hrefMatch = m.match(/href=["\x27]([^"\x27]+)["\x27]/);
+      if (!hrefMatch) continue;
+      const href = hrefMatch[1];
+      const idMatch = href.match(/newsId=(\d+)/);
+      if (!idMatch || seenIds.has(idMatch[1])) continue;
+      seenIds.add(idMatch[1]);
+
+      const titleMatch = m.match(/<strong[^>]*>([\s\S]*?)<\/strong>/);
+      let title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+      if (!title) continue;
+      title = title.replace(/^\[(?:보도자료|장관동정|카드뉴스|설명자료)\]\s*/, '').trim();
+
+      const leadMatch = m.match(/<span\s+class=["\x27]lead["\x27][^>]*>([\s\S]*?)<\/span>/i);
+      const lead = leadMatch ? leadMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+      const deptMatch = m.match(/<span\s+class=["\x27]source["\x27][^>]*>[\s\S]*?<span>([^<]+)<\/span>\s*<\/span>/i);
+      const dept = deptMatch ? deptMatch[1].trim() : '';
+
+      const fullLink = 'https://www.korea.kr' + href;
+      const sourceName = dept ? `대한민국 정책브리핑 (${dept})` : '대한민국 정책브리핑';
+
+      items.push({
+        title: decodeEntities(title),
+        link: fullLink,
+        originalLink: fullLink,
+        pubDate: new Date(),
+        source: sourceName,
+        description: lead ? decodeEntities(lead).slice(0, 150) : `${title} - 대한민국 정책브리핑 공식 보도자료`,
+      });
+      if (items.length >= 10) break;
+    }
+  } catch (err) {
+    console.warn(`  ⚠️ [대한민국 정책브리핑 보도자료 직접 수집] 오류 (${err.message})`);
+  }
+  return items;
+}
+
+/**
  * 5. 다채널 뉴스 피드 수집기
  */
 async function fetchNewsFeeds() {
   const feedConfigs = [
     {
+      name: 'Google News 경제 부문 톱 헤드라인',
+      url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ko&gl=KR&ceid=KR:ko',
+      defaultSource: '경제 종합',
+    },
+    {
       name: 'Google News (지원금/청년/소상공인)',
-      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(청년도약계좌 OR 근로장려금 OR 소상공인) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(청년도약계좌 OR 근로장려금 OR 소상공인 OR 자영업자) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
       defaultSource: '언론사 보도',
     },
     {
-      name: 'Google News (정부지원금/환급금)',
-      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(정부지원금 OR 환급금 OR 숨은보험금) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
+      name: 'Google News (정부지원금/환급금/복지)',
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(정부지원금 OR 환급금 OR 숨은보험금 OR 민생지원금 OR 긴급지원) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
       defaultSource: '언론사 보도',
     },
     {
       name: 'Google News (금리/대출/청약/예금)',
-      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(기준금리 OR 주택담보대출 OR 특판예금 OR 청약) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(기준금리 OR 주택담보대출 OR 주담대 OR 특판예금 OR 청약 OR 적금) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
       defaultSource: '금융 뉴스',
+    },
+    {
+      name: 'Google News (세금/연금/보험/물가)',
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(연말정산 OR 세액공제 OR 국민연금 OR 건강보험 OR 물가 OR 전기요금) when:1d')}&hl=ko&gl=KR&ceid=KR:ko`,
+      defaultSource: '생활금융 뉴스',
     },
     {
       name: '대한민국 정책브리핑 (korea.kr 공공 정책)',
@@ -408,28 +480,27 @@ async function fetchNewsFeeds() {
       defaultSource: '대한민국 정책브리핑',
     },
     {
-      name: 'Google News 비즈니스/경제 헤드라인',
-      url: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ko&gl=KR&ceid=KR:ko',
-      defaultSource: '경제 종합',
-    },
-    {
       name: '공공 금융당국 보도자료',
-      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(금융위원회 OR 금융감독원 OR 기획재정부) when:2d')}&hl=ko&gl=KR&ceid=KR:ko`,
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent('(금융위원회 OR 금융감독원 OR 기획재정부 OR 고용노동부) when:2d')}&hl=ko&gl=KR&ceid=KR:ko`,
       defaultSource: '정부 공공 발표',
     },
   ];
 
-  console.log(`📡 [뉴스 피드 수집] 총 ${feedConfigs.length + 2}개 채널에서 수집을 시작합니다...`);
+  console.log(`📡 [뉴스 피드 수집] 총 ${feedConfigs.length + 3}개 채널에서 수집을 시작합니다...`);
   const allItems = [];
 
-  // 정책브리핑 직접 수집
+  // 정책브리핑 직접 수집 (정책뉴스, 카드뉴스, 보도자료)
   const directPolicy = await fetchKoreaPolicyNews();
-  console.log(`  ✅ [대한민국 정책브리핑 직접] ${directPolicy.length}건 수집 완료`);
+  console.log(`  ✅ [대한민국 정책브리핑 정책뉴스] ${directPolicy.length}건 수집 완료`);
   allItems.push(...directPolicy);
 
   const directVisual = await fetchKoreaVisualNews();
   console.log(`  ✅ [대한민국 정책브리핑 카드뉴스] ${directVisual.length}건 수집 완료 (이미지 포함)`);
   allItems.push(...directVisual);
+
+  const directPress = await fetchKoreaPressReleases();
+  console.log(`  ✅ [대한민국 정책브리핑 보도자료] ${directPress.length}건 수집 완료`);
+  allItems.push(...directPress);
 
   for (const feed of feedConfigs) {
     try {
@@ -487,9 +558,65 @@ function calculateJaccardSimilarity(str1, str2) {
 }
 
 /**
- * 7. 수집된 후보군 중복 제거 및 가중치 랭킹 (15~20건 압축)
+ * 출처(언론사명) 정규화 유틸리티
  */
-function deduplicateAndRank(items) {
+function normalizeSourceName(source) {
+  if (!source) return '기타 출처';
+  let s = source.trim();
+  // 부처명 등 괄호 제거 (예: "대한민국 정책브리핑 (국토교통부)" -> "대한민국 정책브리핑")
+  s = s.replace(/\s*\([^)]*\)/g, '').trim();
+  return s || '기타 출처';
+}
+
+/**
+ * 다중 언론사 교차 보도 빈도 계산 (Burst Detection)
+ * 제목 간 자카드 유사도 0.45 이상인 기사들을 동일 이슈 클러스터로 묶고,
+ * 클러스터 내 고유 언론사(출처) 수를 계산하여 가산점 부여:
+ * 2개사(+15점), 3~4개사(+25점), 5개사 이상(+35점)
+ */
+function calculateBurstDetection(items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const matchedSources = new Set();
+    const mySource = normalizeSourceName(item.source);
+    if (mySource) matchedSources.add(mySource);
+
+    for (let j = 0; j < items.length; j++) {
+      if (i === j) continue;
+      const other = items[j];
+      const sim = calculateJaccardSimilarity(item.title, other.title);
+      if (sim >= 0.45) {
+        const otherSource = normalizeSourceName(other.source);
+        if (otherSource) matchedSources.add(otherSource);
+      }
+    }
+
+    const pressCount = Math.max(1, matchedSources.size);
+    item.crossReportCount = pressCount;
+
+    let burstScore = 0;
+    if (pressCount >= 5) {
+      burstScore = 35;
+    } else if (pressCount >= 3) {
+      burstScore = 25;
+    } else if (pressCount === 2) {
+      burstScore = 15;
+    }
+    item.burstScore = burstScore;
+  }
+}
+
+/**
+ * 핫이슈 트리거 키워드 가중치 정의
+ */
+const TRIGGER_KEYWORDS_TIER_1 = ['확정', '시행', '신청 시작', '마감', '단독', '전격', '발표', '긴급']; // +10점
+const TRIGGER_KEYWORDS_TIER_2 = ['지원금', '환급', '면제', '최대', '인상', '인하', '개편', '혜택'];     // +8점
+const TRIGGER_KEYWORDS_TIER_3 = ['조건 완화', '청년도약계좌', '소상공인', '주담대', '특판'];          // +5점
+
+/**
+ * 7. 핫이슈 스코어링 엔진 (Hotness Scoring Engine) 및 중복 제거 (15~20건 압축)
+ */
+async function deduplicateAndRank(items) {
   const now = Date.now();
   const maxAgeMs = 36 * 60 * 60 * 1000; // 최근 36시간
 
@@ -499,60 +626,113 @@ function deduplicateAndRank(items) {
     return age <= maxAgeMs && age >= -60 * 60 * 1000; // 미래 시차 1시간 오차 허용
   });
 
-  // 2) 중요도 스코어링
-  const PRIORITY_KEYWORDS = [
-    { word: '청년도약계좌', score: 10 },
-    { word: '근로장려금', score: 10 },
-    { word: '소상공인', score: 9 },
-    { word: '지원금', score: 8 },
-    { word: '환급금', score: 8 },
-    { word: '기준금리', score: 7 },
-    { word: '주택담보대출', score: 7 },
-    { word: '특판예금', score: 6 },
-    { word: '비과세', score: 6 },
-    { word: '연말정산', score: 6 },
-    { word: '국민연금', score: 5 },
-    { word: '건강보험', score: 5 },
-  ];
+  // 2) 다중 언론사 교차 보도 빈도(Burst Detection) 계산
+  calculateBurstDetection(freshItems);
 
-  const scoredItems = freshItems.map((item) => {
+  // 3) 1차 기본 점수 산출
+  const baseScoredItems = freshItems.map((item) => {
     let score = 0;
-    // 출처 신뢰도
-    if (item.source.includes('정책브리핑') || item.source.includes('대한민국') || item.source.includes('정부')) {
-      score += 15;
-    } else if (item.source.includes('금융위') || item.source.includes('금감원') || item.source.includes('기재부')) {
-      score += 15;
-    } else {
-      score += 5;
-    }
 
-    // 최신성 가산점 (12시간 이내 10점, 24시간 이내 5점)
+    // 3-1. 대한민국 정책브리핑 및 정부 공식 발표 신뢰도 (20점 부여)
+    const sLower = (item.source || '').toLowerCase();
+    const isGovernment =
+      sLower.includes('정책브리핑') ||
+      sLower.includes('대한민국') ||
+      sLower.includes('정부') ||
+      sLower.includes('금융위') ||
+      sLower.includes('금융위원회') ||
+      sLower.includes('금감원') ||
+      sLower.includes('금융감독원') ||
+      sLower.includes('기재부') ||
+      sLower.includes('기획재정부') ||
+      sLower.includes('고용노동부') ||
+      sLower.includes('국세청') ||
+      sLower.includes('보건복지부') ||
+      sLower.includes('중소벤처기업부');
+
+    const trustScore = isGovernment ? 20 : 5;
+    score += trustScore;
+
+    // 3-2. 다중 언론사 교차 보도 가중치 (Burst Detection)
+    score += item.burstScore || 0;
+
+    // 3-3. 최신성 가중치: 6시간 이내(+20점), 12시간 이내(+15점), 24시간 이내(+8점)
     const ageHours = (now - item.pubDate.getTime()) / (1000 * 60 * 60);
-    if (ageHours <= 12) score += 10;
-    else if (ageHours <= 24) score += 5;
-
-    // 키워드 가중치
-    const textToMatch = `${item.title} ${item.description}`;
-    for (const kw of PRIORITY_KEYWORDS) {
-      if (textToMatch.includes(kw.word)) {
-        score += kw.score;
-      }
+    let recencyScore = 0;
+    if (ageHours <= 6) {
+      recencyScore = 20;
+    } else if (ageHours <= 12) {
+      recencyScore = 15;
+    } else if (ageHours <= 24) {
+      recencyScore = 8;
     }
+    score += recencyScore;
 
-    // 대표 이미지 보유 가산점
+    // 3-4. 핫이슈 트리거 키워드 가중치
+    const textToMatch = `${item.title} ${item.description || ''}`;
+    let keywordScore = 0;
+    for (const kw of TRIGGER_KEYWORDS_TIER_1) {
+      if (textToMatch.includes(kw)) keywordScore += 10;
+    }
+    for (const kw of TRIGGER_KEYWORDS_TIER_2) {
+      if (textToMatch.includes(kw)) keywordScore += 8;
+    }
+    for (const kw of TRIGGER_KEYWORDS_TIER_3) {
+      if (textToMatch.includes(kw)) keywordScore += 5;
+    }
+    score += keywordScore;
+
+    // 3-5. 대표 이미지 보유 가산점: +10점 (기존 수집 이미지)
+    let imageScore = 0;
     if (item.imageUrl) {
-      score += 15;
+      imageScore = 10;
+      score += imageScore;
     }
 
-    return { ...item, score };
+    return {
+      ...item,
+      trustScore,
+      recencyScore,
+      keywordScore,
+      imageScore,
+      hotnessScore: score,
+      score, // 호환성
+    };
   });
 
-  // 점수 내림차순 정렬
-  scoredItems.sort((a, b) => b.score - a.score);
+  // 1차 점수 기준 내림차순 정렬
+  baseScoredItems.sort((a, b) => b.hotnessScore - a.hotnessScore);
 
-  // 3) 자카드 유사도 기반 중복 제거
+  // 4) 상위 후보군(상위 30건) 대상 대표 이미지 크롤링 및 URL 디코딩
+  const topCandidates = baseScoredItems.slice(0, 30);
+  console.log(`🖼️ [대표 이미지 크롤링] 상위 30건 후보 대상 URL 디코딩 및 대표 이미지 추출 시작...`);
+  await Promise.allSettled(
+    topCandidates.map(async (item) => {
+      try {
+        if (!item.originalLink || item.originalLink === item.link) {
+          const decoded = decodeGoogleNewsUrl(item.link);
+          item.originalLink = decoded;
+        }
+        if (!item.imageUrl) {
+          const img = await fetchArticleOgImage(item.originalLink || item.link);
+          if (img) {
+            item.imageUrl = img;
+            item.imageScore = 10;
+            item.hotnessScore += 10;
+            item.score = item.hotnessScore;
+            console.log(`  📸 [이미지 획득 +10점] ${item.source}: ${item.title.slice(0, 35)}...`);
+          }
+        }
+      } catch (_) {}
+    })
+  );
+
+  // 5) 최종 핫이슈 점수(hotnessScore) 순으로 내림차순 재정렬
+  topCandidates.sort((a, b) => b.hotnessScore - a.hotnessScore);
+
+  // 6) 자카드 유사도 0.45 이상 중복 제거 및 상위 18개(15~20건) 압축
   const uniqueItems = [];
-  for (const candidate of scoredItems) {
+  for (const candidate of topCandidates) {
     let isDuplicate = false;
     for (const accepted of uniqueItems) {
       const similarity = calculateJaccardSimilarity(candidate.title, accepted.title);
@@ -564,13 +744,19 @@ function deduplicateAndRank(items) {
     if (!isDuplicate) {
       uniqueItems.push({
         ...candidate,
-        description: (candidate.description || '').slice(0, 100),
+        description: (candidate.description || '').slice(0, 150),
       });
     }
-    if (uniqueItems.length >= 15) break; // 상위 15개 압축
+    if (uniqueItems.length >= 18) break; // 상위 18개 압축 (15~20건 범위)
   }
 
-  console.log(`🧹 [중복 제거 및 정제] 고유 후보군 ${uniqueItems.length}건 선별 완료`);
+  console.log(`🧹 [핫이슈 스코어링] 고유 핫이슈 후보군 ${uniqueItems.length}건 선별 완료:`);
+  uniqueItems.forEach((item, idx) => {
+    console.log(
+      `  [후보 ${idx + 1}] (핫이슈 점수: ${item.hotnessScore}점, 교차: ${item.crossReportCount}개사, 이미지: ${item.imageUrl ? 'O' : 'X'}) [${item.source}] ${item.title.slice(0, 40)}`
+    );
+  });
+
   return uniqueItems;
 }
 
@@ -943,27 +1129,21 @@ export async function runNewsDigestGeneration(options = {}) {
     throw new Error('수집된 뉴스 아이템이 없습니다. 파이프라인을 중단합니다.');
   }
 
-  // Step 2: 중복 제거 및 상위 후보 선별
-  const rankedItems = deduplicateAndRank(rawItems);
+  // Step 2: 핫이슈 스코어링 및 상위 후보 선별 (대표 이미지 크롤링 포함)
+  const rankedItems = await deduplicateAndRank(rawItems);
   if (rankedItems.length === 0) {
     throw new Error('유효한 뉴스 후보가 0건입니다.');
   }
 
-  // Step 2-1: 후보 기사 원문 URL 디코딩 및 대표 이미지 크롤링
-  console.log(`🖼️ [대표 이미지 크롤링] 상위 후보군 원문 URL 디코딩 및 대표 이미지 추출 시작...`);
-  await Promise.allSettled(
-    rankedItems.map(async (item) => {
+  // Step 2-1: 후보 기사 원문 URL 잔여 확인
+  for (const item of rankedItems) {
+    if (!item.originalLink || item.originalLink === item.link) {
       try {
         const decoded = decodeGoogleNewsUrl(item.link);
-        item.originalLink = decoded;
-        const img = await fetchArticleOgImage(decoded);
-        if (img) {
-          item.imageUrl = img;
-          console.log(`  📸 [이미지 획득] ${item.source}: ${img.slice(0, 80)}...`);
-        }
+        if (decoded) item.originalLink = decoded;
       } catch (_) {}
-    })
-  );
+    }
+  }
 
   // Step 3: 기존 포스트 스캔 (내부 링크 추천용)
   const existingPosts = getExistingPosts();
@@ -975,7 +1155,7 @@ export async function runNewsDigestGeneration(options = {}) {
   const newsCandidatesPromptText = rankedItems
     .map(
       (item, idx) => `
-[후보 ${idx + 1}]
+[후보 ${idx + 1}] [핫이슈 점수: ${item.hotnessScore || item.score}점, 교차보도: ${item.crossReportCount || 1}개사]
 - 제목: ${item.title}
 - 공식 출처: ${item.source}
 - 원문 링크: ${item.originalLink || item.link}
@@ -991,12 +1171,12 @@ export async function runNewsDigestGeneration(options = {}) {
 오늘 아침 출근 및 통근 시간대(08:00~09:00 KST)에 모바일로 빠르게 훑어볼 수 있는 고밀도 "아침 모닝 브리핑 (Morning Money Digest)"을 작성해야 합니다.
 
 [작성 대원칙]
-1. [상위 4개 킬러 뉴스 선정]:
-   제공된 뉴스 후보 중 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑에 즉각적이고 가장 파급력이 큰 최적의 4개 뉴스를 엄선하세요.
+1. [핫이슈 점수 기반 상위 4개 킬러 뉴스 엄선]:
+   제공된 뉴스 후보 중 [핫이슈 점수: XX점, 교차보도: N개사] 지표가 가장 높으면서, 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑과 실생활 영향도가 가장 큰 최상위 4개 뉴스를 엄선하세요.
 2. [High-CTR 제목 네이밍 규칙 - ★ 절대 규칙]:
    - ⚠️ [절대 금지 1] 제목에 날짜(예: 09/23, (09/24), 2026-09-24, 9월 24일, 오늘자, 금일 등)를 일체 넣지 마세요! 포스트 본문과 메타데이터에 작성일이 표시되므로 제목에 날짜를 쓸 필요가 없습니다.
-   - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다)
-   - ⚠️ [절대 금지 3] 제목 끝에 '| 당신의 지갑을 지키는 모닝 브리핑', '| 모닝 머니 브리핑', '| 모닝 브리핑', 'TOP 4' 등과 같은 상투적인 부제나 브랜딩 꼬리표 문구를 절대 붙이지 마세요! 오직 실제 기사의 뉴스 이슈 내용으로만 제목을 작성하세요.
+   - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다. 콜론 대신 파이프 | 또는 따옴표를 사용하세요)
+   - ⚠️ [절대 금지 3] 제목 끝에 '| 당신의 지갑을 지키는 모닝 브리핑', '| 모닝 머니 브리핑', '| 모닝 브리핑', 'TOP 4', '| 핵심 IT 뉴스 TOP 4' 등과 같은 상투적인 부제나 브랜딩 꼬리표 문구를 절대 붙이지 마세요! 오직 실제 기사의 뉴스 이슈 내용으로만 제목을 작성하세요.
    - 따옴표("..."), 대괄호([...]), 쉼표와 접속사, & 기호를 활용하여 핵심 뉴스 이슈 2~3개를 명확하고 간결하게 연결하세요.
    - 예시: [놓치면 손해] 청년도약계좌 기여금 확대 오늘부터 접수 & 햇살론 제도 개편안
 3. [이모지 전면 배제 및 프로페셔널 톤앤매너 - ★ 엄격 준수]:
@@ -1011,7 +1191,7 @@ export async function runNewsDigestGeneration(options = {}) {
    - 대표 이미지가 없거나 '없음'인 경우, 억지로 가짜 이미지를 넣지 말고 이미지 마크다운과 사진 출처 캡션을 완전히 생략하세요.
 6. [E-E-A-T 40% 인사이트 규칙]:
    - 단순 기사 요약에 그치면 구글 저품질/비독창적 콘텐츠로 분류됩니다.
-   - 팩트 브리핑 박스 다음에는 반드시 '### 가계 영향 및 실전 팁' 섹션을 문단의 40% 이상 분량으로 심도 있게 자체 서술하세요. (예: 신청 자격, 주의할 숨은 조건, 실제 절감/수혜 금액 계산 등).
+   - 팩트 브리핑 박스 다음에는 반드시 '### 가계 영향 및 실전 팁' 섹션을 핵심 위주로 1~2문단(200~350자 내외)으로 명쾌하고 실용적으로 자체 서술하세요. (신청 대상, 혜택 금액, 주의사항 등).
 7. [기존 포스트 내부 링크 매칭]:
    - 각 뉴스 카드 하단에 제공된 [블로그 기존 심층 가이드 목록] 중 가장 연관성 높은 포스트를 1개씩 선정하여 '> **관련 가이드**:' 형식으로 내부 링크를 삽입하세요.
 8. [독자 소통 / 댓글 유도 문구 영구 삭제]:
@@ -1030,7 +1210,7 @@ ${existingPostsPromptText}
 [출력 형식 주의사항]
 - 절대로 서론, 결론, 인사말이나 추가 코멘트를 넣지 마세요.
 - 코드 블록 마크다운(\`\`\`markdown)으로 감싸지 말고 반드시 첫 줄을 '---'로 시작하여 Frontmatter와 본문만 그대로 출력하세요.
-- 제목에 날짜(09/23, 2026-09-24, 오늘자 등) 및 콜론(:)은 일체 사용하지 마세요. (파이프 | 또는 따옴표 사용)
+- 제목에 날짜(09/23, 2026-09-24, 오늘자 등), 콜론(:), 상투적 부제/꼬리표('| 당신의 지갑을 지키는 모닝 브리핑', 'TOP 4', '| 모닝 머니 브리핑' 등)은 일체 사용하지 마세요. (파이프 | 또는 따옴표 사용)
 - category는 무조건 "news"로 고정하세요.
 - ⚡, 📌, 💡, 🌐, 🕒, 💬 등 모든 이모지는 일체 사용하지 마세요.
 
