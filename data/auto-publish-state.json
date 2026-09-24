@@ -1,15 +1,15 @@
 {
-  "last_updated": "2026-09-23T15:00:27.299Z",
+  "last_updated": "2026-09-24T03:24:00.000Z",
   "category_counts": {
     "welfare": 3,
     "tax": 2,
     "finance": 3,
     "saving": 2,
     "subsidy": 2,
-    "life-tips": 1,
+    "life-tips": 2,
     "news": 1
   },
-  "last_session": "morning",
+  "last_session": "lunch",
   "history": [
     {
       "date": "2026-09-18",
@@ -147,9 +147,19 @@
       "slug": "26092401-morning-money-digest-holiday-parking-pension-changes",
       "post_type": "digest",
       "status": "success"
+    },
+    {
+      "date": "2026-09-24",
+      "session": "lunch",
+      "time": "11:40",
+      "category": "life-tips",
+      "title": "2026년 주택청약 월 납입 인정액 25만원 상향 개편과 공공분양 당첨 전략",
+      "slug": "housing-subscription-monthly-limit-250k-strategy-2026",
+      "chart_type": "stacked-bar",
+      "status": "success"
     }
   ],
-  "last_chart_type": "donut-chart",
+  "last_chart_type": "stacked-bar",
   "weekly_skip_config": {
     "current_week": "2026-W39",
     "skip_afternoon_day": 6,
