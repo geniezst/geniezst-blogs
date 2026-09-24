@@ -6,11 +6,19 @@
  *   1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
  *   2) 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
  * 
+ * [무중단 2-Tier Fallback 아키텍처 (BE-02)]
+ * - Tier 1: agy CLI (stdin 파이핑 + PATH 하드닝 + 바이너리 안전 검증)
+ * - Tier 2: 내장 심층글 생성 엔진 (Built-in Deep Article Generator)
+ *           Groq (llama-3.3-70b-versatile) -> Gemini (gemini-2.5-flash) Fallback
+ * 
  * 사용법:
  *   1) 수동 세션 즉시 실행:
- *      node scripts/auto-publish-runner.mjs morning  # 아침 뉴스 다이제스트
- *      node scripts/auto-publish-runner.mjs lunch    # 아침 뉴스 다이제스트 (호환성)
- *      node scripts/auto-publish-runner.mjs evening  # 저녁 심층 가이드
+ *      node scripts/auto-publish-runner.mjs morning                 # 아침 뉴스 다이제스트
+ *      node scripts/auto-publish-runner.mjs lunch                   # 아침 뉴스 다이제스트 (호환성)
+ *      node scripts/auto-publish-runner.mjs evening                 # 저녁 심층 가이드
+ *      node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행
+ *      node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성
+ *      node scripts/auto-publish-runner.mjs evening --tier2-only    # Tier 2 내장 엔진 즉시 테스트
  * 
  *   2) 백그라운드 스케줄러 데몬 모드:
  *      node scripts/auto-publish-runner.mjs daemon
@@ -37,13 +45,140 @@ const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const STATE_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-state.json');
 const LOG_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish.log');
 
-function log(...args) {
+export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
   try {
     fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
   } catch (_) {}
+}
+
+/**
+ * 0. 환경 변수 자동 로드 (.env 다중 경로)
+ */
+export function loadEnvConfig() {
+  const env = { ...process.env };
+  const envCandidates = [
+    path.resolve('/workspace/.env'),
+    path.resolve('/workspace/scripts/.env'),
+    path.join(BLOG_ROOT, '.env'),
+    path.resolve(process.cwd(), '.env'),
+  ];
+
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx === -1) continue;
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!env[key]) {
+            env[key] = val;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  return env;
+}
+
+/**
+ * 0-1. agy CLI 바이너리 안전 탐색 (심볼릭 링크 및 실행 권한 안전 검증)
+ */
+export function findAgyBinary() {
+  // 1. 환경변수 지정 경로 우선
+  const envBin = process.env.AGY_BIN_PATH;
+  if (envBin && fs.existsSync(envBin)) {
+    try {
+      const real = fs.realpathSync(envBin);
+      fs.accessSync(real, fs.constants.X_OK);
+      return real;
+    } catch (_) {}
+  }
+
+  // 2. 다중 표준 후보 경로
+  const homeDir = process.env.HOME || '/root';
+  const candidates = [
+    '/root/.local/bin/agy',
+    '/usr/local/bin/agy',
+    '/root/.gemini/antigravity-cli/bin/agy',
+    path.join(homeDir, '.local', 'bin', 'agy'),
+    path.join(homeDir, '.gemini', 'antigravity-cli', 'bin', 'agy'),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      try {
+        const real = fs.realpathSync(candidate);
+        fs.accessSync(real, fs.constants.X_OK);
+        return real;
+      } catch (_) {}
+    }
+  }
+
+  // 3. which agy
+  try {
+    const whichRes = execSync('which agy 2>/dev/null', { encoding: 'utf8' }).trim();
+    if (whichRes && fs.existsSync(whichRes)) {
+      const real = fs.realpathSync(whichRes);
+      fs.accessSync(real, fs.constants.X_OK);
+      return real;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+/**
+ * 0-2. 서브프로세스용 하드닝된 환경변수 생성
+ */
+export function buildHardenedEnv() {
+  const extraPaths = ['/root/.local/bin', '/usr/local/bin', '/root/.gemini/antigravity-cli/bin'];
+  const currentPath = process.env.PATH || '';
+  const hardenedPath = [...extraPaths, currentPath].filter(Boolean).join(':');
+
+  return {
+    ...process.env,
+    PATH: hardenedPath,
+  };
+}
+
+/**
+ * 0-3. 마크다운 본문 공백 및 금융 금액 띄어쓰기 규범화
+ */
+export function sanitizeProseSpaces(rawText) {
+  if (!rawText) return '';
+  const lines = rawText.split('\n');
+  let inCode = false;
+  const processed = lines.map((line) => {
+    if (line.trim().startsWith('```')) {
+      inCode = !inCode;
+      return line;
+    }
+    if (inCode) {
+      return line;
+    }
+    // 마크다운 표 구분선(|---|) 하이픈 무한 반복 글리치 방어
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      return line
+        .replace(/:-{4,}/g, ':---')
+        .replace(/-{4,}:/g, '---:')
+        .replace(/-{4,}/g, '---');
+    }
+    let cleaned = line.replace(/([^\s])\s{2,}([^\s])/g, '$1 $2').replace(/\s+$/, '');
+    cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*만\s+원/g, '$1만원');
+    cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*억\s+원/g, '$1억원');
+    return cleaned;
+  });
+  return processed.join('\n');
 }
 
 // 6대 카테고리 목록
@@ -201,7 +336,7 @@ function getRandomTargetMinutes(minHour, minMinute, maxHour, maxMinute) {
  * 다변화된 데이터 시각화 차트 6종 프리셋
  * - 매 포스팅마다 랜덤으로 선정되며, 직전 발행 포스트와 중복되지 않도록 자동 순환
  */
-const CHART_PRESETS = [
+export const CHART_PRESETS = [
   {
     type: 'stacked-bar',
     name: '누적 분할 스택 바 차트 (Stacked Segment Breakdown Bar)',
@@ -476,9 +611,447 @@ export async function runMorningNewsDigestPipeline(options = {}) {
 }
 
 /**
+ * Tier 2: LLM API 호출 파이프라인 (Groq llama-3.3-70b-versatile -> Gemini gemini-2.5-flash Fallback)
+ */
+export async function callLLMWithFallback(messages, env) {
+  // 1순위: Groq API
+  const groqUrl = (env.GROQ_API_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '') + '/chat/completions';
+  const groqKey = env.GROQ_API_KEY;
+  const groqModel = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+  if (groqKey) {
+    log(`🧠 [Tier 2 - LLM 1순위 시도] Groq (${groqModel})...`);
+    try {
+      const res = await fetch(groqUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: groqModel,
+          messages,
+          temperature: 0.6,
+          max_tokens: 4500,
+        }),
+        signal: AbortSignal.timeout(60000), // 60초 타임아웃
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (content && content.trim()) {
+          log(`✅ [Tier 2 - Groq 생성 성공] (글자 수: ${content.trim().length}자)`);
+          return content.trim();
+        }
+      }
+      const errText = await res.text();
+      log(`⚠️ [Tier 2 - Groq 호출 실패 HTTP ${res.status}] ${errText.slice(0, 150)} -> Gemini Fallback 전환`);
+    } catch (err) {
+      log(`⚠️ [Tier 2 - Groq 예외 발생] ${err.message} -> Gemini Fallback 전환`);
+    }
+  } else {
+    log(`⚠️ [Tier 2 - Groq 건너뜀] GROQ_API_KEY가 없습니다 -> Gemini 시도`);
+  }
+
+  // 2순위: Google Gemini API Fallback
+  const geminiUrl = (env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/').replace(/\/+$/, '') + '/chat/completions';
+  const geminiKey = env.GEMINI_API_KEY;
+
+  if (!geminiKey) {
+    throw new Error('Groq와 Gemini API 키가 모두 설정되지 않았습니다.');
+  }
+
+  const geminiModelCandidates = [
+    env.GEMINI_MODEL || 'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest',
+  ];
+
+  let lastError = null;
+  for (const model of geminiModelCandidates) {
+    log(`🧠 [Tier 2 - LLM Fallback 시도] Gemini (${model})...`);
+    try {
+      const res = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${geminiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.6,
+          max_tokens: 8192,
+        }),
+        signal: AbortSignal.timeout(90000), // 90초 타임아웃
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        log(`⚠️ [Tier 2 - Gemini ${model} HTTP ${res.status}] ${errText.slice(0, 120)} -> 다음 모델 시도`);
+        lastError = new Error(`Gemini ${model} 실패 (${res.status}): ${errText}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (content && content.trim()) {
+        log(`✅ [Tier 2 - Gemini (${model}) Fallback 생성 성공] (글자 수: ${content.trim().length}자)`);
+        return content.trim();
+      }
+    } catch (err) {
+      log(`⚠️ [Tier 2 - Gemini ${model} 예외 발생] ${err.message} -> 다음 모델 시도`);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('모든 Gemini 모델 Fallback 호출이 실패했습니다.');
+}
+
+/**
+ * 마크다운 응답 파싱, Frontmatter 정합성 보정 및 YYMMDDNN-[slug].md 파일 저장
+ */
+export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateStr, selectedChart }) {
+  const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
+  if (!fs.existsSync(postsDir)) {
+    fs.mkdirSync(postsDir, { recursive: true });
+  }
+
+  let cleaned = rawMarkdown.trim();
+  // 마크다운 코드블록 펜스 제거
+  cleaned = cleaned.replace(/^```(?:markdown)?\s*\r?\n/i, '');
+  cleaned = cleaned.replace(/\r?\n```\s*$/i, '');
+  cleaned = cleaned.trim();
+
+  // Frontmatter 분리
+  const firstFm = cleaned.indexOf('---');
+  if (firstFm === -1) {
+    throw new Error('생성된 결과에서 Frontmatter 시작(---)을 찾을 수 없습니다.');
+  }
+  const secondFm = cleaned.indexOf('---', firstFm + 3);
+  if (secondFm === -1) {
+    throw new Error('생성된 결과에서 Frontmatter 종료(---)를 찾을 수 없습니다.');
+  }
+
+  let yamlBlock = cleaned.slice(firstFm + 3, secondFm).trim();
+  let bodyContent = cleaned.slice(secondFm + 3).trim();
+
+  // 본문 시작 잔여물 정리
+  bodyContent = bodyContent.replace(/^```[a-z]*\s*\r?\n/i, '');
+  bodyContent = bodyContent.replace(/^\s*```\s*\r?\n/i, '');
+  bodyContent = bodyContent.replace(/\r?\n```\s*$/i, '');
+  bodyContent = bodyContent.trim();
+  bodyContent = sanitizeProseSpaces(bodyContent);
+
+  // 0) 차트 컴포넌트 누락 시 자동 보강 (100% 무결성 보장)
+  if (!bodyContent.includes('financial-chart-box') && selectedChart?.instruction) {
+    const chartHtmlMatch = selectedChart.instruction.match(/<div class="financial-chart-box">[\s\S]*?<\/div>\s*<\/div>/);
+    if (chartHtmlMatch) {
+      const chartHtml = chartHtmlMatch[0];
+      const firstH2Match = bodyContent.match(/^(##\s+[^\n]+\n+)/m);
+      if (firstH2Match) {
+        const insertIdx = bodyContent.indexOf(firstH2Match[0]) + firstH2Match[0].length;
+        bodyContent = bodyContent.slice(0, insertIdx) + `\n${chartHtml}\n\n` + bodyContent.slice(insertIdx);
+        log(`ℹ️ [차트 자동 보강] 본문에 차트가 누락되어 선정된 차트 컴포넌트(${selectedChart.name})를 첫 번째 H2 뒤에 자동 삽입했습니다.`);
+      } else {
+        bodyContent = `${chartHtml}\n\n` + bodyContent;
+      }
+    }
+  }
+
+  // 1) Title 정제 (콜론 치환, 따옴표 보호)
+  const titleMatch = yamlBlock.match(/title:\s*["']?([^"'\n]+)["']?/);
+  let title = titleMatch ? titleMatch[1].trim() : '생활금융 및 복지 혜택 가이드';
+  title = title.replace(/:/g, ' -').replace(/\s{2,}/g, ' ').trim();
+  yamlBlock = yamlBlock.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title.replace(/"/g, '\\"')}"`);
+
+  // 2) Slug 정제 (영문 소문자 하이픈 형식 보장)
+  const slugMatch = yamlBlock.match(/slug:\s*["']?([^"'\n]+)["']?/);
+  let rawSlug = slugMatch ? slugMatch[1].trim() : '';
+  let cleanSlug = rawSlug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (!cleanSlug || cleanSlug.length < 3) {
+    cleanSlug = `${category}-guide-${Date.now().toString().slice(-4)}`;
+  }
+  yamlBlock = yamlBlock.replace(/slug:\s*["']?[^"'\n]+["']?/, `slug: "${cleanSlug}"`);
+
+  // 3) Description 정제
+  const descMatch = yamlBlock.match(/description:\s*["']?([^"'\n]+)["']?/);
+  let description = descMatch ? descMatch[1].trim() : `${title} 상세 분석 및 신청 가이드입니다.`;
+  description = description.replace(/:/g, ' -').replace(/\s{2,}/g, ' ').trim();
+  yamlBlock = yamlBlock.replace(/description:\s*["']?[^"'\n]+["']?/, `description: "${description.replace(/"/g, '\\"')}"`);
+
+  // 4) Category 보정
+  if (/category:\s*["']?[^"'\n]+["']?/.test(yamlBlock)) {
+    yamlBlock = yamlBlock.replace(/category:\s*["']?[^"'\n]+["']?/, `category: "${category}"`);
+  } else {
+    yamlBlock += `\ncategory: "${category}"`;
+  }
+
+  // 5) Author 보정
+  if (!/author:\s*["']?[^"'\n]+["']?/.test(yamlBlock)) {
+    yamlBlock += `\nauthor: "스마트 머니"`;
+  }
+
+  // 6) Reading Time 보정
+  if (!/reading_time:\s*\d+/.test(yamlBlock)) {
+    yamlBlock += `\nreading_time: 8`;
+  }
+
+  // 7) Affiliate 보정
+  if (!/affiliate:\s*(?:true|false)/.test(yamlBlock)) {
+    yamlBlock += `\naffiliate: false`;
+  }
+
+  // 8) Tags 기본값 점검
+  if (!yamlBlock.includes('tags:')) {
+    yamlBlock += `\ntags: [${category}, 생활금융, 정부지원, 절세전략]`;
+  }
+
+  const finalMarkdown = `---\n${yamlBlock}\n---\n\n${bodyContent}\n`;
+
+  // 9) 일련번호 파일명 계산 (YYMMDDNN-[slug].md)
+  const yymmdd = targetDateStr.slice(2).replace(/-/g, '');
+  const existingFiles = fs.readdirSync(postsDir);
+  const dayFiles = existingFiles.filter((f) => f.startsWith(yymmdd) && f.endsWith('.md') && f !== 'template.md');
+
+  let maxSeq = 0;
+  for (const f of dayFiles) {
+    const m = f.match(new RegExp(`^${yymmdd}(\\d{2})`));
+    if (m) {
+      const seq = parseInt(m[1], 10);
+      if (seq > maxSeq) maxSeq = seq;
+    }
+  }
+  const nextSeqStr = String(maxSeq + 1).padStart(2, '0');
+  const fileName = `${yymmdd}${nextSeqStr}-${cleanSlug}.md`;
+  const postFile = path.join(postsDir, fileName);
+
+  fs.writeFileSync(postFile, finalMarkdown, 'utf8');
+
+  // 무결성 및 통계 로깅
+  const totalChars = finalMarkdown.length;
+  const nonSpaceChars = finalMarkdown.replace(/\s/g, '').length;
+  const h2Count = (finalMarkdown.match(/^##\s+/gm) || []).length;
+  const hasChart = finalMarkdown.includes('financial-chart-box');
+
+  log(`📊 [Tier 2 콘텐츠 무결성 검증]`);
+  log(`- 파일명: ${fileName}`);
+  log(`- 제목: "${title}" (slug: ${cleanSlug})`);
+  log(`- 총 글자 수: ${totalChars}자 (공백 제외: ${nonSpaceChars}자)`);
+  log(`- H2 대주제 개수: ${h2Count}개`);
+  log(`- 필수 차트 컴포넌트 포함 여부: ${hasChart ? '✅ PASS' : '⚠️ WARN (차트 태그 누락)'}`);
+
+  return {
+    postFile,
+    title,
+    slug: cleanSlug,
+    fileName,
+    totalChars,
+    nonSpaceChars,
+  };
+}
+
+/**
+ * Tier 2 내장 심층글 생성 엔진 (Built-in Deep Article Generator)
+ */
+export async function runBuiltinDeepArticleGenerator({ category, sessionName, targetDateStr, selectedChart }) {
+  const env = loadEnvConfig();
+  log(`🚀 [Tier 2 엔진 가동] 내장 심층글 생성기를 호출합니다. (카테고리: ${category}, 세션: ${sessionName}, 차트: ${selectedChart.name})`);
+
+  const systemPrompt = `당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 시니어 에디터입니다.
+블로그 저장소 위치는 /workspace/blogs 이며 블로그 이름은 '포켓머니(pockemoney)'입니다.
+구글 애드센스 고수익 승인 표준 및 개발자/실무자 수준의 정확하고 깊이 있는 금융 분석 기준을 엄격히 준수하세요.
+
+[필수 작성 지침]
+1. [골디락스 난이도 및 주제 선정]
+   - 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 실전 생활금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(근로장려금/소상공인 지원) 등 다채롭고 구체적인 실무 주제를 선정하세요.
+2. [필수 분량 규격]
+   - 반드시 전체 공백 포함 2,800자 ~ 3,500자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.
+3. [금액 띄어쓰기 규범]
+   - '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원', '1억원'처럼 붙여 쓰세요.
+4. [필수 데이터 시각화 차트 삽입 - 이번 세션 지정 유형: ${selectedChart.name}]
+${selectedChart.instruction}
+   - 반드시 본문 첫 번째 H2 또는 두 번째 H2 직후에 위 지정된 유형의 반응형 차트 컴포넌트를 마크다운 코드블록(\`\`\`) 없이 순수 HTML 구조(<div class="financial-chart-box">...</div>)로 완벽하게 삽입하세요.
+5. [필수 구조 (H2 최소 5개 이상 필수 구성)]
+   - 구체적인 제도 개요 및 최신 법령/지침 개정 배경
+   - 핵심 대상 자격 요건 정밀 분석표 (Table: 대상자, 소득/재산 기준 등)
+   - 실제 수혜/납입 금액 또는 혜택 비교표 (Table: 시중 상품 대비 차등 혜택 분석)
+   - 실무 비대면 신청/진행 절차 및 필수 구비 서류
+   - 신청 전 반드시 점검해야 할 불이익 방지 및 예외 규정
+   - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
+   위 6대 요소를 각각 독립된 '## [직관적인 소제목]' 헤딩으로 반드시 5개 이상 구성하세요.
+6. [절대 금지 사항]
+   - 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요.
+   - 상투적인 멘트('~에 대해 알아보겠습니다', '이 글에서는 ~를 정리합니다', '도움이 되셨기를 바랍니다') 전면 금지.
+   - 제목 및 소제목에 콜론(:) 사용 금지 (하이픈 - 또는 | 로 대체).
+   - 문장마다 볼드체(**단어**)를 남발하지 마세요. 메뉴 경로, 법조문, 액수는 인라인 코드(백틱 또는 작은따옴표)로 표기하고, 볼드는 본문 전체에서 가장 중요한 핵심 결론 1~2개에만 극도로 절제하세요.
+   - 소제목 번호 매기기('1.', '1.1') 금지, 직관적이고 매력적인 텍스트 소제목을 쓰세요.
+   - 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
+7. [출력 형식]
+   - 마크다운 Frontmatter로 시작하여 본문으로 이어지는 순수 마크다운 텍스트만 출력하세요.
+   - Frontmatter 필수 필드:
+---
+title: "제목 (콜론 없이 매력적인 고수익 CTR 제목)"
+slug: "korean-policy-topic-english-slug"
+description: "핵심 요약 120~150자 내외"
+category: "${category}"
+tags: [태그1, 태그2, 태그3, 태그4]
+author: "스마트 머니"
+reading_time: 8
+affiliate: false
+---`;
+
+  const userPrompt = `카테고리: ${category}
+날짜: ${targetDateStr}
+세션: ${sessionName}
+지정 차트: ${selectedChart.name}
+
+위 지침을 철저히 준수하여 ${category} 카테고리에 최적화된 최고 품질의 3,000자 내외 심층 가이드 마크다운을 작성해주세요.`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const rawMarkdown = await callLLMWithFallback(messages, env);
+
+  const parsed = parseAndSaveArticleMarkdown({
+    rawMarkdown,
+    category,
+    targetDateStr,
+    selectedChart,
+  });
+
+  return parsed;
+}
+
+/**
+ * 고가용성 아티클 생성 파이프라인 (Tier 1: agy CLI -> Tier 2: Groq/Gemini 내장 엔진)
+ */
+export async function generateArticleWithFallback({
+  category,
+  sessionName,
+  targetDateStr,
+  prompt,
+  selectedChart,
+  options = {},
+}) {
+  const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
+  const beforeFiles = new Set(fs.readdirSync(postsDir));
+
+  // 옵션으로 tier2Only 가 지정된 경우 Tier 1 건너뜀
+  if (options.tier2Only) {
+    log(`🧪 [--tier2-only 옵션] Tier 1을 건너뛰고 Tier 2 내장 생성기를 직접 호출합니다.`);
+    const result = await runBuiltinDeepArticleGenerator({
+      category,
+      sessionName,
+      targetDateStr,
+      selectedChart,
+    });
+    result.tier = 'Tier 2 (Direct)';
+    return result;
+  }
+
+  // ------------------------------------------------------------------
+  // [Tier 1] agy CLI 실행 (안전 바이너리 검증 + stdin 파이핑)
+  // ------------------------------------------------------------------
+  const agyBin = findAgyBinary();
+  let tier1Success = false;
+
+  if (agyBin) {
+    try {
+      log(`🤖 [Tier 1] agy CLI를 통한 글 생성 시도... (바이너리: ${agyBin})`);
+      const agyProc = spawnSync(agyBin, ['--dangerously-skip-permissions', '--print'], {
+        cwd: BLOG_ROOT,
+        input: prompt, // ★ stdin 스트림으로 안전 전달 (쉘 인라인 -p 제거)
+        encoding: 'utf8',
+        env: buildHardenedEnv(),
+        timeout: 600000, // 최대 10분
+        maxBuffer: 50 * 1024 * 1024,
+      });
+
+      if (!agyProc.error && agyProc.status === 0) {
+        const afterFiles = fs
+          .readdirSync(postsDir)
+          .filter((f) => !beforeFiles.has(f) && f.endsWith('.md') && f !== 'template.md');
+
+        if (afterFiles.length > 0) {
+          log(`✅ [Tier 1 성공] 신규 포스트 생성 완료: ${afterFiles[0]}`);
+          const postFile = path.join(postsDir, afterFiles[0]);
+          const postContent = fs.readFileSync(postFile, 'utf8');
+          const titleMatch = postContent.match(/title:\s*["']?([^"'\n]+)["']?/);
+          const slugMatch = postContent.match(/slug:\s*["']?([^"'\n]+)["']?/);
+
+          tier1Success = true;
+          return {
+            postFile,
+            title: titleMatch ? titleMatch[1].trim() : afterFiles[0].replace('.md', ''),
+            slug: slugMatch ? slugMatch[1].trim() : afterFiles[0].replace('.md', ''),
+            tier: 'Tier 1 (agy CLI)',
+          };
+        }
+      }
+
+      log(
+        `⚠️ [Tier 1 경고] agy 프로세스 실패 또는 신규 파일 미감지 (code: ${agyProc.status}, err: ${agyProc.error?.message || (agyProc.stderr || '').slice(0, 200)})`
+      );
+    } catch (tier1Err) {
+      log(`⚠️ [Tier 1 예외] agy 실행 중 오류 발생: ${tier1Err.message}`);
+    }
+  } else {
+    log(`⚠️ [Tier 1 건너뜀] 유효한 agy 실행 바이너리를 찾을 수 없습니다.`);
+  }
+
+  // agy에서 최근 15분 이내 생성된 파일이 혹시 있는지 2차 검사
+  const recentMds = fs
+    .readdirSync(postsDir)
+    .filter((f) => f.endsWith('.md') && f !== 'template.md')
+    .map((f) => ({
+      file: f,
+      mtime: fs.statSync(path.join(postsDir, f)).mtimeMs,
+    }))
+    .filter((f) => Date.now() - f.mtime < 15 * 60 * 1000 && !beforeFiles.has(f.file))
+    .sort((a, b) => b.mtime - a.mtime);
+
+  if (recentMds.length > 0) {
+    const postFile = path.join(postsDir, recentMds[0].file);
+    log(`ℹ️ [Tier 1 복구] 예외가 있었으나 신규 포스트 파일('${recentMds[0].file}')이 감지되어 채택합니다.`);
+    const postContent = fs.readFileSync(postFile, 'utf8');
+    const titleMatch = postContent.match(/title:\s*["']?([^"'\n]+)["']?/);
+    const slugMatch = postContent.match(/slug:\s*["']?([^"'\n]+)["']?/);
+
+    return {
+      postFile,
+      title: titleMatch ? titleMatch[1].trim() : recentMds[0].file.replace('.md', ''),
+      slug: slugMatch ? slugMatch[1].trim() : recentMds[0].file.replace('.md', ''),
+      tier: 'Tier 1 (agy CLI recovery)',
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // [Tier 2] 내장 심층글 생성기 자동 가동 (Groq -> Gemini REST API)
+  // ------------------------------------------------------------------
+  log(`🚨 [Tier 2 자동 전환] agy CLI 실패로 인해 내장 심층글 생성기(Built-in Deep Article Generator)를 즉시 가동합니다!`);
+  const result = await runBuiltinDeepArticleGenerator({
+    category,
+    sessionName,
+    targetDateStr,
+    selectedChart,
+  });
+
+  result.tier = 'Tier 2 (Built-in LLM Fallback)';
+  return result;
+}
+
+/**
  * 실제 포스트 생성 및 배포 파이프라인
  */
-export async function runPublishPipeline(sessionName) {
+export async function runPublishPipeline(sessionName, options = {}) {
   const { dateStr, timeStr } = getKSTDate();
   console.log(`\n========================================`);
   console.log(`🚀 [blogs 생활경제 자동 게시 시작] ${dateStr} (${sessionName}) 실행 시각: ${timeStr} KST`);
@@ -486,8 +1059,8 @@ export async function runPublishPipeline(sessionName) {
 
   const state = loadState();
 
-  // 1. 중복 실행 검사
-  if (isSessionAlreadyDone(state, sessionName, dateStr)) {
+  // 1. 중복 실행 검사 (--force 옵션 지원)
+  if (isSessionAlreadyDone(state, sessionName, dateStr) && !options.force) {
     console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) ${sessionName} 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
     return true;
   }
@@ -502,13 +1075,8 @@ export async function runPublishPipeline(sessionName) {
   const selectedChart = availableCharts[Math.floor(Math.random() * availableCharts.length)] || CHART_PRESETS[0];
   console.log(`📊 이번 세션 선정 차트 스타일: "${selectedChart.name}" (유형: ${selectedChart.type})`);
 
-  let generatedSlug = '';
-  let generatedTitle = '';
-
   try {
-    // 4. Antigravity AI를 통한 생활경제 고품질 글 작성
-    console.log(`🤖 AI 에이전트(blogs)를 호출하여 생활경제 포스트 생성을 시작합니다...`);
-
+    // 4. 안전 프롬프트 작성 (백틱 및 커맨드 치환 방어)
     const prompt = `
 당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 에디터입니다.
 블로그 저장소 위치는 /workspace/blogs 입니다.
@@ -518,7 +1086,7 @@ export async function runPublishPipeline(sessionName) {
 - 세션: ${sessionName} (${dateStr})
 - 카테고리: ${category}
 - 작성 지침 (★ 구글 애드센스 고수익 승인 표준 및 AI 패턴 엄격 금지):
-  1. [주제 다양성 및 난이도 (골디락스 난이도)] 특정 계층(청년 등)이나 특정 상품에만 편중되지 않도록 하세요. 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 "어렵지는 않은데 알듯 말듯 헷갈려서" 검색창에 자주 찾는 생활 금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(에너지포인트/근로장려금) 등 다채로운 실전 주제를 선정하세요.
+  1. [주제 다양성 및 난이도 (골디락스 난이도)] 특정 계층(청년 등)이나 특정 상품에만 편중되지 않도록 하세요. 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 생활 금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(에너지포인트/근로장려금) 등 다채로운 실전 주제를 선정하세요.
   2. [필수 분량] 반드시 전체 공백 포함 2,500자 ~ 3,500자 이상(공백 제외 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 분량이 짧은 얇은 글(Thin content)은 엄격히 금지됩니다.
   3. [금액 띄어쓰기 규범] '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원'처럼 붙여 쓰세요.
   4. [데이터 시각화 차트 필수 - 이번 세션 지정 유형: ${selectedChart.name}]
@@ -533,95 +1101,51 @@ ${selectedChart.instruction}
      - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
   7. [절대 금지] 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요. 상투적인 인트로/클로징 멘트('~에 대해 알아보겠습니다', '이 글에서는 ~를 정리합니다', '~해 보시기 바랍니다', '도움이 되셨기를 바랍니다')도 전면 금지합니다.
   8. [절대 금지] 불필요한 공백/자간(단어 앞뒤 두 칸 이상 공백)을 넣지 마세요.
-  9. [절대 금지] 문장마다 키워드에 볼드체(**단어**)를 남발하지 마세요. 메뉴 경로나 액수는 인라인 코드(\`code\`)로 표기하고, 볼드는 본문 전체에서 가장 중요한 결론 1~2개에만 극도로 절제하세요.
+  9. [절대 금지] 문장마다 키워드에 볼드체(별표 두 개)를 남발하지 마세요. 메뉴 경로나 액수는 인라인 코드(작은따옴표 또는 백틱 감싸기)로 표기하고, 볼드는 본문 전체에서 가장 중요한 결론 1~2개에만 극도로 절제하세요.
   10. 소제목에 '1.', '1.1', '2.' 식의 관료적 번호 매기기를 하지 말고 직관적인 텍스트 소제목을 쓰세요.
   11. 대충 쓴 글처럼 보이지 않도록 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
-  12. 완성된 글은 '/workspace/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 오늘 21일의 첫 글이면 26092101-[슬러그].md, 두 번째 글이면 26092102-[슬러그].md 처럼 날짜마다 01부터 시작하는 일련번호) 파일로 저장하세요.
+  12. 완성된 글은 '/workspace/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 오늘 24일의 세 번째 글이면 26092403-[슬러그].md 처럼 날짜마다 01부터 시작하는 일련번호) 파일로 저장하세요.
   13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 
-    // agy 명령어로 글 생성 실행 (spawnSync로 쉘 파싱 에러 방지)
-    const agyBin = fs.existsSync('/usr/local/bin/agy') ? '/usr/local/bin/agy' : '/root/.local/bin/agy';
-    try {
-      const agyProc = spawnSync(agyBin, ['--dangerously-skip-permissions', `-p=${prompt}`], {
-        cwd: BLOG_ROOT,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PATH: `/usr/local/bin:/root/.local/bin:${process.env.PATH || ''}`,
-        },
-        timeout: 600000, // 최대 10분
-        maxBuffer: 50 * 1024 * 1024,
-      });
+    // 5. Tier 1 (agy CLI) -> Tier 2 (Groq/Gemini 내장 엔진) 자동 Fallback 파이프라인 가동
+    const generated = await generateArticleWithFallback({
+      category,
+      sessionName,
+      targetDateStr: dateStr,
+      prompt,
+      selectedChart,
+      options,
+    });
 
-      if (agyProc.error) {
-        throw agyProc.error;
-      }
-      if (agyProc.status !== 0) {
-        throw new Error(agyProc.stderr || agyProc.stdout || `Process exited with code ${agyProc.status}`);
-      }
+    const latestPostFile = generated.postFile;
+    const generatedTitle = generated.title;
+    const generatedSlug = generated.slug;
+    const engineTier = generated.tier || 'Auto Engine';
 
-      console.log(`AI 생성 응답:\n`, (agyProc.stdout || '').slice(0, 300), '...');
-    } catch (cmdErr) {
-      // agy 프로세스가 타임아웃 또는 경고로 종료되었더라도 포스트 파일이 정상 생성되었는지 확인
-      const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
-      const recentMds = fs.readdirSync(postsDir)
-        .filter((f) => f.endsWith('.md') && f !== 'template.md')
-        .map((f) => ({
-          file: f,
-          mtime: fs.statSync(path.join(postsDir, f)).mtimeMs,
-        }))
-        .filter((f) => Date.now() - f.mtime < 15 * 60 * 1000) // 최근 15분 이내 생성
-        .sort((a, b) => b.mtime - a.mtime);
+    console.log(`📄 신규 포스트 생성 확인: "${generatedTitle}" (slug: ${generatedSlug}, 엔진: ${engineTier})`);
 
-      if (recentMds.length > 0) {
-        log(`⚠️ agy 프로세스에서 예외가 발생했으나(${cmdErr.message}), 신규 포스트 파일('${recentMds[0].file}')이 정상 감지되어 복구 발행 파이프라인으로 전환합니다.`);
-      } else {
-        throw cmdErr;
-      }
+    // dry-run 옵션 시 DB 발행 및 Git 커밋 건너뜀
+    if (options.dryRun) {
+      log(`🧪 [--dry-run] D1 DB 발행 및 Git 커밋을 건너뜁니다. (생성 파일: ${latestPostFile})`);
+      return true;
     }
 
-    // 생성된 최신 마크다운 파일 탐색
-    const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
-    const mdFiles = fs.readdirSync(postsDir)
-      .filter((f) => f.endsWith('.md') && f !== 'template.md')
-      .map((f) => ({
-        file: f,
-        mtime: fs.statSync(path.join(postsDir, f)).mtimeMs,
-      }))
-      .sort((a, b) => b.mtime - a.mtime);
-
-    if (mdFiles.length === 0) {
-      throw new Error('생성된 마크다운 포스트 파일을 찾을 수 없습니다.');
-    }
-
-    const latestPostFile = path.join(postsDir, mdFiles[0].file);
-    const postContent = fs.readFileSync(latestPostFile, 'utf8');
-
-    // Title 및 Slug 파싱
-    const titleMatch = postContent.match(/title:\s*["']?([^"'\n]+)["']?/);
-    const slugMatch = postContent.match(/slug:\s*["']?([^"'\n]+)["']?/);
-
-    generatedTitle = titleMatch ? titleMatch[1] : mdFiles[0].file.replace('.md', '');
-    generatedSlug = slugMatch ? slugMatch[1] : mdFiles[0].file.replace('.md', '');
-
-    console.log(`📄 신규 포스트 생성 확인: "${generatedTitle}" (slug: ${generatedSlug})`);
-
-    // 4. D1 데이터베이스 발행
+    // 6. D1 데이터베이스 발행
     console.log(`🗄️ Cloudflare D1 원격 데이터베이스에 발행합니다...`);
     execSync(`node scripts/publish-post.mjs "${latestPostFile}"`, {
       cwd: BLOG_ROOT,
       stdio: 'inherit',
     });
 
-    // 5. 프로덕션 빌드 무결성 검증
+    // 7. 프로덕션 빌드 무결성 검증
     console.log(`⚙️ Astro 프로덕션 빌드 무결성을 검증합니다...`);
     execSync(`npm run build`, {
       cwd: BLOG_ROOT,
       stdio: 'inherit',
     });
 
-    // 6. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
+    // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
     state.category_counts[category] = (state.category_counts[category] || 0) + 1;
     state.last_session = sessionName;
     state.last_chart_type = selectedChart.type;
@@ -633,11 +1157,12 @@ ${selectedChart.instruction}
       title: generatedTitle,
       slug: generatedSlug,
       chart_type: selectedChart.type,
+      engine: engineTier,
       status: 'success',
     });
     saveState(state);
 
-    // 7. GitHub commit & push (Cloudflare Workers 자동 배포)
+    // 9. GitHub commit & push (Cloudflare Workers 자동 배포)
     log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
     try {
       const filesToStage = ['content/posts/'];
@@ -661,12 +1186,13 @@ ${selectedChart.instruction}
       log(`⚠️ GitHub push 중 경고 발생 (D1 배포는 정상 완료됨): ${gitErr.message}`);
     }
 
-    // 8. 텔레그램 성공 보고 발송
+    // 10. 텔레그램 성공 보고 발송
     const successMsg = `🎉 *[포켓머니(pockemoney) 자동 게시 완료]*
 
 ⏰ *실행 시간:* ${timeStr} KST
 🏷️ *구분:* ${sessionName}
 📂 *카테고리:* ${category}
+🤖 *엔진:* ${engineTier}
 📝 *제목:* ${generatedTitle}
 🔗 *slug:* ${generatedSlug}
 
@@ -779,18 +1305,22 @@ if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
   const arg = process.argv[2];
   const force = process.argv.includes('--force');
   const dryRun = process.argv.includes('--dry-run');
+  const tier2Only = process.argv.includes('--tier2-only');
 
   if (arg === 'morning' || arg === 'lunch') {
     runMorningNewsDigestPipeline({ force, dryRun }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'evening') {
-    runPublishPipeline(arg).then((success) => process.exit(success ? 0 : 1));
+    runPublishPipeline(arg, { force, dryRun, tier2Only }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'daemon') {
     startDaemon();
   } else {
     console.log('사용법:');
-    console.log('  node scripts/auto-publish-runner.mjs morning  # 오전 뉴스 다이제스트 수동 실행');
-    console.log('  node scripts/auto-publish-runner.mjs lunch    # 오전 뉴스 다이제스트 수동 실행 (호환용)');
-    console.log('  node scripts/auto-publish-runner.mjs evening  # 오후 심층 가이드 수동 실행');
-    console.log('  node scripts/auto-publish-runner.mjs daemon   # 상시 Two-Track 스케줄러 데몬 가동');
+    console.log('  node scripts/auto-publish-runner.mjs morning                 # 오전 뉴스 다이제스트 수동 실행');
+    console.log('  node scripts/auto-publish-runner.mjs lunch                   # 오전 뉴스 다이제스트 수동 실행 (호환용)');
+    console.log('  node scripts/auto-publish-runner.mjs evening                 # 오후 심층 가이드 수동 실행');
+    console.log('  node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행');
+    console.log('  node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성');
+    console.log('  node scripts/auto-publish-runner.mjs evening --tier2-only    # Tier 2 내장 엔진 즉시 테스트');
+    console.log('  node scripts/auto-publish-runner.mjs daemon                  # 상시 Two-Track 스케줄러 데몬 가동');
   }
 }
