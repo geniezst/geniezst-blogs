@@ -22,6 +22,9 @@ post_type: "digest"
 
 ## [주택/청약] 청약 예·부금 등 가입자, 종합저축 전환 기회 1년 더 늘어난다
 
+![서울 시중은행에 부착돼 있는 주택청약 안내문](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/a4e3399051d60bae40a3937d8ece0b0c.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972533" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972533)  
 > **발행**: 2026-09-24 23:22 KST | **신뢰도**: 공식 발표
 
@@ -63,6 +66,9 @@ post_type: "digest"
 
 ## [거시경제] OECD, 올해 한국 성장률 전망치 3.7%로 올려…G20 중 최대 폭 상향
 
+![경기 평택항에 수출용 컨테이너가 적재되어 있는 모습](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/d53d1d71f30ffba2152e1c55e1c78e6d.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972522" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972522)  
 > **발행**: 2026-09-24 23:22 KST | **신뢰도**: 공식 발표
 
@@ -81,6 +87,9 @@ OECD의 한국 성장률 전망치 상향 조정은 긍정적인 경제 신호�
 ---
 
 ## [복지/일자리] 전문성 살린 노인일자리 확대…2026년 신규 직무 8개 선정
+
+![노인 일자리 생산품 홍보 및 판매전 모습](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/aaba660cc5c9d49dc35fec5e7ddc5a0b.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972515" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972515)  
 > **발행**: 2026-09-24 23:22 KST | **신뢰도**: 공식 발표

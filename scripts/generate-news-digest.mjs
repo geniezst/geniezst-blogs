@@ -310,11 +310,15 @@ async function fetchKoreaPolicyNews() {
       const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
       if (!title) continue;
 
+      const imgMatch = m.match(/<img\s+[^>]*src=["\x27]([^"\x27]+)["\x27]/i);
+      const imageUrl = imgMatch ? (imgMatch[1].startsWith('http') ? imgMatch[1] : 'https://www.korea.kr' + imgMatch[1]) : '';
+
       const fullLink = 'https://www.korea.kr' + href;
       items.push({
         title: decodeEntities(title),
         link: fullLink,
         originalLink: fullLink,
+        imageUrl: imageUrl,
         pubDate: new Date(),
         source: '대한민국 정책브리핑',
         description: `${title} - 대한민국 정책브리핑 공식 발표`,
