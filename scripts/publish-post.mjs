@@ -210,6 +210,39 @@ ON CONFLICT(slug) DO UPDATE SET
   console.log(`- 제목: ${title}`);
   console.log(`- 사이트 경로: /blog/${slug}`);
   console.log(`- 카테고리: ${categorySlug}`);
+
+  // Bing IndexNow 실시간 색인 제출
+  await notifyIndexNow(slug);
+}
+
+async function notifyIndexNow(slug) {
+  const host = 'pockemoney.com';
+  const key = '6059e7c7aa31475986bb3547ace2c153';
+  const keyLocation = `https://${host}/${key}.txt`;
+  const postUrl = `https://${host}/blog/${slug}`;
+
+  try {
+    console.log(`\n📡 [IndexNow] 실시간 색인 제출 요청 중...`);
+    const res = await fetch('https://api.indexnow.org/IndexNow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({
+        host,
+        key,
+        keyLocation,
+        urlList: [`https://${host}/`, postUrl],
+      }),
+    });
+    if (res.status === 200 || res.status === 202) {
+      console.log(`✅ [IndexNow] 제출 성공 (HTTP ${res.status}): ${postUrl}`);
+    } else {
+      console.warn(`⚠️ [IndexNow] 응답 코드 HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [IndexNow] 제출 건너뜀 (${err.message})`);
+  }
 }
 
 main().catch((err) => {
