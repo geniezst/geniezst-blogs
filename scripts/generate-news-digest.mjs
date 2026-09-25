@@ -982,6 +982,13 @@ function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     yaml += `\nreading_time: 4`;
   }
 
+  // 다이제스트는 개별 카드 이미지만 사용하므로 상단 featured_image는 항상 ""로 강제
+  if (/featured_image:\s*["']?[^"'\n]*["']?/.test(yaml)) {
+    yaml = yaml.replace(/featured_image:\s*["']?[^"'\n]*["']?/, 'featured_image: ""');
+  } else {
+    yaml += '\nfeatured_image: ""';
+  }
+
   // 5) 이모지 및 구 서식 강제 정제
   body = body.replace(/:::tip\[(?:⚡\s*)?(.*?)\]/g, ':::tip[$1]');
   body = body.replace(/>\s*(?:🌐\s*)?\*\*공식\s*출처\*\*:/gi, '> **출처**:');

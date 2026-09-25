@@ -6,7 +6,7 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: "https://image.ytn.co.kr/general/jpg/2026/0924/202609241244169549_t.jpg"
+featured_image: ""
 affiliate: false
 post_type: "digest"
 ---
