@@ -33,11 +33,22 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+
+    <SEO
+      title={title}
+      description={description}
+      image={image}
+      type={type}
+      publishedTime={publishedTime}
+      tags={tags}
+      author={author}
+      canonicalUrl={canonicalUrl}
+    />
 
     <!-- Naver Search Advisor 소유확인 -->
     <meta name="naver-site-verification" content="ef283c5ac3c646e5140c75671ae1ff3a80b0c692" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
 
     <!-- Google tag (gtag.js) -->
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-HTTFPW8CX1"></script>
@@ -75,17 +86,6 @@ const {
       }
       window.localStorage.setItem('theme', theme);
     </script>
-
-    <SEO
-      title={title}
-      description={description}
-      image={image}
-      type={type}
-      publishedTime={publishedTime}
-      tags={tags}
-      author={author}
-      canonicalUrl={canonicalUrl}
-    />
   </head>
   <body class="min-h-screen flex flex-col antialiased selection:bg-[var(--primary)] selection:text-white bg-[var(--bg-page)] text-[var(--on-surface)]">
     <!-- Shirone Top App Bar (고정 상단바) -->
