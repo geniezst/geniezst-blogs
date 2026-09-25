@@ -22,7 +22,7 @@ const {
 } = Astro.props;
 
 const siteName = '포켓머니';
-const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
+const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
 const fullImageUrl = image.startsWith('http') ? image : new URL(image, Astro.site || 'https://pockemoney.com').href;
 
 // JSON-LD 구조화 데이터
