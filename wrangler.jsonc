@@ -6,6 +6,17 @@
     "nodejs_compat"
   ],
   "account_id": "875ed0ea82cff1960433efce7b4d2cf1",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "pockemoney.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.pockemoney.com",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
