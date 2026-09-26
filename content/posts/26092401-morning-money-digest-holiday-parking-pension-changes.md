@@ -22,13 +22,13 @@ post_type: "digest"
 
 ## 추석 연휴 전국 공공주차장 무료 이용 혜택
 
-![추석 연휴 공공주차장 무료 이용](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/c18e73dfe3654782ee6902f7e2526701.jpg)
+![추석 연휴 공공주차장 무료 이용](/api/images/2026/09/holiday-parking-free-hd.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972537" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972537)  
 > **발행**: 2026-09-23 14:52 KST | **신뢰도**: 공식 발표
 
-:::fact[핵심 팩트 요약]
+:::fact[기사 요약]
 - 전국 공공주차장이 추석 연휴 기간 동안 무료로 개방됩니다.
 - 이는 명절 기간 시민들의 편의를 증진하고 교통 혼잡을 완화하기 위한 조치입니다.
 - 자세한 개방 대상 및 시간은 지자체별 공지사항을 확인해야 합니다.
@@ -44,13 +44,13 @@ post_type: "digest"
 
 ## 퇴직연금 수령 연령 조정 가능성 및 가입자 혜택
 
-![퇴직연금, 언제부터 받을까?](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/2a31256ce5a6aeeb4f8b85b1ba1ad6c4.jpg)
+![퇴직연금, 언제부터 받을까?](/api/images/2026/09/pension-age-changes-hd.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972531" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972531)  
 > **발행**: 2026-09-23 14:52 KST | **신뢰도**: 공식 발표
 
-:::fact[핵심 팩트 요약]
+:::fact[기사 요약]
 - 퇴직연금 수령 개시 연령 조정에 대한 논의가 진행 중입니다.
 - 이는 고령화 사회에 발맞춰 연금 제도의 지속가능성을 확보하기 위한 목적입니다.
 - 수령 연령 조정 시 연금액 및 수령 기간에 변화가 있을 수 있습니다.
@@ -72,7 +72,7 @@ post_type: "digest"
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972533)  
 > **발행**: 2026-09-23 14:52 KST | **신뢰도**: 공식 발표
 
-:::fact[핵심 팩트 요약]
+:::fact[기사 요약]
 - 청약 예금, 청약 부금 등 기존 주택청약 상품 가입자에게 종합저축으로 전환할 수 있는 기회가 1년 더 주어집니다.
 - 이는 주택청약 제도의 변화에 따른 가입자들의 금융 상품 전환을 지원하기 위함입니다.
 - 전환 시 기존 가입 혜택 일부가 유지될 수 있습니다.
@@ -88,13 +88,13 @@ post_type: "digest"
 
 ## 소중한 반려동물, 갑작스러운 아픔에 대한 대비
 
-![반려동물 의료비 부담 완화 논의](https://www.korea.kr/newsWeb/resources/attaches/2026.09/23/d5c2b6aff2389c8fb2b29305c86726ee.jpg)
+![반려동물 의료비 부담 완화 논의](/api/images/2026/09/pet-health-holiday-hd.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972536" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972536)  
 > **발행**: 2026-09-23 14:52 KST | **신뢰도**: 공식 발표
 
-:::fact[핵심 팩트 요약]
+:::fact[기사 요약]
 - 반려동물 의료비 부담 완화를 위한 정책적 논의가 진행되고 있습니다.
 - 이는 증가하는 반려동물 양육 가구의 경제적 부담을 덜어주기 위한 목적입니다.
 - 구체적인 지원 방안이나 제도 도입 시기는 아직 확정되지 않았습니다.

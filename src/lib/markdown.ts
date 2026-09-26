@@ -239,7 +239,7 @@ export function preprocessCustomDirectives(markdown: string): string {
   processed = processed.replace(
     /:::fact(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
     (_match, title, body) => {
-      const titleText = title ? title.trim() : '핵심 팩트 요약';
+      const titleText = title ? title.trim() : '기사 요약';
       return `<div class="fact-brief-box my-5 p-4 sm:p-5 rounded-2xl border shadow-sm">\n<div class="fact-brief-title font-bold text-sm mb-2.5 tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center">${titleText}</div>\n\n${body.trim()}\n\n</div>`;
     }
   );

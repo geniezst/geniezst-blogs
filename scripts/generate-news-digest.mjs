@@ -218,6 +218,44 @@ export async function validateAndNormalizeImageUrl(imgUrl) {
 }
 
 /**
+ * 이미지 버퍼로부터 너비 및 높이 메타데이터 추출 (고속 바이너리 파서)
+ */
+export function getImageDimensions(buffer) {
+  if (!buffer || buffer.length < 24) return null;
+  // PNG: IHDR chunk (width: 16-19, height: 20-23)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20), type: 'png' };
+  }
+  // JPEG: SOI (0xFFD8) & SOF markers
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+    let offset = 2;
+    while (offset < buffer.length - 8) {
+      if (buffer[offset] !== 0xFF) { offset++; continue; }
+      const marker = buffer[offset + 1];
+      if (marker >= 0xC0 && marker <= 0xC3) {
+        return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5), type: 'jpg' };
+      }
+      if (marker === 0xD9 || marker === 0xDA) break;
+      const len = buffer.readUInt16BE(offset + 2);
+      offset += 2 + len;
+    }
+  }
+  // WebP
+  if (buffer.length >= 30 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    const chunkType = buffer.toString('ascii', 12, 16);
+    if (chunkType === 'VP8 ') {
+      return { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff, type: 'webp' };
+    } else if (chunkType === 'VP8L') {
+      const b0 = buffer[21], b1 = buffer[22], b2 = buffer[23], b3 = buffer[24];
+      return { width: 1 + (((b1 & 0x3F) << 8) | b0), height: 1 + (((b3 & 0xF) << 10) | (b2 << 2) | ((b1 & 0xC0) >> 6)), type: 'webp' };
+    } else if (chunkType === 'VP8X') {
+      return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3), type: 'webp' };
+    }
+  }
+  return null;
+}
+
+/**
  * 외부 기사 이미지를 다운로드하여 Cloudflare R2 버킷에 미러링
  * - SSL 인증서 만료, Mixed Content 차단, 외부 언론사 핫링크 방지 영구 해결
  */
@@ -239,6 +277,13 @@ export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug =
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     if (buffer.length < 500) return null;
+
+    // 최소 해상도 검증: 가로 550px 미만인 축소 썸네일은 기각하여 고화질 폴백으로 유도
+    const dims = getImageDimensions(buffer);
+    if (dims && dims.width > 0 && dims.width < 550) {
+      console.warn(`  ⚠️ 이미지 해상도가 너무 작음 (${dims.width}x${dims.height} < 550px) -> 고화질 폴백으로 대체`);
+      return null;
+    }
 
     const extMatch = remoteImgUrl.match(/\.(png|jpg|jpeg|webp|gif)/i);
     const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
@@ -1150,11 +1195,11 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/>\s*(?:🔗\s*)?\*\*관련\s*가이드\*\*:/gi, '> **관련 가이드**:');
   body = body.replace(/###\s*(?:💡\s*)?(?:실무\s*가계\/지갑\s*영향\s*실전\s*인사이트|실무\s*시사점|가계\s*영향\s*및\s*실전\s*인사이트)/gi, '### 가계 영향 및 실전 팁');
 
-  // 6) 3줄 팩트 브리핑을 둥근 모서리 박스(:::fact[핵심 팩트 요약])로 변환
+  // 6) 3줄 팩트 브리핑을 둥근 모서리 박스(:::fact[기사 요약])로 변환
   body = body.replace(
-    /###\s*(?:📌\s*)?(?:3줄\s*팩트\s*브리핑|핵심\s*팩트\s*요약|팩트\s*요약)\r?\n([\s\S]*?)(?=\r?\n###|\r?\n---|\r?\n:::\w+|$)/gi,
+    /###\s*(?:📌\s*)?(?:3줄\s*팩트\s*브리핑|핵심\s*팩트\s*요약|팩트\s*요약|기사\s*요약)\r?\n([\s\S]*?)(?=\r?\n###|\r?\n---|\r?\n:::\w+|$)/gi,
     (_match, listContent) => {
-      return `:::fact[핵심 팩트 요약]\n${listContent.trim()}\n:::\n\n`;
+      return `:::fact[기사 요약]\n${listContent.trim()}\n:::\n\n`;
     }
   );
   body = body.replace(/:::fact\[(?:📌\s*)?(.*?)\]/g, ':::fact[$1]');
@@ -1395,7 +1440,7 @@ export async function runNewsDigestGeneration(options = {}) {
    - ⚡, 📌, 💡, 🌐, 🕒, 💬 등 남발되던 모든 이모지를 절대 사용하지 마세요!
    - 신뢰도 높은 전문 경제 언론사 스타일의 단정한 텍스트 헤딩과 타이포그래피 구조를 유지하세요.
 4. [3줄 팩트 브리핑 둥근 박스 UI]:
-   - 각 뉴스마다 3줄 팩트 요약은 반드시 ':::fact[핵심 팩트 요약]' 디렉티브 블록으로 작성하세요.
+   - 각 뉴스마다 3줄 팩트 요약은 반드시 ':::fact[기사 요약]' 디렉티브 블록으로 작성하세요.
 5. [출처 기사 주요 사진/이미지 임베딩 및 출처 명시]:
    - 후보에 제공된 '대표 이미지'가 있는 경우, 기사 H2 헤딩 바로 아래에 다음 형식으로 이미지를 삽입하세요:
      ![헤드라인 핵심 요약 대체텍스트](대표이미지URL)
@@ -1458,7 +1503,7 @@ post_type: "digest"
 > **출처**: [언론사명](기사원문URL)  
 > **발행**: ${dateInfo.dateStr} 00:00 KST | **신뢰도**: 공식 발표 (또는 보도자료/경제전문지)
 
-:::fact[핵심 팩트 요약]
+:::fact[기사 요약]
 - 핵심 팩트 1
 - 핵심 팩트 2
 - 핵심 팩트 3
