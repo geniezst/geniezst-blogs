@@ -39,3 +39,8 @@ content/temp/
 
 # Runtime log files
 data/*.log
+
+# Service account keys
+*-*.json
+blog-509810-*.json
+gsc-*.json

@@ -36,7 +36,8 @@ if (db) {
 }
 
 if (!currentCategory) {
-  return Astro.redirect('/blog');
+  Astro.response.status = 404;
+  return Astro.rewrite('/404');
 }
 ---
 
