@@ -1,0 +1,3 @@
+# Google AdSense ads.txt
+# 구글 애드센스 승인 후 발급받은 본인의 게시자 ID(pub-XXXXXXXXXXXXXXXX)로 아래 pub-XXXXXXXXXXXXXXXX 부분을 교체하세요.
+google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

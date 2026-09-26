@@ -26,6 +26,8 @@ const {
   author = siteConfig.author,
   canonicalUrl,
 } = Astro.props;
+
+const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADSENSE_CLIENT_ID;
 ---
 
 <!doctype html>
@@ -59,6 +61,16 @@ const {
 
       gtag('config', 'G-HTTFPW8CX1');
     </script>
+
+    <!-- Google AdSense 심사 및 자동 광고 연동 -->
+    {adsenseClientId && (
+      <script
+        is:inline
+        async
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+        crossorigin="anonymous"
+      ></script>
+    )}
 
     <!-- 웹 폰트 (Pretendard, JetBrains Mono, Titan One) 최적화 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
