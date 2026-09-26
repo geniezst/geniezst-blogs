@@ -58,8 +58,8 @@ const avatarSrc = profile.avatarImage || '/assets/images/avatar-shirone.webp';
       </div>
     </div>
 
-    <!-- 신뢰 보증 뱃지 (상하 여백 14px 균등화) -->
-    <div class="mt-3.5 py-3.5 border-t border-dashed border-[var(--outline-variant)] text-[11px] text-[var(--primary)] font-medium flex items-center justify-center gap-1">
+    <!-- 신뢰 보증 뱃지 (모바일 숨김, 데스크톱 lg에서만 표시) -->
+    <div class="hidden lg:flex mt-3.5 py-3.5 border-t border-dashed border-[var(--outline-variant)] text-[11px] text-[var(--primary)] font-medium items-center justify-center gap-1">
       <span>🛡️ 100% 공공데이터 기준 검증</span>
     </div>
   </div>

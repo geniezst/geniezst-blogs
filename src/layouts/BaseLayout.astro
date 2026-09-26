@@ -76,6 +76,7 @@ const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADS
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/titanone/v17/mFTzWbsGxbbS_J5cQcjClDgm-khykw.woff2" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Titan+One&display=swap" rel="stylesheet" />
 
     <!-- 테마 깜빡임 방지 스크립트 -->
@@ -116,12 +117,19 @@ const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADS
       <!-- 하단 자연스러운 그라디언트 페이드 -->
       <div class="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-[var(--bg-page)]"></div>
 
-      <!-- 포켓몬 스타일 pockemoney 히어로 로고 -->
+      <!-- 포켓몬 스타일 pockemoney 히어로 벡터 로고 (브라우저 폰트 변경에도 100% 불변) -->
       <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
-        <a href="/" class="inline-block no-underline">
-          <span class="pokemon-logo-text select-none">
-            pockemoney
-          </span>
+        <a href="/" class="inline-flex items-center justify-center no-underline select-none group" aria-label="pockemoney 홈으로 이동">
+          <span class="sr-only">pockemoney</span>
+          <img
+            src="/assets/images/logo-pockemoney.svg"
+            alt="pockemoney"
+            width="630"
+            height="115"
+            class="w-[260px] xs:w-[290px] sm:w-[420px] md:w-[470px] max-w-full h-auto drop-shadow-md group-hover:scale-[1.02] transition-transform duration-200"
+            loading="eager"
+            decoding="async"
+          />
         </a>
         <div class="mt-2 flex items-center gap-2">
           <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-bold text-white bg-black/40 backdrop-blur-md border border-white/20 shadow-md tracking-wider">
@@ -136,30 +144,6 @@ const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADS
         Pocket Money • M3 Expressive
       </div>
     </div>
-
-    <style is:global>
-      /* 포켓몬 로고 스타일 pockemoney 타이포그래피 (자연스러운 외곽선 & 부드러운 입체 그림자, 잘림 방지) */
-      .pokemon-logo-text {
-        font-family: 'Titan One', 'Fredoka', cursive, sans-serif;
-        font-size: clamp(2.5rem, 7vw, 4.4rem);
-        line-height: 1.25;
-        letter-spacing: 0.02em;
-        color: #FFDE00;
-        -webkit-text-stroke: 3px #2A75BB;
-        paint-order: stroke fill;
-        display: inline-block;
-        padding: 0.15em 0.4em;
-        transform: skewX(-4deg);
-        text-shadow: 
-          -1.5px -1.5px 0 #2A75BB,  
-           1.5px -1.5px 0 #2A75BB,
-          -1.5px  1.5px 0 #2A75BB,
-           1.5px  1.5px 0 #2A75BB,
-           0 4px 0 #18446E,
-           0 6px 14px rgba(0, 0, 0, 0.45);
-        filter: drop-shadow(0 4px 8px rgba(24, 68, 110, 0.35));
-      }
-    </style>
 
     <!-- 메인 컨텐츠 영역 (배너 하단과 오버랩되는 Shirone 레이아웃) -->
     <main class="relative z-20 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 -mt-12 sm:-mt-16 pb-16">
