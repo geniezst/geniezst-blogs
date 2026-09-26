@@ -6,7 +6,7 @@
 # - Antigravity 세션 종료나 터미널 닫힘과 무관하게 백그라운드에서 영구 독립 실행 (setsid)
 # ==============================================================================
 
-BLOG_DIR="/workspace/blogs"
+BLOG_DIR="/workspace/projects/blogs"
 SCHEDULER_SCRIPT="${BLOG_DIR}/scripts/auto-publish-runner.mjs"
 SCHEDULER_LOG="${BLOG_DIR}/data/auto-publish.log"
 CORRECT_SCRIPT="${BLOG_DIR}/scripts/correct-runner.mjs"

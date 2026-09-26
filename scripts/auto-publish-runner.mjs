@@ -864,7 +864,7 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
   log(`🚀 [Tier 2 엔진 가동] 내장 심층글 생성기를 호출합니다. (카테고리: ${category}, 세션: ${sessionName}, 차트: ${selectedChart.name})`);
 
   const systemPrompt = `당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 시니어 에디터입니다.
-블로그 저장소 위치는 /workspace/blogs 이며 블로그 이름은 '포켓머니(pockemoney)'입니다.
+블로그 저장소 위치는 /workspace/projects/blogs 이며 블로그 이름은 '포켓머니(pockemoney)'입니다.
 구글 애드센스 고수익 승인 표준 및 개발자/실무자 수준의 정확하고 깊이 있는 금융 분석 기준을 엄격히 준수하세요.
 
 [필수 작성 지침]
@@ -1079,8 +1079,8 @@ export async function runPublishPipeline(sessionName, options = {}) {
     // 4. 안전 프롬프트 작성 (백틱 및 커맨드 치환 방어)
     const prompt = `
 당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 에디터입니다.
-블로그 저장소 위치는 /workspace/blogs 입니다.
-/workspace/blogs/docs/POST_STYLE_GUIDE.md 규격을 엄격히 준수하여 신규 포스트를 1개 작성해주세요.
+블로그 저장소 위치는 /workspace/projects/blogs 입니다.
+/workspace/projects/blogs/docs/POST_STYLE_GUIDE.md 규격을 엄격히 준수하여 신규 포스트를 1개 작성해주세요.
 
 - 대상 블로그: 포켓머니 (blogs, pockemoney)
 - 세션: ${sessionName} (${dateStr})
@@ -1104,7 +1104,7 @@ ${selectedChart.instruction}
   9. [절대 금지] 문장마다 키워드에 볼드체(별표 두 개)를 남발하지 마세요. 메뉴 경로나 액수는 인라인 코드(작은따옴표 또는 백틱 감싸기)로 표기하고, 볼드는 본문 전체에서 가장 중요한 결론 1~2개에만 극도로 절제하세요.
   10. 소제목에 '1.', '1.1', '2.' 식의 관료적 번호 매기기를 하지 말고 직관적인 텍스트 소제목을 쓰세요.
   11. 대충 쓴 글처럼 보이지 않도록 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
-  12. 완성된 글은 '/workspace/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 오늘 24일의 세 번째 글이면 26092403-[슬러그].md 처럼 날짜마다 01부터 시작하는 일련번호) 파일로 저장하세요.
+  12. 완성된 글은 '/workspace/projects/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 오늘 24일의 세 번째 글이면 26092403-[슬러그].md 처럼 날짜마다 01부터 시작하는 일련번호) 파일로 저장하세요.
   13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 

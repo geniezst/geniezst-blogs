@@ -52,7 +52,7 @@
 
 ## 🚀 로컬 개발 및 일상 운영 명령어
 
-모든 명령어는 `/workspace/blogs` 디렉토리에서 실행합니다.
+모든 명령어는 `/workspace/projects/blogs` 디렉토리에서 실행합니다.
 
 ```bash
 # 1. 로컬 개발 서버 실행
