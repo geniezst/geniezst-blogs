@@ -125,8 +125,8 @@ const avatarSrc = profile.avatarImage || '/assets/images/avatar-shirone.webp';
     </div>
   )}
 
-  <!-- Shirone RSS 피드 카드 -->
-  <div class="card-base p-4 text-center">
+  <!-- Shirone RSS 피드 카드 (모바일 숨김, 데스크톱 lg에서만 표시) -->
+  <div class="card-base p-4 text-center hidden lg:block">
     <a
       href="/rss.xml"
       class="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[var(--surface-container-low)] hover:bg-[var(--primary-container)] text-[var(--primary)] text-xs font-bold transition scale-animation border border-[var(--outline-variant)]"
