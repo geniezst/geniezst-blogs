@@ -1287,7 +1287,7 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
         }
       }
 
-      // 3) 이미지가 확보된 경우 R2 미러링 시도
+      // 3) 출처 기사에서 확보된 진짜 이미지인 경우 R2 미러링 시도
       let finalImgUrl = null;
       let finalSourceName = sourceName;
       let finalSourceLink = matchedHref;
@@ -1300,35 +1300,19 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
         }
       }
 
-      // 4) 이미지가 없거나 미러링/검증에 실패한 경우: 금융/경제 주제별 고화질 안전 폴백 이미지 자동 주입 (100% 무결점 보장)
-      if (!finalImgUrl) {
-        const MONEY_SAFE_FALLBACKS = [
-          { regex: /(성장률|oecd|gdp|환율|금리|수출|무역|거시경제)/i, url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(물가|장바구니|마트|전통시장|성수품|소비자|농축수산)/i, url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(청약|종합저축|주택|부동산|아파트|분양|대출)/i, url: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(지원금|복지|정부|정책|소상공인|환급|보조금)/i, url: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(소방|안전|응급|의료|병원|구급|경계근무)/i, url: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(세금|연말정산|국세청|공제|절세)/i, url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=80' },
-          { regex: /(주식|투자|펀드|etf|증시|코스피)/i, url: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80' },
-        ];
-        const matchText = `${cleanH2Title} ${sec.slice(0, 300)}`;
-        const matchedFallback = MONEY_SAFE_FALLBACKS.find((f) => f.regex.test(matchText)) || MONEY_SAFE_FALLBACKS[0];
-        console.log(`  🛡️ [고화질 테마 이미지 자동 보강] ${cleanH2Title.slice(0, 30)} -> Fallback R2 미러링`);
-        const fallbackMirrored = await mirrorImageToR2(matchedFallback.url, 'blogs', `${baseSlug}-fb`);
-        finalImgUrl = fallbackMirrored || matchedFallback.url;
-        if (!finalSourceLink) {
-          finalSourceName = 'Unsplash';
-          finalSourceLink = 'https://unsplash.com';
-        }
-      }
-
-      // 마크다운 조립 및 출처 캡션 결합
+      // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
       let rest = h2EndIdx !== -1 ? sec.slice(h2EndIdx).trim() : '';
       rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
       rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
-      const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${finalSourceLink}" target="_blank" rel="noopener noreferrer">${finalSourceName}</a></p>`;
-      return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
+      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 이미지만 삽입 (출처와 다른 임의의 대체 이미지 절대 삽입 금지)
+      if (finalImgUrl) {
+        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${finalSourceLink}" target="_blank" rel="noopener noreferrer">${finalSourceName}</a></p>`;
+        return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
+      } else {
+        // 출처 기사에 실제 이미지가 없거나 저화질 축소판인 경우 사진 없이 깔끔한 텍스트 카드로 구성
+        return `${h2Line}\n\n${rest}`;
+      }
     })
   );
   body = updatedSections.join('\n\n');
