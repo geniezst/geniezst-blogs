@@ -163,9 +163,112 @@ except Exception:
 }
 
 /**
- * 기사 웹페이지의 og:image 메타 태그 대표 이미지 추출
+ * 이미지 URL 유효성 검증 및 HTTPS 승격
+ * - http:// 이미지를 https:// 로 변환 테스트하여 성공 시 승격
+ * - Range 요청(GET bytes=0-500)으로 HTTP 200/206 상태 및 이미지 content-type 확인
+ * - 깨진 이미지, 404, 403, SSL 만료 필터링
  */
-export async function fetchArticleOgImage(articleUrl) {
+export async function validateAndNormalizeImageUrl(imgUrl) {
+  if (!imgUrl || !imgUrl.startsWith('http')) return null;
+
+  // 파비콘, 1x1 투명 픽셀, svg/ico 제외
+  if (/\.(ico|svg)(\?.*)?$/i.test(imgUrl)) return null;
+  if (/1x1|pixel|spacer|blank|tracking|badge/i.test(imgUrl)) return null;
+
+  // 1) http:// -> https:// 승격 시도 (Mixed Content 원천 방지)
+  if (imgUrl.startsWith('http://')) {
+    const httpsCandidate = imgUrl.replace('http://', 'https://');
+    try {
+      const res = await fetch(httpsCandidate, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          Range: 'bytes=0-500',
+        },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.startsWith('image/') || ct === 'application/octet-stream' || !ct) {
+          return httpsCandidate;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 2) 원본 URL 검증
+  try {
+    const res = await fetch(imgUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Range: 'bytes=0-500',
+      },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      const ct = res.headers.get('content-type') || '';
+      if (ct.startsWith('image/') || ct === 'application/octet-stream' || !ct) {
+        return imgUrl;
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+/**
+ * 외부 기사 이미지를 다운로드하여 Cloudflare R2 버킷에 미러링
+ * - SSL 인증서 만료, Mixed Content 차단, 외부 언론사 핫링크 방지 영구 해결
+ */
+export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug = 'digest') {
+  if (!remoteImgUrl || !remoteImgUrl.startsWith('http')) return remoteImgUrl;
+  if (remoteImgUrl.startsWith('/api/images/')) return remoteImgUrl;
+
+  try {
+    const res = await fetch(remoteImgUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return remoteImgUrl;
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    if (buffer.length < 200) return remoteImgUrl;
+
+    const extMatch = remoteImgUrl.match(/\.(png|jpg|jpeg|webp|gif)/i);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const datePrefix = new Date().toISOString().slice(0, 7).replace('-', '/');
+    const hash = Buffer.from(remoteImgUrl).toString('base64url').slice(0, 10);
+    const cleanSlug = slug.replace(/^2\d{7}-/, '').slice(0, 30);
+    const r2Key = `images/${datePrefix}/${cleanSlug}-${hash}.${ext}`;
+    const tmpPath = `/tmp/r2_mirror_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+
+    fs.writeFileSync(tmpPath, buffer);
+    try {
+      execSync(`wrangler r2 object put "${bucketName}/${r2Key}" --file="${tmpPath}" --remote`, {
+        stdio: 'ignore',
+        timeout: 15000,
+      });
+      console.log(`  📸 [R2 미러링 완료] ${bucketName}/${r2Key}`);
+      return `/api/images/${datePrefix}/${cleanSlug}-${hash}.${ext}`;
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    }
+  } catch (err) {
+    console.warn(`  ⚠️ R2 미러링 예외 (${err.message}) -> 원본 URL 유지`);
+    return remoteImgUrl;
+  }
+}
+
+/**
+ * 기사 웹페이지의 og:image 메타 태그 및 본문 고화질 대표 이미지 추출
+ * - AMP canonical 태그 추적, amp-img, 본문 사진, JSON-LD 지원
+ */
+export async function fetchArticleOgImage(articleUrl, depth = 0) {
   if (!articleUrl || !articleUrl.startsWith('http')) return null;
 
   try {
@@ -191,9 +294,45 @@ export async function fetchArticleOgImage(articleUrl) {
       html.match(/<meta\s+[^>]*name=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["']/i) ||
       html.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*name=["'](?:og:image|twitter:image)["']/i);
 
-    if (ogMatch && ogMatch[1]) {
-      let imgUrl = decodeEntities(ogMatch[1].trim());
+    // 2) link rel="image_src"
+    const linkMatch =
+      html.match(/<link\s+[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i) ||
+      html.match(/<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["']image_src["']/i);
 
+    // 3) amp-img 태그 (AMP 뉴스 페이지)
+    const ampImgMatch = html.match(/<amp-img\s+[^>]*src=["']([^"']+)["']/i);
+
+    // 4) 본문 내 고화질 기사 원본 사진 (photo, orgPhoto, attaches, upload 등)
+    const articlePhotoMatch = html.match(
+      /<img\s+[^>]*src=["'](https?:\/\/[^"']+\/(?:orgPhoto|photo|attaches|upload|news\/thumbnail)[^"']+\.(?:png|jpg|jpeg|webp))["']/i
+    );
+
+    // 5) JSON-LD 스키마 내 "image" 필드
+    let jsonLdImg = null;
+    const jsonLdMatch = html.match(/<script\s+[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch) {
+      try {
+        const parsed = JSON.parse(jsonLdMatch[1]);
+        if (typeof parsed.image === 'string') jsonLdImg = parsed.image;
+        else if (Array.isArray(parsed.image) && parsed.image[0]) jsonLdImg = parsed.image[0];
+        else if (parsed.image?.url) jsonLdImg = parsed.image.url;
+      } catch (_) {}
+    }
+
+    const rawMatch = ogMatch || linkMatch || ampImgMatch || articlePhotoMatch;
+    let imgUrl = rawMatch ? decodeEntities(rawMatch[1].trim()) : jsonLdImg;
+
+    // 만약 og:image를 못 찾았고 canonical 링크가 있으면 1회 재귀 조회
+    if (!imgUrl && depth === 0) {
+      const canonicalMatch = html.match(/<link\s+[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i);
+      if (canonicalMatch && canonicalMatch[1] && canonicalMatch[1] !== articleUrl) {
+        const canonicalUrl = canonicalMatch[1].trim();
+        const canonicalImg = await fetchArticleOgImage(canonicalUrl, depth + 1);
+        if (canonicalImg) return canonicalImg;
+      }
+    }
+
+    if (imgUrl) {
       // 상대 경로면 절대 경로로 변환
       if (imgUrl.startsWith('//')) {
         imgUrl = 'https:' + imgUrl;
@@ -204,16 +343,11 @@ export async function fetchArticleOgImage(articleUrl) {
         } catch (_) {}
       }
 
-      // 유효성 검사 (http/https, 1x1 트래커, svg, ico 제외)
-      if (
-        imgUrl.startsWith('http') &&
-        !imgUrl.includes('1x1') &&
-        !imgUrl.includes('favicon') &&
-        !imgUrl.endsWith('.svg') &&
-        !imgUrl.endsWith('.ico')
-      ) {
-        return imgUrl;
-      }
+      // 유효성 검사 및 정규화
+      const validated = await validateAndNormalizeImageUrl(imgUrl);
+      if (validated) return validated;
+      // 만약 http:// 여서 validate에서 실패했더라도 최소한 원래 url 반환 (이후 R2 미러링 대상)
+      if (imgUrl.startsWith('http')) return imgUrl;
     }
   } catch (_) {}
 
@@ -902,7 +1036,7 @@ async function callLLM(messages, env) {
 /**
  * 10. 마크다운 생성 결과 정제 및 검증
  */
-function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
+async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   let cleaned = rawContent.trim();
 
   // ```markdown 코드 블록 제거 (앞뒤 유연하게)
@@ -1023,69 +1157,98 @@ function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/!\[.*?\]\((?:없음|none|null|undefined|\s*)\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
   body = body.replace(/!\[.*?\]\((?!https?:\/\/)[^\)]+\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
 
-  // 10) 이미지 Fallback 보강: 기사 카드에 이미지가 없는데 매칭되는 후보 기사에 대표 이미지가 있는 경우 자동 삽입
-  if (candidates && candidates.length > 0) {
-    const cardSections = body.split(/(?=^##\s+)/gm);
-    const updatedSections = cardSections.map((sec) => {
+  // 10) 이미지 보강 및 깨짐 방지 파이프라인 (기사마다 반드시 검증된 대표 이미지 주입)
+  const cardSections = body.split(/(?=^##\s+)/gm);
+  const updatedSections = await Promise.all(
+    cardSections.map(async (sec) => {
       if (!sec.startsWith('## ')) return sec;
-      if (/!\[.*?\]\(https?:\/\/[^\)]+\)/i.test(sec)) return sec;
 
       const h2EndIdx = sec.indexOf('\n');
       const h2Line = h2EndIdx !== -1 ? sec.slice(0, h2EndIdx) : sec;
       const cleanH2Title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
 
+      // 출처 정보 파싱
       const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
       const matchedHref = linkMatch ? linkMatch[2].trim() : '';
+      const sourceName = linkMatch ? linkMatch[1].trim() : '공식 출처';
 
-      let foundCandidate = null;
-      if (matchedHref) {
-        foundCandidate = candidates.find(
-          (c) =>
-            c.imageUrl &&
-            (c.link === matchedHref ||
-              c.originalLink === matchedHref ||
-              matchedHref.includes(c.link) ||
-              (c.originalLink && (matchedHref.includes(c.originalLink) || c.originalLink.includes(matchedHref))))
-        );
-      }
+      // 기존 섹션 내 이미지 태그 추출
+      const existingImgMatch = sec.match(/!\[([^\]]*)\]\((https?:\/\/[^\s\)]+)\)/i);
+      let activeImgUrl = existingImgMatch ? existingImgMatch[2].trim() : null;
 
-      // URL 매칭 실패 시 제목 유사도로 매칭 시도
-      if (!foundCandidate) {
-        let bestScore = 0;
-        for (const c of candidates) {
-          if (!c.imageUrl) continue;
-          const score = calculateJaccardSimilarity(cleanH2Title, c.title);
-          if (score > bestScore && score >= 0.2) {
-            bestScore = score;
-            foundCandidate = c;
-          }
-        }
-      }
-
-      // 후보 기사의 뉴스 ID 파라미터 매칭 시도 (예: newsId=148972510)
-      if (!foundCandidate && matchedHref) {
-        const idMatch = matchedHref.match(/newsId=(\d+)/i) || matchedHref.match(/\/(\d+)(?:\?|$)/);
-        if (idMatch) {
-          const targetId = idMatch[1];
+      // 1) 이미지가 없거나 플레이스홀더인 경우 후보군에서 이미지 매칭 시도
+      if (!activeImgUrl) {
+        let foundCandidate = null;
+        if (matchedHref && candidates && candidates.length > 0) {
           foundCandidate = candidates.find(
             (c) =>
               c.imageUrl &&
-              ((c.originalLink && c.originalLink.includes(targetId)) || (c.link && c.link.includes(targetId)))
+              (c.link === matchedHref ||
+                c.originalLink === matchedHref ||
+                matchedHref.includes(c.link) ||
+                (c.originalLink && (matchedHref.includes(c.originalLink) || c.originalLink.includes(matchedHref))))
           );
+
+          if (!foundCandidate) {
+            const idMatch = matchedHref.match(/newsId=(\d+)/i) || matchedHref.match(/\/(\d+)(?:\?|$)/);
+            if (idMatch) {
+              const targetId = idMatch[1];
+              foundCandidate = candidates.find(
+                (c) =>
+                  c.imageUrl &&
+                  ((c.originalLink && c.originalLink.includes(targetId)) || (c.link && c.link.includes(targetId)))
+              );
+            }
+          }
+
+          if (!foundCandidate) {
+            let bestScore = 0;
+            for (const c of candidates) {
+              if (!c.imageUrl) continue;
+              const score = calculateJaccardSimilarity(cleanH2Title, c.title);
+              if (score > bestScore && score >= 0.2) {
+                bestScore = score;
+                foundCandidate = c;
+              }
+            }
+          }
+        }
+
+        if (foundCandidate && foundCandidate.imageUrl) {
+          activeImgUrl = foundCandidate.imageUrl;
         }
       }
 
-      if (foundCandidate && foundCandidate.imageUrl) {
-        if (h2EndIdx !== -1) {
-          const rest = sec.slice(h2EndIdx).trimStart();
-          const imgBlock = `\n\n![${cleanH2Title}](${foundCandidate.imageUrl})\n<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${foundCandidate.originalLink || foundCandidate.link}" target="_blank" rel="noopener noreferrer">${foundCandidate.source}</a></p>\n\n`;
-          return `${h2Line}${imgBlock}${rest}`;
+      // 2) 여전히 이미지가 없다면: 기사 출처 URL(matchedHref)로부터 실시간 크롤링 시도
+      if (!activeImgUrl && matchedHref) {
+        console.log(`  🌐 [실시간 대표 이미지 크롤링] ${sourceName} (${cleanH2Title.slice(0, 30)})...`);
+        const fetchedImg = await fetchArticleOgImage(matchedHref);
+        if (fetchedImg) {
+          activeImgUrl = fetchedImg;
+          console.log(`  ✅ [실시간 이미지 획득 성공] ${fetchedImg}`);
         }
       }
-      return sec;
-    });
-    body = updatedSections.join('');
-  }
+
+      // 3) 이미지가 확보된 경우: R2 미러링 수행하여 HTTPS 환경 깨짐/차단 원천 방지
+      if (activeImgUrl) {
+        const mirrored = await mirrorImageToR2(activeImgUrl, 'blogs', baseSlug);
+        const finalImgUrl = mirrored || activeImgUrl;
+
+        let rest = h2EndIdx !== -1 ? sec.slice(h2EndIdx).trim() : '';
+        // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 제거 후 재구성
+        rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
+        rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
+
+        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${matchedHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
+        return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
+      } else {
+        // 이미지를 획득하지 못한 경우 사진 출처 p태그만 홀로 남지 않도록 정리
+        let cleanedSec = sec.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
+        return cleanedSec;
+      }
+    })
+  );
+  body = updatedSections.join('\n\n');
 
   // Google News 링크를 디코딩된 실제 언론사 URL로 치환
   if (candidates && candidates.length > 0) {
@@ -1289,7 +1452,7 @@ post_type: "digest"
     fs.mkdirSync(POSTS_DIR, { recursive: true });
   }
 
-  const { title, slug, filename, filePath, content } = cleanAndValidateMarkdown(rawLlmOutput, dateInfo, rankedItems);
+  const { title, slug, filename, filePath, content } = await cleanAndValidateMarkdown(rawLlmOutput, dateInfo, rankedItems);
   fs.writeFileSync(filePath, content, 'utf8');
   console.log(`💾 [파일 저장 완료] ${filePath}`);
   console.log(`📝 포스트 제목: "${title}"`);

@@ -44,10 +44,10 @@ OECD의 한국 성장률 전망치 상향은 우리 경제 전반에 긍정적�
 
 ## 추석 장바구니 물가 및 연휴 응급의료 점검
 
-![추석 장바구니 물가 및 연휴 응급의료 점검](http://www.youngjuilbo.com/news/thumbnail/202609/175617_174642_3823_v150.jpg)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="http://www.newslinejeju.com/news/articleView.html?idxno=175617" target="_blank" rel="noopener noreferrer">youngjuilbo.com</a></p>
+![추석 장바구니 물가 및 연휴 응급의료 점검](/api/images/2026/09/chuseok-prices.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="http://www.newslinejeju.com/news/articleView.html?idxno=175617" target="_blank" rel="noopener noreferrer">뉴스라인제주</a></p>
 
-> **출처**: [youngjuilbo.com](http://www.newslinejeju.com/news/articleView.html?idxno=175617)  
+> **출처**: [뉴스라인제주](http://www.newslinejeju.com/news/articleView.html?idxno=175617)  
 > **발행**: 2026-09-25 22:36 KST | **신뢰도**: 보도자료
 
 :::fact[핵심 팩트 요약]
@@ -65,6 +65,9 @@ OECD의 한국 성장률 전망치 상향은 우리 경제 전반에 긍정적�
 ---
 
 ## 청약 예·부금 등 가입자, 종합저축 전환 기회 1년 더 늘어난다
+
+![청약 예·부금 가입자 종합저축 전환 기회 1년 연장](/api/images/2026/09/housing-subscription-extension.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972533" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972533)  
 > **발행**: 2026-09-25 23:39 KST | **신뢰도**: 공식 발표
@@ -84,6 +87,9 @@ OECD의 한국 성장률 전망치 상향은 우리 경제 전반에 긍정적�
 ---
 
 ## 추석 연휴 전국 소방관서 특별경계근무…화재·구급 대응 강화
+
+![추석 연휴 소방관서 특별경계근무 및 대응 강화](/api/images/2026/09/fire-safety-holiday.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972559" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972559)  
 > **발행**: 2026-09-25 23:39 KST | **신뢰도**: 공식 발표
