@@ -88,7 +88,7 @@ OECD의 한국 성장률 전망치 상향은 우리 경제 전반에 긍정적�
 
 ## 추석 연휴 전국 소방관서 특별경계근무…화재·구급 대응 강화
 
-![추석 연휴 소방관서 특별경계근무 및 대응 강화](/api/images/2026/09/fire-safety-holiday.jpg)
+![추석 연휴 소방관서 특별경계근무 및 대응 강화](/api/images/2026/09/fire-safety-holiday-hd.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972559" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972559)  
