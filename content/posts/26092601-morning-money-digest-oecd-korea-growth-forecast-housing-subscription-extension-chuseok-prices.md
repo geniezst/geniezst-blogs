@@ -44,7 +44,7 @@ OECD의 한국 성장률 전망치 상향은 우리 경제 전반에 긍정적�
 
 ## 추석 장바구니 물가 및 연휴 응급의료 점검
 
-![추석 장바구니 물가 및 연휴 응급의료 점검](/api/images/2026/09/chuseok-prices.jpg)
+![추석 장바구니 물가 및 연휴 응급의료 점검](/api/images/2026/09/chuseok-prices-hd.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="http://www.newslinejeju.com/news/articleView.html?idxno=175617" target="_blank" rel="noopener noreferrer">뉴스라인제주</a></p>
 
 > **출처**: [뉴스라인제주](http://www.newslinejeju.com/news/articleView.html?idxno=175617)  
