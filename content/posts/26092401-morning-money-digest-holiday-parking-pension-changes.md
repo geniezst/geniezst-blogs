@@ -88,7 +88,7 @@ post_type: "digest"
 
 ## 추석 연휴 소중한 반려동물이 아플 때 대처법 및 비상진료 안내
 
-![추석 연휴 운영 동물병원 및 유기동물 신고 안내 포스터](/api/images/2026/09/pet-health-holiday-hd.jpg)
+![추석 연휴 운영 동물병원 및 유기동물 신고 안내 포스터](/api/images/2026/09/chuseok-pet-hospital-emergency-official.jpg)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972536" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972536)  
