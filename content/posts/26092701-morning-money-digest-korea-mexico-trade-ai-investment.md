@@ -46,6 +46,9 @@ post_type: "digest"
 
 ## 한-멕시코, 미래산업·인재·통상 협력망 확대 및 17건 협력문건 체결
 
+![한-멕시코, 미래산업·인재·통상 협력망 확대 및 17건 협력문건 체결](/api/images/2026/09/morning-money-digest-korea-mex-2c2dcfb5e0.jpg)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972597" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972597)  
 > **발행**: 2026-09-27 00:32 KST | **신뢰도**: 공식 발표
 
