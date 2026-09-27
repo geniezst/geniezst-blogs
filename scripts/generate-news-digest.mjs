@@ -1012,7 +1012,7 @@ async function callLLM(messages, env) {
           model: groqModel,
           messages,
           temperature: 0.6,
-          max_tokens: 3800,
+          max_tokens: 4096,
         }),
         signal: AbortSignal.timeout(45000), // 45초 타임아웃
       });
@@ -1032,13 +1032,14 @@ async function callLLM(messages, env) {
     }
   }
 
-  // 2순위: Google Gemini API Fallback (429 쿼터 초과 시 가용 모델 순환 폴백)
-  const geminiUrl = (env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/').replace(/\/+$/, '') + '/chat/completions';
+  // 2순위: Google Gemini API Fallback (Native REST API + thinkingBudget: 0 설정으로 생각 토큰 낭비 및 잘림 원천 방지)
   const geminiKey = env.GEMINI_API_KEY;
-
   if (!geminiKey) {
     throw new Error('Groq와 Gemini API 키가 모두 설정되지 않았습니다.');
   }
+
+  const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
+  const userMsg = messages.find((m) => m.role === 'user')?.content || '';
 
   const geminiModelCandidates = [
     env.GEMINI_MODEL || 'gemini-2.5-flash',
@@ -1049,20 +1050,38 @@ async function callLLM(messages, env) {
 
   let lastError = null;
   for (const model of geminiModelCandidates) {
-    console.log(`🧠 [LLM Fallback 시도] Gemini (${model})...`);
+    console.log(`🧠 [LLM Fallback 시도] Gemini Native API (${model}, thinkingBudget: 0)...`);
+    const nativeGeminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+
+    const requestBody = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userMsg }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 8192,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
+      },
+    };
+
+    if (systemMsg) {
+      requestBody.systemInstruction = {
+        parts: [{ text: systemMsg }],
+      };
+    }
+
     try {
-      const res = await fetch(geminiUrl, {
+      const res = await fetch(nativeGeminiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${geminiKey}`,
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.6,
-          max_tokens: 8192,
-        }),
+        body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(90000), // 90초 타임아웃
       });
 
@@ -1074,14 +1093,21 @@ async function callLLM(messages, env) {
       }
 
       const data = await res.json();
-      const choice = data?.choices?.[0];
-      console.log(`📊 [Gemini ${model} 응답 완료] finish_reason: ${choice?.finish_reason}, usage:`, data?.usage);
+      const candidate = data?.candidates?.[0];
+      const finishReason = candidate?.finishReason;
+      const content = candidate?.content?.parts?.[0]?.text;
 
-      const content = choice?.message?.content;
+      console.log(`📊 [Gemini ${model} 응답 완료] finishReason: ${finishReason}, usage:`, data?.usageMetadata);
+
       if (content && content.trim()) {
-        console.log(`✅ [Gemini (${model}) Fallback 생성 성공]`);
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn(`⚠️ [주의] Gemini ${model} 출력이 최대 토큰에 도달했습니다.`);
+        }
+        console.log(`✅ [Gemini (${model}) Native API 생성 성공] (글자수: ${content.length}자)`);
         return content;
       }
+
+      lastError = new Error(`Gemini ${model} 응답 내용이 비어 있습니다.`);
     } catch (err) {
       console.warn(`⚠️ [Gemini ${model} 예외 발생] ${err.message} -> 다음 모델 시도`);
       lastError = err;
@@ -1330,11 +1356,11 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/\*?\s*본\s*다이제스트는.*?(?:발행됩니다|큐레이션되었습니다)\.?\s*\*?/g, '').trim();
   body = body.replace(/(?:\r?\n---\s*)+$/g, '').trim();
 
-  // 12) H2 헤딩 수 검증
+  // 12) H2 헤딩 수 및 분량 무결성 검증 (엄격 가드)
   const h2Count = (body.match(/^##\s+/gm) || []).length;
-  console.log(`🔍 [포스트 구조 검증] H2 헤딩 수: ${h2Count}개 (기준: 4개 이상)`);
-  if (h2Count < 4) {
-    console.warn('⚠️ H2 헤딩 수가 4개 미만입니다. 프롬프트 규칙 재점검 요망.');
+  console.log(`🔍 [포스트 구조 검증] H2 헤딩 수: ${h2Count}개 (기준: 4개 이상), 본문 글자수: ${body.length}자`);
+  if (h2Count < 4 || body.length < 1500) {
+    throw new Error(`[포스트 무결성 검증 실패] H2 헤딩 수(${h2Count}개 < 4개) 또는 본문 분량(${body.length}자 < 1,500자)이 미달되어 발행을 중단합니다.`);
   }
 
   const finalMarkdown = `---\n${yaml.trim()}\n---\n\n${body.trim()}\n`;
