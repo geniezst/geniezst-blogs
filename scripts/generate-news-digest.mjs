@@ -13,6 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
@@ -278,17 +279,17 @@ export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug =
     const buffer = Buffer.from(arrayBuffer);
     if (buffer.length < 500) return null;
 
-    // 최소 해상도 검증: 가로 550px 미만인 축소 썸네일은 기각하여 고화질 폴백으로 유도
+    // 최소 해상도 검증: 가로 250px 미만인 아이콘/트래킹 픽셀만 기각 (500px 웹 보도사진 수용)
     const dims = getImageDimensions(buffer);
-    if (dims && dims.width > 0 && dims.width < 550) {
-      console.warn(`  ⚠️ 이미지 해상도가 너무 작음 (${dims.width}x${dims.height} < 550px) -> 고화질 폴백으로 대체`);
+    if (dims && dims.width > 0 && dims.width < 250) {
+      console.warn(`  ⚠️ 이미지 해상도가 너무 작음 (${dims.width}x${dims.height} < 250px) -> 고화질 폴백으로 대체`);
       return null;
     }
 
     const extMatch = remoteImgUrl.match(/\.(png|jpg|jpeg|webp|gif)/i);
     const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
     const datePrefix = new Date().toISOString().slice(0, 7).replace('-', '/');
-    const hash = Buffer.from(remoteImgUrl).toString('base64url').slice(0, 10);
+    const hash = crypto.createHash('md5').update(remoteImgUrl).digest('hex').slice(0, 10);
     const cleanSlug = slug.replace(/^2\d{7}-/, '').slice(0, 30);
     const r2Key = `images/${datePrefix}/${cleanSlug}-${hash}.${ext}`;
     const tmpPath = `/tmp/r2_mirror_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
@@ -296,6 +297,7 @@ export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug =
     fs.writeFileSync(tmpPath, buffer);
     try {
       execSync(`wrangler r2 object put "${bucketName}/${r2Key}" --file="${tmpPath}" --remote`, {
+        cwd: BLOG_ROOT,
         stdio: 'ignore',
         timeout: 15000,
       });
@@ -810,16 +812,87 @@ const TRIGGER_KEYWORDS_TIER_2 = ['지원금', '환급', '면제', '최대', '인
 const TRIGGER_KEYWORDS_TIER_3 = ['조건 완화', '청년도약계좌', '소상공인', '주담대', '특판'];          // +5점
 
 /**
+ * 최근 5일간 기존 글 및 다이제스트에서 이미 다룬 주제/기사 추출 (중복 발행 원천 방지)
+ */
+function getRecentCoveredTopics() {
+  if (!fs.existsSync(POSTS_DIR)) return { urls: new Set(), titles: [] };
+
+  const files = fs
+    .readdirSync(POSTS_DIR)
+    .filter((f) => f.endsWith('.md') && f !== 'template.md')
+    .sort()
+    .slice(-15); // 최근 15개 포스트
+
+  const urls = new Set();
+  const titles = [];
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(POSTS_DIR, file), 'utf8');
+      const titleMatch = content.match(/title:\s*["']?([^"'\n]+)["']?/);
+      if (titleMatch) titles.push(titleMatch[1].trim());
+
+      // H2 헤딩 추출
+      const h2Matches = content.match(/^##\s+([^\n]+)/gm) || [];
+      for (const h of h2Matches) {
+        titles.push(h.replace(/^##\s*(?:\[[^\]]+\])?\s*/, '').trim());
+      }
+
+      // 출처 URL 추출
+      const linkMatches = content.match(/>\s*\*\*출처\*\*:\s*\[[^\]]*\]\((https?:\/\/[^\s\)]+)\)/gi) || [];
+      for (const l of linkMatches) {
+        const uMatch = l.match(/\((https?:\/\/[^\s\)]+)\)/);
+        if (uMatch) {
+          const u = uMatch[1].trim();
+          urls.add(u);
+          const idMatch = u.match(/newsId=(\d+)/i) || u.match(/idxno=(\d+)/i);
+          if (idMatch) urls.add(idMatch[1]);
+        }
+      }
+    } catch (_) {}
+  }
+
+  return { urls, titles };
+}
+
+/**
  * 7. 핫이슈 스코어링 엔진 (Hotness Scoring Engine) 및 중복 제거 (15~20건 압축)
  */
 async function deduplicateAndRank(items) {
   const now = Date.now();
   const maxAgeMs = 36 * 60 * 60 * 1000; // 최근 36시간
+  const recentCovered = getRecentCoveredTopics();
+  console.log(`🛡️ [중복 방지 필터] 최근 발행된 기사 출처 ${recentCovered.urls.size}건, 기존 주제 ${recentCovered.titles.length}건 로드 완료`);
 
-  // 1) 시간 필터링
+  // 1) 시간 필터링 및 최근 기사 중복 배제 (어제/그제 다룬 기사 원천 차단)
   const freshItems = items.filter((item) => {
     const age = now - item.pubDate.getTime();
-    return age <= maxAgeMs && age >= -60 * 60 * 1000; // 미래 시차 1시간 오차 허용
+    if (age > maxAgeMs || age < -60 * 60 * 1000) return false;
+
+    // 1-1) 출처 URL 및 newsId 중복 배제
+    const targetUrls = [item.link, item.originalLink].filter(Boolean);
+    for (const u of targetUrls) {
+      if (recentCovered.urls.has(u)) {
+        console.log(`  🚫 [최근 기사 중복 배제] URL 일치: ${item.title.slice(0, 30)}`);
+        return false;
+      }
+      const idMatch = u.match(/newsId=(\d+)/i) || u.match(/idxno=(\d+)/i);
+      if (idMatch && recentCovered.urls.has(idMatch[1])) {
+        console.log(`  🚫 [최근 기사 중복 배제] 기사 ID(${idMatch[1]}) 일치: ${item.title.slice(0, 30)}`);
+        return false;
+      }
+    }
+
+    // 1-2) 최근 기존 글 제목 및 H2 소제목과의 유사도(자카드 >= 0.35) 배제
+    for (const prevTitle of recentCovered.titles) {
+      const sim = calculateJaccardSimilarity(item.title, prevTitle);
+      if (sim >= 0.35) {
+        console.log(`  🚫 [최근 기사 중복 배제] 제목 유사도(${sim.toFixed(2)}): "${item.title.slice(0, 25)}" vs "${prevTitle.slice(0, 25)}"`);
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // 2) 다중 언론사 교차 보도 빈도(Burst Detection) 계산
@@ -1241,8 +1314,10 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/!\[.*?\]\((?:없음|none|null|undefined|\s*)\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
   body = body.replace(/!\[.*?\]\((?!https?:\/\/)[^\)]+\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
 
-  // 10) 이미지 보강 및 깨짐 방지 파이프라인 (기사마다 반드시 검증된 대표 이미지 주입)
+  // 10) 이미지 보강 및 깨짐 방지 파이프라인 (기사마다 출처 기사 고유 대표 이미지 1:1 매칭)
   const cardSections = body.split(/(?=^##\s+)/gm);
+  const usedImageUrls = new Set();
+
   const updatedSections = await Promise.all(
     cardSections.map(async (sec) => {
       if (!sec.startsWith('## ')) return sec;
@@ -1256,64 +1331,37 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
       const matchedHref = linkMatch ? linkMatch[2].trim() : '';
       const sourceName = linkMatch ? linkMatch[1].trim() : '공식 출처';
 
-      // 기존 섹션 내 이미지 태그 추출
-      const existingImgMatch = sec.match(/!\[([^\]]*)\]\((https?:\/\/[^\s\)]+)\)/i);
-      let activeImgUrl = existingImgMatch ? existingImgMatch[2].trim() : null;
+      let activeImgUrl = null;
 
-      // 1) 이미지가 없거나 플레이스홀더인 경우 후보군에서 이미지 매칭 시도
-      if (!activeImgUrl) {
-        let foundCandidate = null;
-        if (matchedHref && candidates && candidates.length > 0) {
-          foundCandidate = candidates.find(
-            (c) =>
-              c.imageUrl &&
-              (c.link === matchedHref ||
-                c.originalLink === matchedHref ||
-                matchedHref.includes(c.link) ||
-                (c.originalLink && (matchedHref.includes(c.originalLink) || c.originalLink.includes(matchedHref))))
-          );
-
-          if (!foundCandidate) {
-            const idMatch = matchedHref.match(/newsId=(\d+)/i) || matchedHref.match(/\/(\d+)(?:\?|$)/);
-            if (idMatch) {
-              const targetId = idMatch[1];
-              foundCandidate = candidates.find(
-                (c) =>
-                  c.imageUrl &&
-                  ((c.originalLink && c.originalLink.includes(targetId)) || (c.link && c.link.includes(targetId)))
-              );
-            }
-          }
-
-          if (!foundCandidate) {
-            let bestScore = 0;
-            for (const c of candidates) {
-              if (!c.imageUrl) continue;
-              const score = calculateJaccardSimilarity(cleanH2Title, c.title);
-              if (score > bestScore && score >= 0.2) {
-                bestScore = score;
-                foundCandidate = c;
-              }
-            }
-          }
-        }
-
-        if (foundCandidate && foundCandidate.imageUrl) {
-          activeImgUrl = foundCandidate.imageUrl;
-        }
-      }
-
-      // 2) 여전히 이미지가 없다면: 기사 출처 URL(matchedHref)로부터 실시간 크롤링 시도
-      if (!activeImgUrl && matchedHref) {
+      // 1) 출처 URL(matchedHref)로부터 실시간 크롤링하여 고유 이미지 획득 시도 (최우선)
+      if (matchedHref) {
         console.log(`  🌐 [실시간 대표 이미지 크롤링] ${sourceName} (${cleanH2Title.slice(0, 30)})...`);
         const fetchedImg = await fetchArticleOgImage(matchedHref);
-        if (fetchedImg) {
+        if (fetchedImg && !usedImageUrls.has(fetchedImg)) {
           activeImgUrl = fetchedImg;
-          console.log(`  ✅ [실시간 이미지 획득 성공] ${fetchedImg}`);
+          usedImageUrls.add(fetchedImg);
+          console.log(`  ✅ [실시간 고유 이미지 획득 성공] ${fetchedImg}`);
         }
       }
 
-      // 3) 출처 기사에서 확보된 진짜 이미지인 경우 R2 미러링 시도
+      // 2) 출처 크롤링으로 못 찾았을 경우 candidates 후보군 중 정확한 URL 매칭 시도
+      if (!activeImgUrl && matchedHref && candidates && candidates.length > 0) {
+        const found = candidates.find(
+          (c) =>
+            c.imageUrl &&
+            !usedImageUrls.has(c.imageUrl) &&
+            (c.link === matchedHref ||
+              c.originalLink === matchedHref ||
+              (c.originalLink && matchedHref.includes(c.originalLink)))
+        );
+        if (found) {
+          activeImgUrl = found.imageUrl;
+          usedImageUrls.add(found.imageUrl);
+          console.log(`  ✅ [후보군 고유 이미지 매칭] ${found.imageUrl}`);
+        }
+      }
+
+      // 3) 출처 기사에서 확보된 진짜 고유 이미지인 경우 R2 미러링 시도
       let finalImgUrl = null;
       let finalSourceName = sourceName;
       let finalSourceLink = matchedHref;
@@ -1331,12 +1379,12 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
       rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
       rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
-      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 이미지만 삽입 (출처와 다른 임의의 대체 이미지 절대 삽입 금지)
+      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 고유 이미지만 삽입 (중복 이미지 절대 금지)
       if (finalImgUrl) {
         const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${finalSourceLink}" target="_blank" rel="noopener noreferrer">${finalSourceName}</a></p>`;
         return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
       } else {
-        // 출처 기사에 실제 이미지가 없거나 저화질 축소판인 경우 사진 없이 깔끔한 텍스트 카드로 구성
+        // 출처 기사에 실제 이미지가 없거나 중복인 경우 사진 없이 깔끔한 텍스트 카드로 구성
         return `${h2Line}\n\n${rest}`;
       }
     })
@@ -1440,6 +1488,9 @@ export async function runNewsDigestGeneration(options = {}) {
 [작성 대원칙]
 1. [핫이슈 점수 기반 상위 4개 킬러 뉴스 엄선]:
    제공된 뉴스 후보 중 [핫이슈 점수: XX점, 교차보도: N개사] 지표가 가장 높으면서, 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑과 실생활 영향도가 가장 큰 최상위 4개 뉴스를 엄선하세요.
+1.5. [기존 포스트 및 어제 기사 중복 배제 - ★ 절대 규칙]:
+   - 아래 [블로그 기존 심층 가이드 목록]이나 어제/그제 이미 다이제스트로 다룬 주제(예: 청약통장 종합저축 전환 1년 연장, OECD 성장률 등)는 절대로 오늘 다이제스트에 다시 선정하거나 작성하지 마세요!
+   - 기존에 다루지 않은 완전히 새로운 신규 발표 및 최신 이슈 4개만 엄선하세요.
 2. [High-CTR 제목 네이밍 규칙 - ★ 절대 규칙]:
    - ⚠️ [절대 금지 1] 제목에 날짜(예: 09/23, (09/24), 2026-09-24, 9월 24일, 오늘자, 금일 등)를 일체 넣지 마세요! 포스트 본문과 메타데이터에 작성일이 표시되므로 제목에 날짜를 쓸 필요가 없습니다.
    - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다. 콜론 대신 파이프 | 또는 따옴표를 사용하세요)
