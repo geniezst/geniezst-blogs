@@ -40,6 +40,11 @@ content/temp/
 # Runtime log files
 data/*.log
 
+# Runtime state / lock artifacts (must never be committed: dirty worktree breaks `git pull --rebase`)
+data/*.json
+data/*.pid
+data/*.lock
+
 # Service account keys
 *-*.json
 blog-509810-*.json

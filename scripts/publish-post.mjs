@@ -10,7 +10,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
+import { execSync, execFileSync } from 'node:child_process';
 import os from 'node:os';
 
 // 환경 변수 자동 로드 (.env)
@@ -35,6 +36,58 @@ for (const envPath of [
 
 const TARGET_D1 = 'blogs';
 const TARGET_R2 = 'blogs';
+
+const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
+const NODE22_BIN = '/workspace/.node22/bin';
+const LOCAL_BIN = path.join(BLOG_ROOT, 'node_modules', '.bin');
+
+if (fs.existsSync(NODE22_BIN) && !process.env.PATH?.includes(NODE22_BIN)) {
+  process.env.PATH = `${NODE22_BIN}:${process.env.PATH || ''}`;
+}
+if (fs.existsSync(LOCAL_BIN) && !process.env.PATH?.includes(LOCAL_BIN)) {
+  process.env.PATH = `${LOCAL_BIN}:${process.env.PATH || ''}`;
+}
+
+/**
+ * Wrangler CLI 실행 래퍼
+ * - Node 22가 필요한 Wrangler(>=4.x)를 안정적으로 실행하기 위해 로컬 wrangler.js 및 Node 22 바이너리를 우선 활용
+ * - PATH 부재 및 시스템 기본 Node(v20)와의 버전 충돌을 완벽 차단
+ */
+function execWrangler(args, options = {}) {
+  const node22 = path.join(NODE22_BIN, 'node');
+  const nodeBin = fs.existsSync(node22) ? node22 : process.execPath;
+  const wranglerJs = path.join(BLOG_ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  const wranglerBin = path.join(LOCAL_BIN, 'wrangler');
+
+  const execEnv = {
+    ...process.env,
+    PATH: `${NODE22_BIN}:${LOCAL_BIN}:${process.env.PATH || ''}`,
+  };
+
+  if (fs.existsSync(wranglerJs)) {
+    return execFileSync(nodeBin, [wranglerJs, ...args], {
+      cwd: BLOG_ROOT,
+      env: execEnv,
+      stdio: options.stdio || 'inherit',
+      ...options,
+    });
+  } else if (fs.existsSync(wranglerBin)) {
+    return execFileSync(wranglerBin, args, {
+      cwd: BLOG_ROOT,
+      env: execEnv,
+      stdio: options.stdio || 'inherit',
+      ...options,
+    });
+  } else {
+    const npxBin = fs.existsSync(path.join(NODE22_BIN, 'npx')) ? path.join(NODE22_BIN, 'npx') : 'npx';
+    return execFileSync(npxBin, ['wrangler', ...args], {
+      cwd: BLOG_ROOT,
+      env: execEnv,
+      stdio: options.stdio || 'inherit',
+      ...options,
+    });
+  }
+}
 
 function parseFrontmatter(fileContent) {
   const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
@@ -131,6 +184,12 @@ async function main() {
   const readingTime = Number(metadata.reading_time || 5);
   const affiliate = metadata.affiliate === 'true' || metadata.affiliate === true ? 1 : 0;
   let featuredImage = metadata.featured_image || null;
+  // [P1-2] 정규화 후 실제 픽셀 크기 (generate-news-digest 가 frontmatter 에 기록)
+  //   CLS 방지용 <img width/height> 와 OG 크롭 근거로 사용한다.
+  let imageWidth = Number(metadata.image_width) || null;
+  let imageHeight = Number(metadata.image_height) || null;
+  // [P2] 1200x630 OG 크롭본 (image-pipeline 가 생성)
+  let ogImage = metadata.og_image || null;
 
   if (!title || !slug) {
     throw new Error('Frontmatter에 title과 slug는 필수입니다.');
@@ -143,13 +202,18 @@ async function main() {
     const localImgPath = path.resolve(path.dirname(resolvedPath), featuredImage);
     const ext = path.extname(localImgPath);
     const datePrefix = new Date().toISOString().slice(0, 7).replace('-', '/');
-    const r2Key = `images/${datePrefix}/${slug}${ext}`;
+    // [P1-2] R2 키에 콘텐츠 해시를 포함시킨다.
+    //   기존 `${slug}${ext}` 키는 같은 슬러그의 이미지가 바뀌어도 URL 이 동일해
+    //   `Cache-Control: immutable` 1년 캐시가 옛 사진을 계속 서빙했다.
+    //   이제 내용이 바뀌면 URL 이 바뀌어 즉시 무효화된다 (image-pipeline.mjs 와 동일한 규칙).
+    const contentHash = crypto.createHash('sha256').update(fs.readFileSync(localImgPath)).digest('hex').slice(0, 12);
+    const r2Key = `images/${datePrefix}/${slug}-${contentHash}${ext}`;
 
     console.log(`[2/3] R2 버킷(${TARGET_R2})에 이미지 업로드 중: ${r2Key}...`);
-    execSync(`wrangler r2 object put "${TARGET_R2}/${r2Key}" --file="${localImgPath}" --remote`, {
+    execWrangler(['r2', 'object', 'put', `${TARGET_R2}/${r2Key}`, '--file', localImgPath, '--remote'], {
       stdio: 'inherit',
     });
-    featuredImage = `/api/images/${datePrefix}/${slug}${ext}`;
+    featuredImage = `/api/images/${datePrefix}/${slug}-${contentHash}${ext}`;
   } else {
     console.log(`[2/3] R2 이미지 업로드 단계 건너뜀 (외부 URL 또는 이미지 없음)`);
   }
@@ -163,6 +227,7 @@ async function main() {
   const sql = `
 INSERT INTO blog_posts (
   slug, title, description, content, category_id, status, author, featured_image,
+  image_width, image_height, og_image,
   reading_time_minutes, affiliate_disclosure, published_at, updated_at
 )
 VALUES (
@@ -174,6 +239,9 @@ VALUES (
   'published',
   '${esc(author)}',
   ${featuredImage ? `'${esc(featuredImage)}'` : 'NULL'},
+  ${imageWidth || 'NULL'},
+  ${imageHeight || 'NULL'},
+  ${ogImage ? `'${esc(ogImage)}'` : 'NULL'},
   ${readingTime},
   ${affiliate},
   CURRENT_TIMESTAMP,
@@ -187,6 +255,9 @@ ON CONFLICT(slug) DO UPDATE SET
   status = excluded.status,
   author = excluded.author,
   featured_image = excluded.featured_image,
+  image_width = excluded.image_width,
+  image_height = excluded.image_height,
+  og_image = excluded.og_image,
   reading_time_minutes = excluded.reading_time_minutes,
   affiliate_disclosure = excluded.affiliate_disclosure,
   updated_at = CURRENT_TIMESTAMP;
@@ -197,7 +268,7 @@ ON CONFLICT(slug) DO UPDATE SET
   fs.writeFileSync(tempSqlPath, sql, 'utf8');
 
   try {
-    execSync(`wrangler d1 execute "${TARGET_D1}" --remote --file="${tempSqlPath}" --yes`, {
+    execWrangler(['d1', 'execute', TARGET_D1, '--remote', `--file=${tempSqlPath}`, '--yes'], {
       stdio: 'inherit',
     });
   } finally {

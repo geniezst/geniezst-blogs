@@ -35,6 +35,13 @@ check_status() {
   echo "=================================================="
 }
 
+NODE22_BIN="/workspace/.node22/bin"
+NODE_BIN="$(command -v node || true)"
+if [ -x "${NODE22_BIN}/node" ]; then
+  NODE_BIN="${NODE22_BIN}/node"
+  export PATH="${NODE22_BIN}:${PATH}"
+fi
+
 start_services() {
   echo "🚀 [blogs 독립 백그라운드 서비스 시작]"
 
@@ -43,7 +50,7 @@ start_services() {
   else
     echo "▶️ blogs 자동 발행 스케줄러 데몬 가동 중..."
     mkdir -p "${BLOG_DIR}/data"
-    setsid node "${SCHEDULER_SCRIPT}" daemon </dev/null >>"${SCHEDULER_LOG}" 2>&1 &
+    setsid "${NODE_BIN}" "${SCHEDULER_SCRIPT}" daemon </dev/null >>"${SCHEDULER_LOG}" 2>&1 &
     sleep 1
   fi
 
@@ -52,7 +59,7 @@ start_services() {
   else
     echo "▶️ blogs 교정 검수 데몬 가동 중 (12:00 & 00:00 KST)..."
     mkdir -p "${BLOG_DIR}/data"
-    setsid node "${CORRECT_SCRIPT}" daemon </dev/null >>"${CORRECT_LOG}" 2>&1 &
+    setsid "${NODE_BIN}" "${CORRECT_SCRIPT}" daemon </dev/null >>"${CORRECT_LOG}" 2>&1 &
     sleep 1
   fi
 

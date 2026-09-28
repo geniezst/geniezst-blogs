@@ -261,31 +261,81 @@ function runOpenCode(args, timeoutMs = 900000) {
   });
 }
 
+/**
+ * 심층 감사 응답 파서
+ *
+ * [P1-4] ★핵심 수정★ 파싱 실패를 "위반 0건"으로 반환하지 않는다.
+ *   기존엔 마커 미발견 / JSON 깨짐 / 배열 아님 전부 `[]` 를 돌려줬고,
+ *   그 결과 감사 자체가 실패했는데도 "clean"(위반 없음)으로 이력 기록되고
+ *   결코 재검수 대상이 되지 않았다. 이제 실패는 `null` 이고,
+ *   호출부가 이를 `audit_failed` 상태로 남겨 재검수 큐에 되돌린다.
+ *
+ * @returns {Array<object>|null} 위반 목록, 또는 파싱 실패 시 null
+ */
 function parseReviewResult(out) {
+  if (typeof out !== 'string' || !out.trim()) return null;
   const m = out.match(/##\s*REVIEW_RESULT\s*\n?([\s\S]*)$/);
-  if (!m) return [];
+  if (!m) return null;
   const jsonStr = m[1].replace(/```(?:json)?/gi, '').trim();
+
+  // [P1-4] 최상위가 **배열 리터럴**인지 먼저 확인한다.
+  //   기존엔 indexOf('[') / lastIndexOf(']') 로 잘라냈는데, LLM 이
+  //   `{"violations":[]}` 처럼 배열이 아닌 값을 출력하면 내부의 빈 배열
+  //   `[]` 만 잘려 "위반 0건" 으로 오인되고 clean 처리되었다.
+  //   첫 문자가 '{' 면 객체이므로 즉시 실패 처리하고,
+  //   배열일 때만 대괄호 균형 스캔으로 정확한 구간을 찾는다.
+  if (jsonStr.startsWith('{')) return null;
+  if (jsonStr.startsWith('{')) return null;
   const start = jsonStr.indexOf('[');
-  const end = jsonStr.lastIndexOf(']');
-  if (start === -1 || end === -1 || end <= start) return [];
-  try {
-    const list = JSON.parse(jsonStr.slice(start, end + 1));
-    if (!Array.isArray(list)) return [];
-    return list.filter((i) => i && typeof i === 'object').map((i) => ({
-      type: String(i.type || '기타').slice(0, 40),
-      line: typeof i.line === 'number' ? i.line : 0,
-      text: String(i.text || '').slice(0, 120),
-      suggestion: String(i.suggestion || '').slice(0, 160),
-    }));
-  } catch (_) {
-    return [];
+  if (start === -1) return null;
+  let depth = 0;
+  let end = -1;
+  let inStr = false;
+  let escaped = false;
+  for (let i = start; i < jsonStr.length; i++) {
+    const ch = jsonStr[i];
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === '[') depth++;
+    else if (ch === ']') {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
   }
+  if (end === -1 || end <= start) return null;
+
+  let list;
+  try {
+    list = JSON.parse(jsonStr.slice(start, end + 1));
+  } catch (_) {
+    return null;
+  }
+  if (!Array.isArray(list)) return null;
+  return list.filter((i) => i && typeof i === 'object').map((i) => ({
+    type: String(i.type || '기타').slice(0, 40),
+    line: typeof i.line === 'number' ? i.line : 0,
+    text: String(i.text || '').slice(0, 120),
+    suggestion: String(i.suggestion || '').slice(0, 160),
+  }));
 }
 
+/**
+ * 정적 위반과 심층 위반을 합친다.
+ * @param {Array} staticV
+ * @param {Array|null} deepV  null = 심층 감사 미완료(실패)
+ */
 function mergeViolations(staticV, deepV) {
   const seen = new Set();
   const merged = [];
-  for (const v of [...staticV, ...deepV]) {
+  for (const v of [...staticV, ...(deepV || [])]) {
     const key = `${v.type}|${v.text}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -320,11 +370,26 @@ async function deepAudit(file, slug, sessionKey, date) {
     const out = runOpenCode(['run', '--agent', 'build', '--dir', BLOG_ROOT, '--auto', prompt], 900000);
     const violations = parseReviewResult(out);
     const reportFile = path.join(BLOG_ROOT, 'data', `review-report-${slug}.json`);
+
+    // [P1-4] 감사가 끝났지만 응답을 해석하지 못한 경우 = "위반 없음"이 아니다.
+    if (violations === null) {
+      const err = new Error('심층 감사 응답에서 REVIEW_RESULT 를 파싱하지 못했습니다 (감사 미완료)');
+      log(`⚠️ 심층 감사 파싱 실패(${slug}): ${err.message}`);
+      fs.writeFileSync(
+        reportFile,
+        JSON.stringify({ slug, file, session: sessionKey, date, audit_failed: true, reason: err.message }, null, 2),
+        'utf8'
+      );
+      return { reportFile, violations: null, ok: false, error: err.message };
+    }
+
     fs.writeFileSync(reportFile, JSON.stringify({ slug, file, session: sessionKey, date, deep: violations }, null, 2), 'utf8');
-    return { reportFile, violations };
+    return { reportFile, violations, ok: true, error: null };
   } catch (err) {
+    // [P1-4] opencode 실행 자체가 실패한 경우. 빈 위반 목록으로 두면
+    // 해당 글이 영구히 "clean" 처리되어 재검수 대상에서 사라진다.
     log(`⚠️ 심층 감사 실패(${slug}):`, err.message);
-    return { reportFile: null, violations: [] };
+    return { reportFile: null, violations: null, ok: false, error: err.message };
   }
 }
 
@@ -378,9 +443,16 @@ async function runReview(sessionKey) {
   }
   for (const target of targets) {
     const staticV = staticScan(target.file);
-    const { reportFile, violations: deepV } = await deepAudit(target.file, target.slug, sessionKey, target.date);
+    const { reportFile, violations: deepV, ok: auditOk, error: auditError } = await deepAudit(
+      target.file,
+      target.slug,
+      sessionKey,
+      target.date
+    );
     const combined = mergeViolations(staticV, deepV);
-    log(`📄 ${target.slug}: 정적 ${staticV.length}건, 심층 ${deepV.length}건, 전체 ${combined.length}건`);
+    log(
+      `📄 ${target.slug}: 정적 ${staticV.length}건, 심층 ${auditOk ? deepV.length : '미완료'}건, 전체 ${combined.length}건`
+    );
 
     const rec = {
       slug: target.slug,
@@ -390,6 +462,16 @@ async function runReview(sessionKey) {
       publishSession: target.publishSession,
       date: target.date,
     };
+
+    // [P1-4] ★핵심★ 심층 감사가 실패했는데 정적 위반이 0건이면
+    //   "clean" 으로 기록해 영구히 검수 완료 처리던 버그를 차단한다.
+    //   이 경우 'audit_failed' 로 남겨 findTargetPosts 가 다음 사이클에 다시 잡도록 한다.
+    if (!auditOk) {
+      recordHistory(state, rec, 'audit_failed', { error: auditError || '심층 감사 미완료' });
+      saveState(state);
+      log(`🚨 ${target.slug} 심층 감사 미완료 — 클린 처리하지 않고 재검수 대상으로 남깁니다 (${auditError || '사유 불명'})`);
+      continue;
+    }
 
     if (combined.length === 0) {
       recordHistory(state, rec, 'clean');
@@ -612,9 +694,21 @@ if (arg === 'noon' || arg === 'midnight') {
   const target = { slug, file: resolved, publishSession: 'manual', date: dateStr, session: 'noon' };
   (async () => {
     const staticV = staticScan(resolved);
-    const { reportFile, violations: deepV } = await deepAudit(resolved, target.slug, 'noon', dateStr);
+    const { reportFile, violations: deepV, ok: auditOk, error: auditError } = await deepAudit(
+      resolved,
+      target.slug,
+      'noon',
+      dateStr
+    );
     const combined = mergeViolations(staticV, deepV);
-    log(`📄 ${target.slug}: 정적 ${staticV.length}건, 심층 ${deepV.length}건, 전체 ${combined.length}건`);
+    log(
+      `📄 ${target.slug}: 정적 ${staticV.length}건, 심층 ${auditOk ? deepV.length : '미완료'}건, 전체 ${combined.length}건`
+    );
+    // [P1-4] 감사 실패를 클린으로 확정하지 않는다
+    if (!auditOk) {
+      log(`🚨 ${target.slug} 심층 감사 미완료 — 클린 처리하지 않습니다 (${auditError || '사유 불명'})`);
+      return;
+    }
     if (combined.length === 0) {
       log(`✅ ${target.slug} 클린`);
       return;

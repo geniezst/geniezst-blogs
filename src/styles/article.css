@@ -919,10 +919,46 @@ html.dark .fact-brief-box li {
 .article-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 0.75rem;
-  margin: 1.25rem auto 0.35rem auto;
   display: block;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin: 0 auto;
+}
+
+/*
+  [P2] figure 로 여백/테두리를 분리한다.
+  기존엔 `.article-content img` 에 margin·border-radius·box-shadow 을 모두 몰아넣어
+  markdown.ts 가 <figure class="my-6"> + Tailwind 유틸리티로 이미 주입한 스타일과
+  이중 적용됐다. `.article-content img`(명시도 0,1,1) 은 Tailwind 유틸리티(0,1,0)를
+  이겨버리므로 figure 의 my-6 과 img 의 margin-top 이 더해져 간격이 두 배로 벌어졌다.
+  → 이미지는 크기/정렬만, 여백과 테두리는 figure 가 담당한다.
+*/
+.article-content figure {
+  margin: 1.5rem auto;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--surface-container-low, #f5f5f4);
+}
+
+.article-content figure img {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* [P2] 사진 출처 캡션 — 파이프라인이 "사진 출처: ○○" 형태로 생성한다 */
+.article-content figure figcaption {
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--on-surface-variant, #78716c);
+}
+
+.article-content figure figcaption a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 

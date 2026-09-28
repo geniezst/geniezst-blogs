@@ -6,10 +6,10 @@
  *   1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
  *   2) 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
  * 
- * [무중단 2-Tier Fallback 아키텍처 (BE-02)]
- * - Tier 1: agy CLI (stdin 파이핑 + PATH 하드닝 + 바이너리 안전 검증)
- * - Tier 2: 내장 심층글 생성 엔진 (Built-in Deep Article Generator)
- *           Groq (llama-3.3-70b-versatile) -> Gemini (gemini-2.5-flash) Fallback
+ * [LLM 호출 경로 (2026-09-27 정리)]
+ * - Gemini 네이티브 단일 경로 (thinkingBudget: 0, maxOutputTokens 16384, finishReason 검사)
+ * - 제거된 경로: Tier 1 agy CLI (바이너리 부재로 전 기간 실패), Groq (키 401)
+ *   근거: docs/SPEC_PIPELINE_STABILITY_AND_IMAGE_PIPELINE.md §4.2
  * 
  * 사용법:
  *   1) 수동 세션 즉시 실행:
@@ -18,7 +18,6 @@
  *      node scripts/auto-publish-runner.mjs evening                 # 저녁 심층 가이드
  *      node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행
  *      node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성
- *      node scripts/auto-publish-runner.mjs evening --tier2-only    # Tier 2 내장 엔진 즉시 테스트
  * 
  *   2) 백그라운드 스케줄러 데몬 모드:
  *      node scripts/auto-publish-runner.mjs daemon
@@ -29,6 +28,9 @@ import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
+import { gitPublish } from './lib/git-publish.mjs';
+import { callGemini } from './lib/llm.mjs';
+import { acquireDaemonLock } from './lib/runtime-lock.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
@@ -44,6 +46,19 @@ process.on('unhandledRejection', (reason) => {
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const STATE_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-state.json');
 const LOG_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish.log');
+
+// Node 22 및 로컬 bin 경로 PATH 최우선 등록 (Wrangler 및 Astro 5 구동 필수 환경 보장)
+const NODE22_BIN = '/workspace/.node22/bin';
+const LOCAL_BIN = path.join(BLOG_ROOT, 'node_modules', '.bin');
+if (fs.existsSync(NODE22_BIN) && !process.env.PATH?.includes(NODE22_BIN)) {
+  process.env.PATH = `${NODE22_BIN}:${process.env.PATH || ''}`;
+}
+if (fs.existsSync(LOCAL_BIN) && !process.env.PATH?.includes(LOCAL_BIN)) {
+  process.env.PATH = `${LOCAL_BIN}:${process.env.PATH || ''}`;
+}
+
+// [P1] 데몬 단일 인스턴스 락 파일 (data/ 아래이므로 .gitignore 로 제외된다)
+const DAEMON_LOCK_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-runner.lock');
 
 export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
@@ -91,69 +106,20 @@ export function loadEnvConfig() {
 }
 
 /**
- * 0-1. agy CLI 바이너리 안전 탐색 (심볼릭 링크 및 실행 권한 안전 검증)
- */
-export function findAgyBinary() {
-  // 1. 환경변수 지정 경로 우선
-  const envBin = process.env.AGY_BIN_PATH;
-  if (envBin && fs.existsSync(envBin)) {
-    try {
-      const real = fs.realpathSync(envBin);
-      fs.accessSync(real, fs.constants.X_OK);
-      return real;
-    } catch (_) {}
-  }
-
-  // 2. 다중 표준 후보 경로
-  const homeDir = process.env.HOME || '/root';
-  const candidates = [
-    '/root/.local/bin/agy',
-    '/usr/local/bin/agy',
-    '/root/.gemini/antigravity-cli/bin/agy',
-    path.join(homeDir, '.local', 'bin', 'agy'),
-    path.join(homeDir, '.gemini', 'antigravity-cli', 'bin', 'agy'),
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && fs.existsSync(candidate)) {
-      try {
-        const real = fs.realpathSync(candidate);
-        fs.accessSync(real, fs.constants.X_OK);
-        return real;
-      } catch (_) {}
-    }
-  }
-
-  // 3. which agy
-  try {
-    const whichRes = execSync('which agy 2>/dev/null', { encoding: 'utf8' }).trim();
-    if (whichRes && fs.existsSync(whichRes)) {
-      const real = fs.realpathSync(whichRes);
-      fs.accessSync(real, fs.constants.X_OK);
-      return real;
-    }
-  } catch (_) {}
-
-  return null;
-}
-
-/**
- * 0-2. 서브프로세스용 하드닝된 환경변수 생성
- */
-export function buildHardenedEnv() {
-  const extraPaths = ['/root/.local/bin', '/usr/local/bin', '/root/.gemini/antigravity-cli/bin'];
-  const currentPath = process.env.PATH || '';
-  const hardenedPath = [...extraPaths, currentPath].filter(Boolean).join(':');
-
-  return {
-    ...process.env,
-    PATH: hardenedPath,
-  };
-}
-
-/**
  * 0-3. 마크다운 본문 공백 및 금융 금액 띄어쓰기 규범화
  */
+/**
+ * [P0-2] 발행 전 콘텐츠 품질 게이트 기준값
+ * 프롬프트가 요구하는 하한과 동일하게 맞춘다.
+ *   - "본문 내 최소 5개 이상의 깊이 있는 대주제(H2)"
+ *   - "공백 포함 2,500자 ~ 3,500자 이상(공백 제외 1,800자 이상)"
+ */
+export const QUALITY_GATE = {
+  MIN_H2: 5,
+  MIN_NON_SPACE_CHARS: 1800,
+  MAX_LLM_RETRY: 1, // 게이트 실패 시 LLM 재생성 시도 횟수
+};
+
 export function sanitizeProseSpaces(rawText) {
   if (!rawText) return '';
   const lines = rawText.split('\n');
@@ -611,102 +577,48 @@ export async function runMorningNewsDigestPipeline(options = {}) {
 }
 
 /**
- * Tier 2: LLM API 호출 파이프라인 (Groq llama-3.3-70b-versatile -> Gemini gemini-2.5-flash Fallback)
+ * 저녁 심층글 LLM 호출 — Gemini 네이티브 단일 경로
+ *
+ * [P0-3 변경 사유]
+ * 1) Groq 제거: API 키가 401 Invalid Api Key를 전 기간 반환했으나 매 세션 1순위로 호출되어
+ *    의미 없는 요청과 지연만 발생시켰다.
+ * 2) Gemini 네이티브 + thinkingBudget:0: 기존 OpenAI 호환 엔드포인트는 `max_tokens` 하드캡에
+ *    걸려 글이 잘렸고, `finish_reason` 을 전혀 검사하지 않아 잘린 글이 "성공"으로 발행됐다.
+ *    (실제 사례: 2,020자 / H2 3개 글이 심층 가이드로 D1 등록)
+ * 3) MAX_TOKENS 감지 시 `truncated=true` 예외를 던져 호출자가 중단/재시도를 결정하게 한다.
+ *
+ * @param {Array<{role: string, content: string}>} messages
+ * @param {object} env
+ * @returns {Promise<string>}
  */
 export async function callLLMWithFallback(messages, env) {
-  // 1순위: Groq API
-  const groqUrl = (env.GROQ_API_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '') + '/chat/completions';
-  const groqKey = env.GROQ_API_KEY;
-  const groqModel = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const systemPrompt = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => m.content)
+    .join('\n\n');
+  const userPrompt = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => m.content)
+    .join('\n\n');
 
-  if (groqKey) {
-    log(`🧠 [Tier 2 - LLM 1순위 시도] Groq (${groqModel})...`);
-    try {
-      const res = await fetch(groqUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: groqModel,
-          messages,
-          temperature: 0.6,
-          max_tokens: 4500,
-        }),
-        signal: AbortSignal.timeout(60000), // 60초 타임아웃
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content;
-        if (content && content.trim()) {
-          log(`✅ [Tier 2 - Groq 생성 성공] (글자 수: ${content.trim().length}자)`);
-          return content.trim();
-        }
-      }
-      const errText = await res.text();
-      log(`⚠️ [Tier 2 - Groq 호출 실패 HTTP ${res.status}] ${errText.slice(0, 150)} -> Gemini Fallback 전환`);
-    } catch (err) {
-      log(`⚠️ [Tier 2 - Groq 예외 발생] ${err.message} -> Gemini Fallback 전환`);
-    }
-  } else {
-    log(`⚠️ [Tier 2 - Groq 건너뜀] GROQ_API_KEY가 없습니다 -> Gemini 시도`);
+  if (!env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
   }
 
-  // 2순위: Google Gemini API Fallback
-  const geminiUrl = (env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/').replace(/\/+$/, '') + '/chat/completions';
-  const geminiKey = env.GEMINI_API_KEY;
+  const result = await callGemini({
+    systemPrompt,
+    userPrompt,
+    env,
+    maxOutputTokens: 16384,
+    temperature: 0.6,
+    log: (m) => log(m),
+  });
 
-  if (!geminiKey) {
-    throw new Error('Groq와 Gemini API 키가 모두 설정되지 않았습니다.');
+  if (result.truncated) {
+    throw new Error(result.message);
   }
-
-  const geminiModelCandidates = [
-    env.GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-latest',
-  ];
-
-  let lastError = null;
-  for (const model of geminiModelCandidates) {
-    log(`🧠 [Tier 2 - LLM Fallback 시도] Gemini (${model})...`);
-    try {
-      const res = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${geminiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.6,
-          max_tokens: 8192,
-        }),
-        signal: AbortSignal.timeout(90000), // 90초 타임아웃
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        log(`⚠️ [Tier 2 - Gemini ${model} HTTP ${res.status}] ${errText.slice(0, 120)} -> 다음 모델 시도`);
-        lastError = new Error(`Gemini ${model} 실패 (${res.status}): ${errText}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (content && content.trim()) {
-        log(`✅ [Tier 2 - Gemini (${model}) Fallback 생성 성공] (글자 수: ${content.trim().length}자)`);
-        return content.trim();
-      }
-    } catch (err) {
-      log(`⚠️ [Tier 2 - Gemini ${model} 예외 발생] ${err.message} -> 다음 모델 시도`);
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('모든 Gemini 모델 Fallback 호출이 실패했습니다.');
+  log(`✅ [LLM 생성 성공] ${result.model} (글자 수: ${result.text.length}자)`);
+  return result.text;
 }
 
 /**
@@ -839,12 +751,38 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
   const h2Count = (finalMarkdown.match(/^##\s+/gm) || []).length;
   const hasChart = finalMarkdown.includes('financial-chart-box');
 
-  log(`📊 [Tier 2 콘텐츠 무결성 검증]`);
+  log(`📊 [콘텐츠 무결성 검증]`);
   log(`- 파일명: ${fileName}`);
   log(`- 제목: "${title}" (slug: ${cleanSlug})`);
   log(`- 총 글자 수: ${totalChars}자 (공백 제외: ${nonSpaceChars}자)`);
   log(`- H2 대주제 개수: ${h2Count}개`);
   log(`- 필수 차트 컴포넌트 포함 여부: ${hasChart ? '✅ PASS' : '⚠️ WARN (차트 태그 누락)'}`);
+
+  // [P0-2] 발행 전 하드 게이트
+  // 기존에는 위 통계가 로그로만 출력되고 언제나 return 되어, 규칙 미달 글도 그대로 발행되었다.
+  // (실제 사례: 총 글자 수 310자 / 2,020자, H2 0~3개 글이 "심층 가이드"로 D1 등록됨)
+  // 오전 다이제스트 경로(generate-news-digest.mjs)에는 이미 동일한 하드 게이트가 있으므로
+  // 저녁 경로도 동일한 기준을 적용해 비대칭을 제거한다.
+  const violations = [];
+  if (h2Count < QUALITY_GATE.MIN_H2) violations.push(`H2 대주제 ${h2Count}개 (최소 ${QUALITY_GATE.MIN_H2}개 필요)`);
+  if (nonSpaceChars < QUALITY_GATE.MIN_NON_SPACE_CHARS)
+    violations.push(`공백 제외 ${nonSpaceChars}자 (최소 ${QUALITY_GATE.MIN_NON_SPACE_CHARS}자 필요)`);
+
+  if (violations.length > 0) {
+    // 불합격 산출물을 디스크에 남기지 않는다 (다음 세션의 중복 방지 상태 오염 방지)
+    try {
+      fs.unlinkSync(postFile);
+      log(`🗑️ [게이트] 미달 파일을 삭제했습니다: ${fileName}`);
+    } catch (_) {}
+    const err = new Error(
+      `[콘텐츠 품질 게이트 실패] ${violations.join(', ')}. 프롬프트가 요구하는 분량/구조를 충족하지 않아 발행을 중단합니다.`
+    );
+    err.qualityGate = true;
+    err.violations = violations;
+    throw err;
+  }
+
+  log(`✅ [콘텐츠 품질 게이트 통과] H2 ${h2Count}개, 공백 제외 ${nonSpaceChars}자`);
 
   return {
     postFile,
@@ -931,121 +869,70 @@ affiliate: false
 }
 
 /**
- * 고가용성 아티클 생성 파이프라인 (Tier 1: agy CLI -> Tier 2: Groq/Gemini 내장 엔진)
+ * 아티클 생성 진입점 — Gemini 네이티브 단일 경로
+ *
+ * [P0-3 변경 사유]
+ * Tier 1(agy CLI)은 시스템에 바이너리가 존재하지 않아(전 기간 `agy: not found`) 매 세션마다
+ * 실패하고, 실패 원인을 throw 해서 Tier 2 구동을 막았다. 게다가 예전 구현은 프롬프트를
+ * `/bin/sh -c` 인라인으로 넘겨 백틱이 명령으로 실행되고(`/bin/sh: 1: code: not found`),
+ * 셸 경유 때문에 `spawnSync /bin/sh ETIMEDOUT` 로 죽기도 했다.
+ * → 결정: Tier 1(agy) 과 Groq 단계를 모두 제거하고 Gemini 네이티브 한 경로로 통일한다.
+ *
+ * @returns {Promise<{ postFile: string, title: string, slug: string, tier: string }>}
  */
 export async function generateArticleWithFallback({
   category,
   sessionName,
   targetDateStr,
-  prompt,
   selectedChart,
   options = {},
 }) {
   const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
+  if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
   const beforeFiles = new Set(fs.readdirSync(postsDir));
 
-  // 옵션으로 tier2Only 가 지정된 경우 Tier 1 건너뜀
-  if (options.tier2Only) {
-    log(`🧪 [--tier2-only 옵션] Tier 1을 건너뛰고 Tier 2 내장 생성기를 직접 호출합니다.`);
-    const result = await runBuiltinDeepArticleGenerator({
-      category,
-      sessionName,
-      targetDateStr,
-      selectedChart,
-    });
-    result.tier = 'Tier 2 (Direct)';
-    return result;
-  }
+  log(`🧠 [LLM] Gemini 네이티브 단일 경로로 심층글을 생성합니다.`);
 
-  // ------------------------------------------------------------------
-  // [Tier 1] agy CLI 실행 (안전 바이너리 검증 + stdin 파이핑)
-  // ------------------------------------------------------------------
-  const agyBin = findAgyBinary();
-  let tier1Success = false;
-
-  if (agyBin) {
+  // [P0-2] 생성 실패 유형별로 재시도 전략을 다르게 한다.
+  //  - truncated (MAX_TOKENS): 잘린 응답
+  //  - qualityGate (분량/구조 미달): 다른 표본을 뽑기 위한 재생성
+  // 두 경우 모두 MAX_LLM_RETRY 회까지만 시도하고, 최종 실패 시 throw 하여
+  // 호출부(D1 발행 단계)에 절대 도달하지 못하게 한다.
+  let lastError = null;
+  for (let attempt = 0; attempt <= QUALITY_GATE.MAX_LLM_RETRY; attempt++) {
+    if (attempt > 0) {
+      log(`🔄 [LLM 재시도 ${attempt}/${QUALITY_GATE.MAX_LLM_RETRY}] 사유: ${lastError?.message?.slice(0, 140) || '알 수 없음'}`);
+    }
     try {
-      log(`🤖 [Tier 1] agy CLI를 통한 글 생성 시도... (바이너리: ${agyBin})`);
-      const agyProc = spawnSync(agyBin, ['--dangerously-skip-permissions', '--print'], {
-        cwd: BLOG_ROOT,
-        input: prompt, // ★ stdin 스트림으로 안전 전달 (쉘 인라인 -p 제거)
-        encoding: 'utf8',
-        env: buildHardenedEnv(),
-        timeout: 600000, // 최대 10분
-        maxBuffer: 50 * 1024 * 1024,
+      const result = await runBuiltinDeepArticleGenerator({
+        category,
+        sessionName,
+        targetDateStr,
+        selectedChart,
+        options: { compactRetry: attempt > 0, attempt },
       });
 
-      if (!agyProc.error && agyProc.status === 0) {
-        const afterFiles = fs
-          .readdirSync(postsDir)
-          .filter((f) => !beforeFiles.has(f) && f.endsWith('.md') && f !== 'template.md');
-
-        if (afterFiles.length > 0) {
-          log(`✅ [Tier 1 성공] 신규 포스트 생성 완료: ${afterFiles[0]}`);
-          const postFile = path.join(postsDir, afterFiles[0]);
-          const postContent = fs.readFileSync(postFile, 'utf8');
-          const titleMatch = postContent.match(/title:\s*["']?([^"'\n]+)["']?/);
-          const slugMatch = postContent.match(/slug:\s*["']?([^"'\n]+)["']?/);
-
-          tier1Success = true;
-          return {
-            postFile,
-            title: titleMatch ? titleMatch[1].trim() : afterFiles[0].replace('.md', ''),
-            slug: slugMatch ? slugMatch[1].trim() : afterFiles[0].replace('.md', ''),
-            tier: 'Tier 1 (agy CLI)',
-          };
-        }
+      // 방어: LLM 이 파일을 만들지 못한 채 성공으로 보고하는 경우 차단
+      if (!result?.postFile || !fs.existsSync(result.postFile)) {
+        throw new Error('LLM 이 포스트 파일을 생성하지 않았습니다.');
+      }
+      if (beforeFiles.has(path.basename(result.postFile))) {
+        log(`⚠️ 신규 파일이 감지되지 않아 기존 파일로 판단합니다: ${result.postFile}`);
       }
 
-      log(
-        `⚠️ [Tier 1 경고] agy 프로세스 실패 또는 신규 파일 미감지 (code: ${agyProc.status}, err: ${agyProc.error?.message || (agyProc.stderr || '').slice(0, 200)})`
-      );
-    } catch (tier1Err) {
-      log(`⚠️ [Tier 1 예외] agy 실행 중 오류 발생: ${tier1Err.message}`);
+      result.tier = 'Gemini Native';
+      result.attempts = attempt + 1;
+      return result;
+    } catch (err) {
+      lastError = err;
+      const reason = err.qualityGate ? '품질 게이트 미달' : err.truncated ? '응답 잘림' : '생성 오류';
+      log(`⛔ [LLM ${reason}] ${err.message.slice(0, 200)}`);
     }
-  } else {
-    log(`⚠️ [Tier 1 건너뜀] 유효한 agy 실행 바이너리를 찾을 수 없습니다.`);
   }
 
-  // agy에서 최근 15분 이내 생성된 파일이 혹시 있는지 2차 검사
-  const recentMds = fs
-    .readdirSync(postsDir)
-    .filter((f) => f.endsWith('.md') && f !== 'template.md')
-    .map((f) => ({
-      file: f,
-      mtime: fs.statSync(path.join(postsDir, f)).mtimeMs,
-    }))
-    .filter((f) => Date.now() - f.mtime < 15 * 60 * 1000 && !beforeFiles.has(f.file))
-    .sort((a, b) => b.mtime - a.mtime);
-
-  if (recentMds.length > 0) {
-    const postFile = path.join(postsDir, recentMds[0].file);
-    log(`ℹ️ [Tier 1 복구] 예외가 있었으나 신규 포스트 파일('${recentMds[0].file}')이 감지되어 채택합니다.`);
-    const postContent = fs.readFileSync(postFile, 'utf8');
-    const titleMatch = postContent.match(/title:\s*["']?([^"'\n]+)["']?/);
-    const slugMatch = postContent.match(/slug:\s*["']?([^"'\n]+)["']?/);
-
-    return {
-      postFile,
-      title: titleMatch ? titleMatch[1].trim() : recentMds[0].file.replace('.md', ''),
-      slug: slugMatch ? slugMatch[1].trim() : recentMds[0].file.replace('.md', ''),
-      tier: 'Tier 1 (agy CLI recovery)',
-    };
-  }
-
-  // ------------------------------------------------------------------
-  // [Tier 2] 내장 심층글 생성기 자동 가동 (Groq -> Gemini REST API)
-  // ------------------------------------------------------------------
-  log(`🚨 [Tier 2 자동 전환] agy CLI 실패로 인해 내장 심층글 생성기(Built-in Deep Article Generator)를 즉시 가동합니다!`);
-  const result = await runBuiltinDeepArticleGenerator({
-    category,
-    sessionName,
-    targetDateStr,
-    selectedChart,
-  });
-
-  result.tier = 'Tier 2 (Built-in LLM Fallback)';
-  return result;
+  const finalErr = lastError || new Error('심층글 생성에 실패했습니다.');
+  finalErr.exhausted = true;
+  throw finalErr;
 }
 
 /**
@@ -1108,7 +995,7 @@ ${selectedChart.instruction}
   13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
 `.trim();
 
-    // 5. Tier 1 (agy CLI) -> Tier 2 (Groq/Gemini 내장 엔진) 자동 Fallback 파이프라인 가동
+    // 5. LLM 심층글 생성 (Gemini 네이티브 단일 경로)
     const generated = await generateArticleWithFallback({
       category,
       sessionName,
@@ -1163,30 +1050,38 @@ ${selectedChart.instruction}
     saveState(state);
 
     // 9. GitHub commit & push (Cloudflare Workers 자동 배포)
+    // [P0-1] rebase 실패를 더 이상 삼키지 않는다. 실패 시 원격 미반영 상태로 중단하고
+    //        텔레그램 경보를 보낸다. (기존: `catch (_) {}` + "🚀 Push 완료" 거짓 보고)
     log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
+    let deploySynced = true;
+    let deployError = null;
     try {
       const filesToStage = ['content/posts/'];
-      if (fs.existsSync(STATE_FILE)) {
-        filesToStage.push('data/auto-publish-state.json');
+      // 런타임 상태 파일은 .gitignore 로 제외되어 더 이상 stage 하지 않는다.
+      // (추적 상태였던 시점에 stage 되어 `git pull --rebase` 를 "unstaged changes" 로 깨뜨렸다)
+      const result = gitPublish({
+        repoRoot: BLOG_ROOT,
+        paths: filesToStage,
+        message: `feat(post): auto publish [${sessionName}] ${generatedSlug}`,
+        log: (m) => log(`   ${m}`),
+      });
+      if (result.committed) {
+        log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
+      } else {
+        log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
       }
-      execSync(`git add ${filesToStage.join(' ')}`, { cwd: BLOG_ROOT });
-
-      const stagedChanges = execSync(`git status --porcelain`, { cwd: BLOG_ROOT }).toString().trim();
-      if (stagedChanges) {
-        execSync(`git commit -m "feat(post): auto publish [${sessionName}] ${generatedSlug}"`, { cwd: BLOG_ROOT });
-      }
-
-      // 커밋 완료 후 안전하게 최신 원격 변경사항 rebase 및 push
-      try {
-        execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
-      } catch (_) {}
-
-      execSync(`git push origin main`, { cwd: BLOG_ROOT });
     } catch (gitErr) {
-      log(`⚠️ GitHub push 중 경고 발생 (D1 배포는 정상 완료됨): ${gitErr.message}`);
+      deploySynced = false;
+      deployError = gitErr;
+      log(`❌ [GitHub 배포 실패] ${gitErr.message}`);
+      log(`   ⚠️ D1/R2 발행은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
     }
 
     // 10. 텔레그램 성공 보고 발송
+    // [P0-1] 배포 실패를 성공 보고서에 그대로 "완료"로 적지 않는다.
+    const deployLine = deploySynced
+      ? '- 🚀 배포: GitHub push ➔ Workers 배포 완료'
+      : '- 🚀 배포: ❌ *실패* — D1 등록은 완료됐으나 사이트는 이전 빌드입니다. 수동 조치 필요';
     const successMsg = `🎉 *[포켓머니(pockemoney) 자동 게시 완료]*
 
 ⏰ *실행 시간:* ${timeStr} KST
@@ -1199,11 +1094,29 @@ ${selectedChart.instruction}
 *검증 상태:*
 - 🗄️ D1 DB: 등록 성공 (blogs)
 - ⚙️ 빌드: PASS (0 errors)
-- 🚀 배포: GitHub push ➔ Workers 배포 완료`;
+${deployLine}`;
 
     await sendTelegramReport(successMsg);
-    console.log(`✅ ${sessionName} 세션 자동 게시 작업이 성공적으로 완료되었습니다!`);
-    return true;
+
+    if (!deploySynced) {
+      // 별도 알림을 보내 눈에 띄게 한다 (FR-4.1: 실패를 성공으로 위장하지 않는다)
+      await sendTelegramReport(
+        `🚨 *[심각] blogs GitHub 배포 실패*\n\n` +
+          `⏰ ${timeStr} KST / ${sessionName}\n` +
+          `📝 ${generatedTitle}\n\n` +
+          `*원인:* ${deployError?.message || '알 수 없음'}\n\n` +
+          `*영향:* D1/R2 등록은 완료되었으나 소스 코드가 GitHub 에 반영되지 않아 ` +
+          `사이트는 이전 빌드를 계속 서빙합니다. 로컬 커밋은 보존되어 있습니다.`
+      );
+      log(`🚨 배포 실패 경보를 텔레그램으로 전송했습니다.`);
+    }
+
+    console.log(
+      deploySynced
+        ? `✅ ${sessionName} 세션 자동 게시 작업이 성공적으로 완료되었습니다!`
+        : `⚠️ ${sessionName} 세션: D1 등록은 성공했으나 GitHub 배포가 실패했습니다.`
+    );
+    return deploySynced;
   } catch (err) {
     console.error(`❌ [자동 게시 실패]`, err.message);
 
@@ -1219,7 +1132,19 @@ ${selectedChart.instruction}
     saveState(state);
 
     // 텔레그램 실패 보고 발송
-    const failMsg = `⚠️ *[blogs 자동 게시 실패]*
+    const isGateFailure = err.qualityGate || err.exhausted;
+    const failMsg = isGateFailure
+      ? `🚫 *[blogs 품질 게이트로 발행 차단]*
+
+⏰ *실행 시간:* ${timeStr} KST
+🏷️ *구분:* ${sessionName}
+📂 *카테고리:* ${category}
+
+❌ *차단 사유:* ${err.message}
+
+*조치:* D1 등록 및 GitHub 커밋을 수행하지 않았습니다. 생성된 미달 파일도 삭제했습니다.
+_llm 도retry ${QUALITY_GATE.MAX_LLM_RETRY}회로 분량/구조를 충족하지 못했습니다. 프롬프트 규칙 점검 필요._`
+      : `⚠️ *[blogs 자동 게시 실패]*
 
 ⏰ *실행 시간:* ${timeStr} KST
 🏷️ *구분:* ${sessionName}
@@ -1238,6 +1163,23 @@ ${selectedChart.instruction}
  * - 2) 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)
  */
 async function startDaemon() {
+  // [P1] 데몬 단일 인스턴스 보장
+  //   이전엔 락을 쓰지 않아 중복 기동 시 같은 시각에 발행이 두 번 돌 수 있었다.
+  const lock = acquireDaemonLock(DAEMON_LOCK_FILE, { label: 'auto-publish-runner' });
+  if (!lock.acquired) {
+    log(`❌ 다른 auto-publish-runner 데몬이 이미 실행 중입니다 (pid ${lock.holder?.pid ?? '?'}). 중복 기동을 거부합니다.`);
+    process.exit(1);
+  }
+  const release = lock.release;
+  log(`🔒 데몬 단일 인스턴스 락 획득 (pid ${process.pid}, ${DAEMON_LOCK_FILE})`);
+
+  const cleanup = () => {
+    try { release(); } catch (_) {}
+  };
+  process.on('exit', cleanup);
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+
   log(`🤖 [blogs 포켓머니 2-Track 자동화 스케줄러 데몬 가동]`);
   log(`- 오전 범위: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식)`);
   log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
@@ -1305,12 +1247,11 @@ if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
   const arg = process.argv[2];
   const force = process.argv.includes('--force');
   const dryRun = process.argv.includes('--dry-run');
-  const tier2Only = process.argv.includes('--tier2-only');
 
   if (arg === 'morning' || arg === 'lunch') {
     runMorningNewsDigestPipeline({ force, dryRun }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'evening') {
-    runPublishPipeline(arg, { force, dryRun, tier2Only }).then((success) => process.exit(success ? 0 : 1));
+    runPublishPipeline(arg, { force, dryRun }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'daemon') {
     startDaemon();
   } else {
@@ -1320,7 +1261,6 @@ if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
     console.log('  node scripts/auto-publish-runner.mjs evening                 # 오후 심층 가이드 수동 실행');
     console.log('  node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행');
     console.log('  node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성');
-    console.log('  node scripts/auto-publish-runner.mjs evening --tier2-only    # Tier 2 내장 엔진 즉시 테스트');
     console.log('  node scripts/auto-publish-runner.mjs daemon                  # 상시 Two-Track 스케줄러 데몬 가동');
   }
 }

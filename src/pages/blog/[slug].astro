@@ -83,6 +83,7 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
   type="article"
   publishedTime={post.published_at || undefined}
   image={post.featured_image || undefined}
+  ogImage={post.og_image || null}
   tags={post.tags?.map((t) => t.name)}
   author={post.author}
 >
@@ -181,12 +182,24 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
 
       <!-- 대표 삽화 (R2 연동 고화질 에디토리얼 일러스트) -->
       {post.featured_image && (
+        /*
+          [P2] 세로 이미지 잘림 제거 + CLS 제거
+            - 기존 `max-h-[500px]` + `object-cover` 조합은 세로 사진을 위에서 잘라
+              얼굴·제목이 보이지 않는 경우가 흔했다. 높이를 강제로 자르지 않는다.
+            - intrinsic width/height 로 공간을 미리 예약해 CLS 를 막고,
+              로드 실패 시 숨겨 깨진 이미지 아이콘이 뜨지 않게 한다.
+        */
         <div class="my-8 overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-950/60 shadow-lg bg-neutral-100 dark:bg-slate-900">
           <img
             src={post.featured_image}
             alt={post.title}
-            class="w-full h-auto object-cover max-h-[500px]"
+            width={post.image_width || undefined}
+            height={post.image_height || undefined}
+            class="w-full h-auto"
             loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            onerror="this.style.display='none';"
           />
         </div>
       )}

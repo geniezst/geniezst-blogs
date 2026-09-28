@@ -14,6 +14,8 @@ interface Props {
   tags?: string[];
   author?: string;
   canonicalUrl?: string;
+  /** [P2] 1200x630 로 미리 크롭된 OG 이미지 (미리보기에도 동일 규격이 쓰인다) */
+  ogImage?: string | null;
 }
 
 const {
@@ -25,6 +27,7 @@ const {
   tags,
   author = siteConfig.author,
   canonicalUrl,
+  ogImage,
 } = Astro.props;
 
 const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADSENSE_CLIENT_ID;
@@ -40,6 +43,7 @@ const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADS
       title={title}
       description={description}
       image={image}
+      ogImage={ogImage}
       type={type}
       publishedTime={publishedTime}
       tags={tags}

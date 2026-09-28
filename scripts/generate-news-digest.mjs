@@ -15,6 +15,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execSync, spawnSync } from 'node:child_process';
+import { gitPublish } from './lib/git-publish.mjs';
+import { callGemini } from './lib/llm.mjs';
+import { mirrorArticleImage, looksLikeThumbnail } from './lib/image-pipeline.mjs';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
@@ -1064,130 +1067,44 @@ function getExistingPosts() {
 }
 
 /**
- * 9. LLM 호출 파이프라인 (Groq -> Gemini Fallback)
+ * 9. LLM 호출 파이프라인 — Gemini 네이티브 단일 경로 (공용 모듈 위임)
+ *
+ * [P0-3] 두 가지 결함이 여기 있었다.
+ *  1) Groq 1순위 호출: 키가 401 Invalid Api Key를 반환하는데도 매 세션 시도되었다.
+ *  2) ★严重★ `finishReason === 'MAX_TOKENS'` 를 `console.warn` 만 남기고
+ *     **잘린 본문을 정상 응답으로 반환**했다. 이후 단계의 H2/분량 게이트가
+ *     (운 좋게) 걸러내지 못하면 잘린 다이제스트가 그대로 게시된다.
+ *     → 공용 모듈 lib/llm.mjs 는 MAX_TOKENS 를 `err.truncated` 예외로 표면화한다.
+ *
+ * @param {Array<{role: string, content: string}>} messages
+ * @param {object} env
+ * @returns {Promise<string>}
  */
 async function callLLM(messages, env) {
-  // 1순위: Groq API
-  const groqUrl = (env.GROQ_API_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '') + '/chat/completions';
-  const groqKey = env.GROQ_API_KEY;
-  const groqModel = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-
-  if (groqKey) {
-    console.log(`🧠 [LLM 1순위 시도] Groq (${groqModel})...`);
-    try {
-      const res = await fetch(groqUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: groqModel,
-          messages,
-          temperature: 0.6,
-          max_tokens: 4096,
-        }),
-        signal: AbortSignal.timeout(45000), // 45초 타임아웃
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content;
-        if (content && content.trim()) {
-          console.log(`✅ [Groq 생성 성공]`);
-          return content;
-        }
-      }
-      const errText = await res.text();
-      console.warn(`⚠️ [Groq 호출 실패 HTTP ${res.status}] ${errText.slice(0, 150)} -> Gemini Fallback 전환`);
-    } catch (err) {
-      console.warn(`⚠️ [Groq 예외 발생] ${err.message} -> Gemini Fallback 전환`);
-    }
+  if (!env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY가 설정되지 않았습니다. /workspace/.env 또는 프로젝트 .env 를 확인하세요.');
   }
 
-  // 2순위: Google Gemini API Fallback (Native REST API + thinkingBudget: 0 설정으로 생각 토큰 낭비 및 잘림 원천 방지)
-  const geminiKey = env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    throw new Error('Groq와 Gemini API 키가 모두 설정되지 않았습니다.');
-  }
+  const systemPrompt = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => m.content)
+    .join('\n\n');
+  const userPrompt = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => m.content)
+    .join('\n\n');
 
-  const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
-  const userMsg = messages.find((m) => m.role === 'user')?.content || '';
+  const result = await callGemini({
+    systemPrompt,
+    userPrompt,
+    env,
+    maxOutputTokens: 16384,
+    temperature: 0.6,
+    log: (m) => console.log(m),
+  });
 
-  const geminiModelCandidates = [
-    env.GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-flash-latest',
-    'gemini-3.5-flash-lite',
-  ];
-
-  let lastError = null;
-  for (const model of geminiModelCandidates) {
-    console.log(`🧠 [LLM Fallback 시도] Gemini Native API (${model}, thinkingBudget: 0)...`);
-    const nativeGeminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-
-    const requestBody = {
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMsg }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.6,
-        maxOutputTokens: 8192,
-        thinkingConfig: {
-          thinkingBudget: 0,
-        },
-      },
-    };
-
-    if (systemMsg) {
-      requestBody.systemInstruction = {
-        parts: [{ text: systemMsg }],
-      };
-    }
-
-    try {
-      const res = await fetch(nativeGeminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(90000), // 90초 타임아웃
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.warn(`⚠️ [Gemini ${model} HTTP ${res.status}] ${errText.slice(0, 120)} -> 다음 모델 시도`);
-        lastError = new Error(`Gemini ${model} 실패 (${res.status}): ${errText}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const candidate = data?.candidates?.[0];
-      const finishReason = candidate?.finishReason;
-      const content = candidate?.content?.parts?.[0]?.text;
-
-      console.log(`📊 [Gemini ${model} 응답 완료] finishReason: ${finishReason}, usage:`, data?.usageMetadata);
-
-      if (content && content.trim()) {
-        if (finishReason === 'MAX_TOKENS') {
-          console.warn(`⚠️ [주의] Gemini ${model} 출력이 최대 토큰에 도달했습니다.`);
-        }
-        console.log(`✅ [Gemini (${model}) Native API 생성 성공] (글자수: ${content.length}자)`);
-        return content;
-      }
-
-      lastError = new Error(`Gemini ${model} 응답 내용이 비어 있습니다.`);
-    } catch (err) {
-      console.warn(`⚠️ [Gemini ${model} 예외 발생] ${err.message} -> 다음 모델 시도`);
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('모든 Gemini 모델 Fallback 호출이 실패했습니다.');
+  console.log(`✅ [LLM 생성 성공] ${result.model} (글자수: ${result.text.length}자)`);
+  return result.text;
 }
 
 /**
@@ -1277,12 +1194,6 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     yaml += `\nreading_time: 4`;
   }
 
-  // 다이제스트는 개별 카드 이미지만 사용하므로 상단 featured_image는 항상 ""로 강제
-  if (/featured_image:\s*["']?[^"'\n]*["']?/.test(yaml)) {
-    yaml = yaml.replace(/featured_image:\s*["']?[^"'\n]*["']?/, 'featured_image: ""');
-  } else {
-    yaml += '\nfeatured_image: ""';
-  }
 
   // 5) 이모지 및 구 서식 강제 정제
   body = body.replace(/:::tip\[(?:⚡\s*)?(.*?)\]/g, ':::tip[$1]');
@@ -1314,12 +1225,27 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/!\[.*?\]\((?:없음|none|null|undefined|\s*)\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
   body = body.replace(/!\[.*?\]\((?!https?:\/\/)[^\)]+\)\r?\n?(?:<p[^>]*>.*?<\/p>)?/gi, '');
 
-  // 10) 이미지 보강 및 깨짐 방지 파이프라인 (기사마다 출처 기사 고유 대표 이미지 1:1 매칭)
+  // 10) 이미지 보강 파이프라인 (카드마다 출처 기사 고유 대표 이미지 1:1 매칭)
+  //
+  // [P1-1/P1-2 변경 내용]
+  //  - 검증을 통과한 이미지만 R2 에 올린다. 공용 모듈 lib/image-pipeline.mjs 가
+  //    매직바이트 판별 / Referer 전송 / HD 원본 탐색 / sharp 1200px WebP 정규화를 담당.
+  //    (기존: HTML/에러 페이지를 통과시킬 수 있었고, 확장자 없는 PNG 를 .jpg 로 저장해
+  //     PNG 바이트를 image/jpeg 로 서빙했으며, 썸네일(_l 등)이 대표 이미지로 선택됐다)
+  //  - 카드별 재시도: 출처 크롤링 → 후보군 매칭 → 같은 출처의 다른 후보 이미지
+  //  - 실패해도 조용히 이미지만 지우지 않는다. `<!-- no-image -->` 마커를 남기고
+  //    아래 후처리에서 반드시 제거해, LLM 이 만든 가짜 URL 이 살아남는 경로를 차단한다.
+  //  - 첫 번째 카드의 이미지를 featured_image 로 승격해 목록 썸네일과 og:image 를 정상화한다.
   const cardSections = body.split(/(?=^##\s+)/gm);
   const usedImageUrls = new Set();
+  const imageStats = { total: 0, ok: 0, failed: [] };
+  let featuredImageUrl = null;
+  let featuredImageWidth = null;
+  let featuredImageHeight = null;
+  let featuredOgUrl = null;
 
   const updatedSections = await Promise.all(
-    cardSections.map(async (sec) => {
+    cardSections.map(async (sec, secIdx) => {
       if (!sec.startsWith('## ')) return sec;
 
       const h2EndIdx = sec.indexOf('\n');
@@ -1330,22 +1256,17 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
       const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
       const matchedHref = linkMatch ? linkMatch[2].trim() : '';
       const sourceName = linkMatch ? linkMatch[1].trim() : '공식 출처';
+      const sourceHost = matchedHref ? safeHost(matchedHref) : '';
 
-      let activeImgUrl = null;
-
-      // 1) 출처 URL(matchedHref)로부터 실시간 크롤링하여 고유 이미지 획득 시도 (최우선)
-      if (matchedHref) {
-        console.log(`  🌐 [실시간 대표 이미지 크롤링] ${sourceName} (${cleanH2Title.slice(0, 30)})...`);
-        const fetchedImg = await fetchArticleOgImage(matchedHref);
-        if (fetchedImg && !usedImageUrls.has(fetchedImg)) {
-          activeImgUrl = fetchedImg;
-          usedImageUrls.add(fetchedImg);
-          console.log(`  ✅ [실시간 고유 이미지 획득 성공] ${fetchedImg}`);
-        }
-      }
-
-      // 2) 출처 크롤링으로 못 찾았을 경우 candidates 후보군 중 정확한 URL 매칭 시도
-      if (!activeImgUrl && matchedHref && candidates && candidates.length > 0) {
+      // 이미지 후보를 순서대로 시도 (FR-1.6: 단일 실패에 포기하지 않는다)
+      const attempts = [];
+      const tryFetchFromArticle = async () => {
+        if (!matchedHref) return null;
+        const fetched = await fetchArticleOgImage(matchedHref);
+        return fetched && !usedImageUrls.has(fetched) ? fetched : null;
+      };
+      const tryMatchFromCandidates = () => {
+        if (!matchedHref || !candidates || candidates.length === 0) return null;
         const found = candidates.find(
           (c) =>
             c.imageUrl &&
@@ -1354,24 +1275,58 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
               c.originalLink === matchedHref ||
               (c.originalLink && matchedHref.includes(c.originalLink)))
         );
-        if (found) {
-          activeImgUrl = found.imageUrl;
-          usedImageUrls.add(found.imageUrl);
-          console.log(`  ✅ [후보군 고유 이미지 매칭] ${found.imageUrl}`);
+        return found ? found.imageUrl : null;
+      };
+      // 같은 출처(동일 호스트)의 다른 후보 이미지를 대체로 시도
+      const trySameSourceAlternate = () => {
+        if (!sourceHost || !candidates) return null;
+        const alternates = candidates
+          .filter((c) => c.imageUrl && !usedImageUrls.has(c.imageUrl) && safeHost(c.imageUrl) === sourceHost)
+          .map((c) => c.imageUrl);
+        return alternates[0] || null;
+      };
+
+      attempts.push(await tryFetchFromArticle());
+      attempts.push(tryMatchFromCandidates());
+      attempts.push(trySameSourceAlternate());
+
+      imageStats.total++;
+      let finalImgUrl = null;
+      let cardOgUrl = null;
+      let imgWidth = null;
+      let imgHeight = null;
+
+      for (const candidateUrl of attempts.filter(Boolean)) {
+        console.log(`  🖼️  [카드 ${secIdx}] 이미지 미러링 시도: ${candidateUrl.slice(0, 90)}`);
+        const mirrored = await mirrorArticleImage(candidateUrl, {
+          blogRoot: BLOG_ROOT,
+          bucket: 'blogs',
+          slug: `${baseSlug}-${secIdx}`,
+          referer: matchedHref || undefined, // 핫링크 보호 포털 대응
+          log: (m) => console.log(m),
+        });
+
+        if (mirrored.url) {
+          finalImgUrl = mirrored.url;
+          cardOgUrl = mirrored.ogUrl || null;
+          imgWidth = mirrored.width;
+          imgHeight = mirrored.height;
+          usedImageUrls.add(candidateUrl);
+          imageStats.ok++;
+          break;
         }
+        console.log(`  ⚠️ [카드 ${secIdx}] 후보 실패: ${mirrored.error}`);
       }
 
-      // 3) 출처 기사에서 확보된 진짜 고유 이미지인 경우 R2 미러링 시도
-      let finalImgUrl = null;
-      let finalSourceName = sourceName;
-      let finalSourceLink = matchedHref;
-
-      if (activeImgUrl) {
-        if (activeImgUrl.startsWith('/api/images/')) {
-          finalImgUrl = activeImgUrl;
-        } else {
-          finalImgUrl = await mirrorImageToR2(activeImgUrl, 'blogs', baseSlug);
-        }
+      if (!finalImgUrl) {
+        imageStats.failed.push(cleanH2Title.slice(0, 40));
+        console.log(`  ❌ [카드 ${secIdx}] "${cleanH2Title.slice(0, 30)}" 이미지 확보 실패 — 마커 삽입`);
+      } else if (secIdx === 1 || (featuredImageUrl === null && secIdx > 0)) {
+        // 첫 번째 H2 카드(index 0는 소제목 성격일 수 있어 1을 우선, 없으면 최초 성공 카드
+        featuredImageUrl = finalImgUrl;
+        featuredImageWidth = imgWidth;
+        featuredImageHeight = imgHeight;
+        featuredOgUrl = cardOgUrl;
       }
 
       // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
@@ -1379,17 +1334,52 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
       rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
       rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
-      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 고유 이미지만 삽입 (중복 이미지 절대 금지)
+      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 검증 이미지만 삽입 (중복 이미지 절대 금지)
       if (finalImgUrl) {
-        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${finalSourceLink}" target="_blank" rel="noopener noreferrer">${finalSourceName}</a></p>`;
+        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${matchedHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
         return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
-      } else {
-        // 출처 기사에 실제 이미지가 없거나 중복인 경우 사진 없이 깔끔한 텍스트 카드로 구성
-        return `${h2Line}\n\n${rest}`;
       }
+      // 실패 카드: 사진 없이 텍스트 카드로 구성하되 마커로 남긴다
+      return `${h2Line}\n\n<!-- no-image -->\n\n${rest}`;
     })
   );
   body = updatedSections.join('\n\n');
+
+  // no-image 마커 제거 (LLM 이 만든 가짜 URL 경로 차단의 마지막 단계)
+  const markerCount = (body.match(/<!--\s*no-image\s*-->/g) || []).length;
+  body = body.replace(/[ \t]*<!--\s*no-image\s*-->\s*/g, '').replace(/\n{3,}/g, '\n\n');
+
+  console.log(
+    `🖼️  [이미지 요약] 카드 ${imageStats.total}개 중 ${imageStats.ok}개 확보` +
+      (imageStats.failed.length ? `, 실패 ${imageStats.failed.length}개: ${imageStats.failed.join(' / ')}` : '')
+  );
+  if (featuredImageUrl) {
+    console.log(`⭐ [대표 이미지] 첫 카드 이미지를 featured_image 로 승격: ${featuredImageUrl}`);
+    // CLS 방지용 intrinsic 크기를 frontmatter 에 함께 기록한다 (publish-post 가 DB 로 옮김)
+    yaml = yaml.replace(/^image_width:.*$/m, `image_width: ${featuredImageWidth || 1600}`);
+    yaml = yaml.replace(/^image_height:.*$/m, `image_height: ${featuredImageHeight || 900}`);
+    if (!/^image_width:/m.test(yaml)) yaml += `\nimage_width: ${featuredImageWidth || 1600}`;
+    if (!/^image_height:/m.test(yaml)) yaml += `\nimage_height: ${featuredImageHeight || 900}`;
+    // [P2] 1200x630 OG 크롭본 (없으면 featured_image 로 폴백되므로 빈 문자열)
+    if (/^og_image:/m.test(yaml)) {
+      yaml = yaml.replace(/^og_image:.*$/m, `og_image: "${featuredOgUrl || ''}"`);
+    } else {
+      yaml += `\nog_image: "${featuredOgUrl || ''}"`;
+    }
+  } else {
+    console.log(`⚠️ [대표 이미지] 승격할 이미지가 없습니다. featured_image 는 비어 있습니다.`);
+  }
+  if (markerCount > 0) console.log(`ℹ️ no-image 마커 ${markerCount}개 정리 완료.`);
+
+  // [P1-2] featured_image 는 LLM 값이 아니라 파이프라인이 승격한 첫 카드 이미지로 덮어쓴다.
+  // (기존엔 조건이 반전되어 있어 featured_image 가 언제나 "" 로 강제되고,
+  //  목록 썸네일과 og:image 가 영구 공백이었다)
+  // 반드시 이미지 파이프라인 실행 "이후" 에 치환해야 한다 (letfeaturedImageUrl TDZ 방지).
+  if (/^featured_image:/m.test(yaml)) {
+    yaml = yaml.replace(/^featured_image:.*$/m, `featured_image: "${featuredImageUrl || ''}"`);
+  } else {
+    yaml += `\nfeatured_image: "${featuredImageUrl || ''}"`;
+  }
 
   // Google News 링크를 디코딩된 실제 언론사 URL로 치환
   if (candidates && candidates.length > 0) {
@@ -1422,6 +1412,19 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     filePath,
     content: finalMarkdown,
   };
+}
+
+/**
+ * URL 에서 호스트만 추출 (같은 출처 대체 이미지 판별용, FR-1.6)
+ * @param {string} u
+ * @returns {string} 호스트 (파싱 실패 시 빈 문자열)
+ */
+export function safeHost(u) {
+  try {
+    return new URL(u).hostname;
+  } catch (_) {
+    return '';
+  }
 }
 
 /**
@@ -1622,23 +1625,36 @@ post_type: "digest"
   });
 
   // Step 9: Git Commit & Push (Workers 배포 트리거)
+  // [P0-1] 기존 코드는 `git pull --rebase` 실패를 `catch (_) {}` 로 삼킨 뒤
+  //        "🚀 GitHub Push 완료" 를 출력해 실제 실패를 숨겼다.
+  //        공용 헬퍼로 교체해 실패를 전파하고, 상태 파일은 스테이징하지 않는다.
   console.log(`📦 [배포 트리거] Git commit & push...`);
+  let deploySynced = true;
+  let deployError = null;
   try {
-    execSync(`git add content/posts/${filename}`, { cwd: BLOG_ROOT });
-    const staged = execSync(`git status --porcelain`, { cwd: BLOG_ROOT }).toString().trim();
-    if (staged) {
-      execSync(`git commit -m "feat(digest): morning news digest ${slug}"`, { cwd: BLOG_ROOT });
-      try {
-        execSync(`git pull --rebase origin main`, { cwd: BLOG_ROOT });
-      } catch (_) {}
-      execSync(`git push origin main`, { cwd: BLOG_ROOT });
+    const result = gitPublish({
+      repoRoot: BLOG_ROOT,
+      paths: [`content/posts/${filename}`],
+      message: `feat(digest): morning news digest ${slug}`,
+      log: (m) => console.log(`   ${m}`),
+    });
+    if (result.committed) {
       console.log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
+    } else {
+      console.log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
     }
   } catch (gitErr) {
-    console.warn(`⚠️ Git push 중 경고 (D1 등록은 완료됨): ${gitErr.message}`);
+    deploySynced = false;
+    deployError = gitErr;
+    console.error(`❌ [GitHub 배포 실패] ${gitErr.message}`);
+    console.error(`   ⚠️ D1 등록은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
   }
 
   // Step 10: 텔레그램 알림 발송
+  // [P0-1] 배포 실패를 "동기화 완료"로 보고하지 않는다 (FR-4.1)
+  const deployLine = deploySynced
+    ? '- 🚀 배포: Cloudflare Workers 동기화 완료'
+    : '- 🚀 배포: ❌ *실패* — D1 등록은 완료됐으나 사이트는 이전 빌드입니다. 수동 조치 필요';
   const telegramMsg = `🌅 *[포켓머니(pockemoney) 아침 모닝 브리핑 발행 완료]*
 
 ⏰ *발행 시각:* ${dateInfo.timeStr} KST
@@ -1649,14 +1665,27 @@ post_type: "digest"
 *검증 상태:*
 - 🗄️ D1 DB: 등록 성공 (blogs / news)
 - ⚙️ 빌드: PASS (0 errors)
-- 🚀 배포: Cloudflare Workers 동기화 완료`;
+${deployLine}`;
 
   await sendTelegramReport(telegramMsg);
+
+  if (!deploySynced) {
+    await sendTelegramReport(
+      `🚨 *[심각] blogs 다이제스트 GitHub 배포 실패*\n\n⏰ ${dateInfo.timeStr} KST\n📝 ${title}\n\n` +
+        `*원인:* ${deployError?.message || '알 수 없음'}\n\n` +
+        `*영향:* D1 등록은 완료되었으나 소스 코드가 GitHub 에 반영되지 않아 사이트는 이전 빌드를 서빙합니다.`
+    );
+  }
   console.log(`📣 [텔레그램 알림 전송 완료]`);
 
-  console.log(`\n✅ 아침 뉴스 다이제스트 파이프라인이 성공적으로 종료되었습니다!`);
-  return { title, slug, filePath, success: true };
+  console.log(
+    deploySynced
+      ? `\n✅ 아침 뉴스 다이제스트 파이프라인이 성공적으로 종료되었습니다!`
+      : `\n⚠️ 다이제스트: D1 등록은 성공했으나 GitHub 배포가 실패했습니다.`
+  );
+  return { title, slug, filePath, success: deploySynced, deploySynced };
 }
+
 
 // CLI 직접 실행 처리
 if (process.argv[1] && process.argv[1].endsWith('generate-news-digest.mjs')) {

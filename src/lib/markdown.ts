@@ -207,12 +207,21 @@ marked.use({
 
     // 4. 이미지 최적화 및 스타일링
     image({ href, title, text }) {
+      let cleanHref = href || '';
+      let widthAttr = '';
+      let heightAttr = '';
+      const sizeMatch = cleanHref.match(/\s+width=["']?(\d+)["']?\s+height=["']?(\d+)["']?/i);
+      if (sizeMatch) {
+        cleanHref = cleanHref.replace(sizeMatch[0], '').trim();
+        widthAttr = ` width="${sizeMatch[1]}"`;
+        heightAttr = ` height="${sizeMatch[2]}"`;
+      }
       const titleAttr = title ? ` title="${title}"` : '';
       const altAttr = text ? ` alt="${text}"` : ' alt="image"';
       return `
-<figure class="my-6 w-full max-w-full overflow-hidden">
-  <img src="${href}"${altAttr}${titleAttr} loading="lazy" class="rounded-2xl shadow-md max-w-full h-auto mx-auto border border-neutral-200/60 dark:border-neutral-800" />
-  ${title ? `<figcaption class="text-center text-xs text-neutral-500 mt-2">${title}</figcaption>` : ''}
+<figure>
+  <img src="${cleanHref}"${altAttr}${titleAttr}${widthAttr}${heightAttr} loading="lazy" decoding="async" onerror="this.style.display='none';" />
+  ${title ? `<figcaption>${title}</figcaption>` : ''}
 </figure>`.trim();
     },
   },

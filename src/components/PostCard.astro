@@ -101,13 +101,26 @@ const categoryIcon = (post.category_slug && categoryIcons[post.category_slug]) |
     <a
       href={`/blog/${post.slug}`}
       aria-label={post.title}
-      class="group/cover relative w-full md:w-[28%] shrink-0 mb-3 md:mb-0 aspect-[16/9] md:aspect-auto rounded-xl overflow-hidden bg-[var(--surface-container-low)]"
+      class="group/cover relative w-full md:w-[28%] shrink-0 mb-3 md:mb-0 aspect-[16/10] rounded-xl overflow-hidden bg-[var(--surface-container-low)]"
     >
+      {/*
+        [P2] CLS 제거 + 종횡비 왜곡 방지
+          - 기존: `md:aspect-auto` + `h-full` 조합이라 데스크톱에서 컨테이너 높이가
+            flex stretch 에 의존해 이미마다 달랐고, 로드 전 0px → 로드 후 점프가 발생했다.
+          - 지금: `aspect-[16/10]` 박스로 공간을 미리 예약하고, 이미지는 absolute 로
+            박스를 정확히 채운다. intrinsic width/height 가 있으면 <img> 속성으로도
+            브라우저에 알려 CLS 를 완전히 없앤다.
+          - 원본이 세로 이미지여도 잘리지 않고 박스 안에서 object-fit 으로만 정리된다.
+      */}
       <img
         src={post.featured_image}
         alt={post.title}
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        width={post.image_width || undefined}
+        height={post.image_height || undefined}
         loading="lazy"
+        decoding="async"
+        class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        onerror="this.classList.add('opacity-0'); this.closest('.group\\/cover')?.classList.add('!bg-[var(--surface-container-high)]');"
       />
       <!-- Shirone Hover dark mask with centered white chevron -->
       <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
