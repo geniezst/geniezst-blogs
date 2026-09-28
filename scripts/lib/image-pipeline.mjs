@@ -52,7 +52,7 @@ const UA =
 
 /** 정규화 정책 (FR-2.4) */
 export const IMAGE_POLICY = {
-  MIN_WIDTH: 640, // 본문 730px 컬럼의 1x 하한. 미달이면 대체 후보 탐색
+  MIN_WIDTH: 500, // 본문 하한. 500px 이상 프레스/언론사 포토 허용
   TARGET_WIDTH: 1200, // 정규화 기준 폭
   MAX_WIDTH: 1600, // 이 값을 넘으면 축소
   WEBP_QUALITY: 82,

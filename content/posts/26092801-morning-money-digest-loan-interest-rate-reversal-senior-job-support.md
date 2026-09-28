@@ -6,12 +6,12 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-0e031e73cd27.webp"
+featured_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-7b429cb48943.webp"
 affiliate: false
 post_type: "digest"
-image_width: 1024
-image_height: 1024
-og_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-0e031e73cd27-og.jpg"
+image_width: 600
+image_height: 302
+og_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-7b429cb48943-og.jpg"
 ---
 
 :::tip[오늘의 모닝 브리핑 1분 핵심 요약]
@@ -25,10 +25,10 @@ og_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-0e031e73c
 
 ## 은행 주담대 금리 역전, 갈아타기 신중해야
 
-![은행 주담대 금리 역전, 갈아타기 신중해야](/api/images/2026/09/morning-money-digest-loan-interest-rate-0e031e73cd27.webp)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://news.google.com/rss/articles/CBMijgFBVV95cUxQMEpuM0U5R0lmbW5EV0VqcTNiYmc0OEQzbmlnanJpelVONzRPLVhYN29mbllIVTRRQ1pYeHdLVmgtTzBzYUN1UVVtX3RReHZ1YjdCckhkY2w4ZGNQLWtxZC1ON2NZR2wtSUkycURHUUwtV1g0VUV2YTVsSHkzWkNjeUpIYjBCOGhDNndNXy13?oc=5" target="_blank" rel="noopener noreferrer">국제신문</a></p>
+![은행 주담대 금리 역전, 갈아타기 신중해야](/api/images/2026/09/morning-money-digest-loan-interest-rate-7b429cb48943.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.kookje.co.kr/news2011/asp/newsbody.asp?code=00&key=20260928.22012008683" target="_blank" rel="noopener noreferrer">국제신문 DB (대출 창구)</a></p>
 
-> **출처**: [국제신문](https://news.google.com/rss/articles/CBMijgFBVV95cUxQMEpuM0U5R0lmbW5EV0VqcTNiYmc0OEQzbmlnanJpelVONzRPLVhYN29mbllIVTRRQ1pYeHdLVmgtTzBzYUN1UVVtX3RReHZ1YjdCckhkY2w4ZGNQLWtxZC1ON2NZR2wtSUkycURHUUwtV1g0VUV2YTVsSHkzWkNjeUpIYjBCOGhDNndNXy13?oc=5)  
+> **출처**: [국제신문](https://www.kookje.co.kr/news2011/asp/newsbody.asp?code=00&key=20260928.22012008683)  
 > **발행**: 2026-09-27 08:54 KST | **신뢰도**: 경제전문지
 
 :::fact[기사 요약]
