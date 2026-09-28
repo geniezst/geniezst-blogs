@@ -113,6 +113,48 @@ export async function readDimensions(buffer) {
 // ---------------------------------------------------------------------------
 
 /**
+ * 기사 본문과 무관한 사이트 공통 로고, 플레이스홀더, 기자 증명사진, 배너 여부 판별
+ */
+export function isPlaceholderOrLogo(url) {
+  if (!url) return true;
+  const lower = url.toLowerCase();
+
+  // 1. 명백한 로고 / 심볼 / 브랜드 패턴
+  const logoPatterns = [
+    'logo', 'ci_', '_ci', 'bi_', '_bi', 'symbol', 'emblem', 'brand',
+    'korea_logo', 'header_logo', 'footer_logo', 'top_logo', 'site_logo',
+    'common_logo', 'press_logo', 'media_logo', 'company_logo', 'logo_'
+  ];
+  if (logoPatterns.some((p) => lower.includes(p))) return true;
+
+  // 2. 기본/대체/플레이스홀더 이미지
+  const placeholderPatterns = [
+    'default', 'no_image', 'noimage', 'placeholder', 'empty', 'dummy',
+    'blank', 'spacer', 'transparent', 'not_found', 'error_img',
+    'opengraph_default', 'common_og', 'main_og', 'share_default',
+    'korea_default', 'og_default', 'sns_default'
+  ];
+  if (placeholderPatterns.some((p) => lower.includes(p))) return true;
+
+  // 3. UI 컴포넌트, 아이콘, 배너
+  const uiPatterns = [
+    'favicon', 'icon_', '_icon', 'btn_', '_btn', 'button',
+    'banner_', '_banner', 'event_banner', 'ad_banner', 'popup_',
+    'gnb_', 'snb_', 'footer_', 'header_'
+  ];
+  if (uiPatterns.some((p) => lower.includes(p))) return true;
+
+  // 4. 기자 프로필 / 증명사진 (기사 내용과 무관한 기자 얼굴)
+  const reporterPatterns = [
+    'reporter', 'journalist', 'author_img', 'writer_img', 'profile_photo',
+    'profile_img', 'member_photo', 'staff_photo'
+  ];
+  if (reporterPatterns.some((p) => lower.includes(p))) return true;
+
+  return false;
+}
+
+/**
  * 이미지를 내려받아 검증된 버퍼를 반환한다.
  * 실패 시 사유가 포함된 { error } 를 돌려주며 절대 조용히 null 을 반환하지 않는다.
  *
@@ -121,6 +163,7 @@ export async function readDimensions(buffer) {
  */
 export async function fetchVerifiedImage(url, opts = {}) {
   if (!url || !/^https?:\/\//i.test(url)) return { error: '잘못된 URL' };
+  if (isPlaceholderOrLogo(url)) return { error: `로고/플레이스홀더/비기사 이미지 제외 (${url.slice(0, 60)})` };
 
   const referer = opts.referer || url;
   const timeoutMs = opts.timeoutMs || 10000;

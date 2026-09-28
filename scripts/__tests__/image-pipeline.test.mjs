@@ -1,4 +1,4 @@
-import { sniffImageFormat, buildHdCandidates, looksLikeThumbnail, normalizeImage, fetchVerifiedImage, readDimensions } from '../lib/image-pipeline.mjs';
+import { sniffImageFormat, buildHdCandidates, looksLikeThumbnail, normalizeImage, fetchVerifiedImage, readDimensions, isPlaceholderOrLogo } from '../lib/image-pipeline.mjs';
 import sharp from 'sharp';
 
 let pass=0, fail=0;
@@ -57,6 +57,13 @@ const fake = await fetchVerifiedImage('https://geniezst.com/definitely-missing-4
 ok('404 거부', !!fake.error, `-> ${fake.error}`);
 const html = await fetchVerifiedImage('https://pockemoney.com/nonexistent-page-xyz');
 ok('HTML 페이지 거부 (Referer 없이)', !!html.error, `-> ${html.error}`);
+
+console.log('\n[6] 로고 및 플레이스홀더 기각 검증');
+ok('korea_logo_2024.jpg 기각', isPlaceholderOrLogo('https://www.korea.kr/images/event/korea_logo_2024.jpg'));
+ok('common/logo.png 기각', isPlaceholderOrLogo('https://news.com/img/common/logo.png'));
+ok('default_thumb.jpg 기각', isPlaceholderOrLogo('https://news.com/img/default_thumb.jpg'));
+ok('기자 프로필 사진 기각', isPlaceholderOrLogo('https://news.com/img/reporter_hong.jpg'));
+ok('실제 기사 본문 사진은 통과', !isPlaceholderOrLogo('https://www.korea.kr/newsWeb/resources/attaches/2026.09/26/6b0feaf8eacb86e383db446ba2c172e.jpg'));
 
 console.log(`\n===== 결과: ${pass} 통과 / ${fail} 실패 =====`);
 process.exit(fail?1:0);

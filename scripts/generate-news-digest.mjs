@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 import { execSync, spawnSync } from 'node:child_process';
 import { gitPublish } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
-import { mirrorArticleImage, looksLikeThumbnail } from './lib/image-pipeline.mjs';
+import { mirrorArticleImage, looksLikeThumbnail, isPlaceholderOrLogo } from './lib/image-pipeline.mjs';
 import { sendTelegramReport } from './telegram-notify.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
@@ -175,9 +175,10 @@ except Exception:
 export async function validateAndNormalizeImageUrl(imgUrl) {
   if (!imgUrl || !imgUrl.startsWith('http')) return null;
 
-  // 파비콘, 1x1 투명 픽셀, svg/ico 제외
+  // 파비콘, 1x1 투명 픽셀, svg/ico 제외 및 사이트 로고/플레이스홀더 배제
   if (/\.(ico|svg)(\?.*)?$/i.test(imgUrl)) return null;
   if (/1x1|pixel|spacer|blank|tracking|badge/i.test(imgUrl)) return null;
+  if (isPlaceholderOrLogo(imgUrl)) return null;
 
   // 1) http:// -> https:// 승격 시도 (Mixed Content 원천 방지)
   if (imgUrl.startsWith('http://')) {
@@ -1277,18 +1278,12 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
         );
         return found ? found.imageUrl : null;
       };
-      // 같은 출처(동일 호스트)의 다른 후보 이미지를 대체로 시도
-      const trySameSourceAlternate = () => {
-        if (!sourceHost || !candidates) return null;
-        const alternates = candidates
-          .filter((c) => c.imageUrl && !usedImageUrls.has(c.imageUrl) && safeHost(c.imageUrl) === sourceHost)
-          .map((c) => c.imageUrl);
-        return alternates[0] || null;
-      };
+      // [엄격 규칙] 오직 해당 출처 기사에 실린 실제 이미지만 시도 (타 기사 이미지 대체 절대 금지)
+      const articleImg = await tryFetchFromArticle();
+      if (articleImg) attempts.push(articleImg);
 
-      attempts.push(await tryFetchFromArticle());
-      attempts.push(tryMatchFromCandidates());
-      attempts.push(trySameSourceAlternate());
+      const candidateImg = tryMatchFromCandidates();
+      if (candidateImg && !attempts.includes(candidateImg)) attempts.push(candidateImg);
 
       imageStats.total++;
       let finalImgUrl = null;

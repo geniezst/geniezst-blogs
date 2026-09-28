@@ -47,9 +47,6 @@ og_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-7b429cb48
 
 ## 중장년 경력지원 행사 집중 개최, 제2의 인생 설계 돕는다
 
-![중장년 경력지원 행사 집중 개최, 제2의 인생 설계 돕는다](/api/images/2026/09/morning-money-digest-loan-interest-rate--2aeb9f7ecd1f.webp)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/briefing/pressReleaseView.do?newsId=156783202&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-09-28&amp;endDate=2026-09-28&srchWord=&amp;period=" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑 (고용노동부)</a></p>
-
 > **출처**: [대한민국 정책브리핑 (고용노동부)](https://www.korea.kr/briefing/pressReleaseView.do?newsId=156783202&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-09-28&amp;endDate=2026-09-28&srchWord=&amp;period=)  
 > **발행**: 2026-09-27 23:29 KST | **신뢰도**: 공식 발표
 
@@ -90,9 +87,6 @@ og_image: "/api/images/2026/09/morning-money-digest-loan-interest-rate-7b429cb48
 ---
 
 ## 2026년 2분기 건설공사 계약액 발표
-
-![2026년 2분기 건설공사 계약액 발표](/api/images/2026/09/morning-money-digest-loan-interest-rate--2aeb9f7ecd1f.webp)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/briefing/pressReleaseView.do?newsId=156783225&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-09-28&amp;endDate=2026-09-28&srchWord=&amp;period=" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑 (국토교통부)</a></p>
 
 > **출처**: [대한민국 정책브리핑 (국토교통부)](https://www.korea.kr/briefing/pressReleaseView.do?newsId=156783225&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-09-28&amp;endDate=2026-09-28&srchWord=&amp;period=)  
 > **발행**: 2026-09-27 23:29 KST | **신뢰도**: 공식 발표
