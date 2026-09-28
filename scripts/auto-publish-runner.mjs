@@ -540,6 +540,11 @@ export async function runMorningNewsDigestPipeline(options = {}) {
       throw new Error('뉴스 다이제스트 생성에 실패했습니다.');
     }
 
+    if (options.dryRun) {
+      console.log(`ℹ️ [DRY-RUN] 아침 다이제스트 시뮬레이션 완료.`);
+      return true;
+    }
+
     // 상태 파일 갱신 (오전 다이제스트 전용 카테고리 'news' 고정)
     state.last_session = 'morning';
     state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
@@ -1192,14 +1197,24 @@ async function startDaemon() {
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
   log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
+  let morningExecutedToday = false;
+  let eveningExecutedToday = false;
+  let eveningSkippedLoggedToday = false;
+
   while (true) {
     const { dateStr, hours, minutes, dayOfWeek } = getKSTDate();
+    const currentTotal = hours * 60 + minutes;
+    const morningTargetTotal = currentMorningTarget.hour * 60 + currentMorningTarget.minute;
+    const eveningTargetTotal = currentEveningTarget.hour * 60 + currentEveningTarget.minute;
 
     // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
     if (lastCheckedDay !== dateStr) {
       currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
       currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
       lastCheckedDay = dateStr;
+      morningExecutedToday = false;
+      eveningExecutedToday = false;
+      eveningSkippedLoggedToday = false;
 
       const state = loadState();
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
@@ -1214,27 +1229,45 @@ async function startDaemon() {
       }
     }
 
-    // 1. 오전 다이제스트 시간 도달 확인 (★ 매일 주 7일 무휴식 구동)
-    if (hours === currentMorningTarget.hour && minutes === currentMorningTarget.minute) {
-      log(`🌅 오전 다이제스트 목표 시간(${formatTarget(currentMorningTarget)} KST) 도달: 파이프라인 가동`);
-      await runMorningNewsDigestPipeline();
+    const state = loadState();
+
+    // 1. 오전 다이제스트 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 오전 12시 이전)
+    const morningDone = isSessionAlreadyDone(state, 'morning', dateStr) || isSessionAlreadyDone(state, 'lunch', dateStr);
+    if (!morningDone && !morningExecutedToday && currentTotal >= morningTargetTotal && currentTotal < 12 * 60) {
+      log(`🌅 [오전 세션 트리거] 목표 시각(${formatTarget(currentMorningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
+      morningExecutedToday = true;
+      try {
+        await runMorningNewsDigestPipeline();
+      } catch (e) {
+        log(`❌ [오전 세션 오류 방어] ${e.message}`);
+      }
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
 
-    // 2. 오후 심층글 시간 도달 확인 (주 1회 랜덤 휴식 요일 반영)
-    if (hours === currentEveningTarget.hour && minutes === currentEveningTarget.minute) {
+    // 2. 오후 심층글 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 24시 이전)
+    const eveningDone = isSessionAlreadyDone(state, 'evening', dateStr);
+    if (!eveningDone && !eveningExecutedToday && currentTotal >= eveningTargetTotal && currentTotal < 24 * 60) {
       if (isAfternoonSkippedToday) {
-        const state = loadState();
-        const weeklyConfig = state.weekly_skip_config || {};
-        log(`💤 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '지정요일'})입니다. 오후 세션을 건너뜁니다.`);
-        await sendTelegramReport(
-          `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오전 뉴스 다이제스트는 매일 무휴식 발행되며, 오후 심층글은 내일부터 다시 정상 발행됩니다.`
-        );
+        if (!eveningSkippedLoggedToday) {
+          const weeklyConfig = state.weekly_skip_config || {};
+          log(`💤 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '지정요일'})입니다. 오후 세션을 건너뜁니다.`);
+          eveningSkippedLoggedToday = true;
+          try {
+            await sendTelegramReport(
+              `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오전 뉴스 다이제스트는 매일 무휴식 발행되며, 오후 심층글은 내일부터 다시 정상 발행됩니다.`
+            );
+          } catch (_) {}
+        }
       } else {
-        log(`📚 오후 심층글 목표 시간(${formatTarget(currentEveningTarget)} KST) 도달: 파이프라인 가동`);
-        await runPublishPipeline('evening');
+        log(`📚 [오후 세션 트리거] 목표 시각(${formatTarget(currentEveningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
+        eveningExecutedToday = true;
+        try {
+          await runPublishPipeline('evening');
+        } catch (e) {
+          log(`❌ [오후 세션 오류 방어] ${e.message}`);
+        }
+        await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
       }
-      await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
 
     // 30초마다 체크

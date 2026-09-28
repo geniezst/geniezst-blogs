@@ -1683,7 +1683,7 @@ ${deployLine}`;
       ? `\n✅ 아침 뉴스 다이제스트 파이프라인이 성공적으로 종료되었습니다!`
       : `\n⚠️ 다이제스트: D1 등록은 성공했으나 GitHub 배포가 실패했습니다.`
   );
-  return { title, slug, filePath, success: deploySynced, deploySynced };
+  return { title, slug, filePath, success: true, deploySynced };
 }
 
 

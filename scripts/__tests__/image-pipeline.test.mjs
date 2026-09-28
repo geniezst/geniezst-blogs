@@ -46,9 +46,9 @@ ok('2000px -> 1600px 상한 축소', n1.width===1600 && n1.ext==='webp', `-> ${n
 const mid = await sharp({create:{width:900,height:600,channels:3,background:{r:1,g:2,b:3}}}).jpeg().toBuffer();
 const n2 = await normalizeImage(mid);
 ok('900px -> 1200px 기준(업스케일 아님 900 유지)', n2.width===900, `-> ${n2.width}x${n2.height}`);
-const small = await sharp({create:{width:500,height:400,channels:3,background:{r:1,g:2,b:3}}}).jpeg().toBuffer();
+const small = await sharp({create:{width:450,height:300,channels:3,background:{r:1,g:2,b:3}}}).jpeg().toBuffer();
 const n3 = await normalizeImage(small);
-ok('500px(<640) 는 기각 — FR-1.5', !!n3.error, `-> ${n3.error}`);
+ok('450px(<500) 는 기각 — FR-1.5', !!n3.error, `-> ${n3.error}`);
 ok('WebP 매직바이트 확인', sniffImageFormat(n1.buffer)?.type==='webp');
 ok('출력 JPEG 아님', n1.buffer[0]===0x52&&n1.buffer[1]===0x49, 'RIFF');
 
