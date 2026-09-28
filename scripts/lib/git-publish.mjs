@@ -121,8 +121,7 @@ export function gitPublish({ repoRoot, paths, message, branch = 'main', log = ()
   }
 
   // 2) 원격 동기화 — 실패를 삼키지 않는다
-  const remote = `origin ${branch}`;
-  runGit(repoRoot, ['fetch', remote], { timeout: 60000 });
+  runGit(repoRoot, ['fetch', 'origin', branch], { timeout: 60000 });
 
   try {
     runGit(repoRoot, ['-c', 'rebase.autoStash=true', 'rebase', `origin/${branch}`]);
@@ -163,7 +162,7 @@ export function gitPublish({ repoRoot, paths, message, branch = 'main', log = ()
   }
 
   // 3) push
-  runGit(repoRoot, ['push', remote], { timeout: 180000 });
+  runGit(repoRoot, ['push', 'origin', branch], { timeout: 180000 });
 
   if (!committed) {
     return { committed: false, pushed: true, reason: 'no-local-changes' };
