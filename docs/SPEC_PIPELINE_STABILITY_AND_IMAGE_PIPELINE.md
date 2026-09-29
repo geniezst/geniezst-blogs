@@ -49,7 +49,7 @@
 - **FR-4.4** 저녁 심층글은 H2 5개 미만 또는 공백 제외 1,800자 미만이면 **D1 발행 전에 차단**한다. 자동 재시도 1회 후에도 미달이면 발행 스킵 + 경보.
 - **FR-4.5** LLM 응답이 `MAX_TOKENS` 로 잘렸다면 성공으로 처리하지 않는다.
 - **FR-4.6** 텔레그램 메시지는 3900자 단위로 분할 전송한다.
-- **FR-4.7** 검수 데몬(`correct-runner`)의 감사 실패를 "위반 0건"으로 변환하지 않는다.
+- **FR-4.7** ~~검수 데몬(`correct-runner`)의 감사 실패를 "위반 0건"으로 변환하지 않는다.~~ → 해당 데몬은 2026-09-29 제거되어 이 요구사항은 폐기되었다.
 - **FR-4.8** 로그가 중복 기록되지 않고, 로그 회전과 데몬 자동 재시작이 동작한다.
 
 ---
@@ -77,7 +77,6 @@
 - `generate-news-digest.mjs` — 이미지 파이프라인 교체, 카드별 결정 로직, `featured_image` 승격
 - `publish-post.mjs` — R2 키 해시화, 대표 이미지 저장 경로
 - `telegram-notify.mjs` — 청크 분할
-- `correct-runner.mjs` — 감사 실패 표면화
 - `.gitignore` — `data/*.json` 제외
 - 신규 `scripts/backfill-featured-image.mjs` — 기존 `news` 글 소급 적용
 - 신규 D1 마이그레이션 — `featured_image` 인덱스
@@ -91,7 +90,7 @@
 - `pages/rss.xml.ts` — `enclosure` / `media:content`
 
 ### 4.4 운영 (`/workspace/service.sh`)
-- `correct-runner` 2종 등록, 자동 재시작, 로그 회전
+> ⚠️ **2026-09-29 변경**: 운영자 요청으로 검수 데몬(`correct-runner`)을 완전히 제거했다. 서비스 배선·코드·테스트 모두 삭제되었으며 더 이상 기동하지 않는다.
 
 ---
 
