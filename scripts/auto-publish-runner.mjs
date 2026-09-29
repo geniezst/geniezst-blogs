@@ -687,7 +687,7 @@ export async function callLLMWithFallback(messages, env) {
 /**
  * 마크다운 응답 파싱, Frontmatter 정합성 보정 및 YYMMDDNN-[slug].md 파일 저장
  */
-export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateStr, selectedChart }) {
+export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateStr, selectedChart, rejectedSlugSink = [] }) {
   const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
   if (!fs.existsSync(postsDir)) {
     fs.mkdirSync(postsDir, { recursive: true });
@@ -751,6 +751,22 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
 
   if (!cleanSlug || cleanSlug.length < 3) {
     cleanSlug = `${category}-guide-${Date.now().toString().slice(-4)}`;
+  }
+
+  // [P0 · 슬러그 충돌 차단]
+  // 파일명은 YYMMDDNN 접두사 덕분에 항상 고유하지만, frontmatter 의 `slug` 은
+  // LLM 이 만든 문자열이라 이미 다른 글이 쓰고 있을 수 있다.
+  // publish-post.mjs 는 ON CONFLICT(slug) DO UPDATE 라 충돌 시
+  // 기존 글을 조용히 덮어쓴다. 그 결과:
+  //   - 새 글이 목록(D1 최근순)에서 사라진다 (created_at 이 옛 글로 유지)
+  //   - 기존 글 내용�� 사라진다
+  // 2026-09-29 저녁에 youth-leap-account-2026-guide 가 정확히 이 상황이었다.
+  // 여기서 미리 충돌을 해소해 D1 에 닿기 전에 막는다.
+  const collision = resolveSlugCollision(postsDir, cleanSlug);
+  if (collision.changed) {
+    log(`⚠️ [슬러그 충돌] "${collision.requested}" 이 이미 다른 글에서 사용 중입니다.`);
+    log(`   → "${collision.slug}" 로 변경해 기존 글을 보호합니다.`);
+    cleanSlug = collision.slug;
   }
   yamlBlock = yamlBlock.replace(/slug:\s*["']?[^"'\n]+["']?/, `slug: "${cleanSlug}"`);
 
@@ -833,6 +849,9 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
 
   if (violations.length > 0) {
     // 불합격 산출물을 디스크에 남기지 않는다 (다음 세션의 중복 방지 상태 오염 방지)
+    // 단, 재시도가 또 같은 주제를 뽑지 않도록 시도 주제는 상위 호출부에 남긴다.
+    const attempted = readPostIdentity(postFile);
+    if (attempted.slug) rejectedSlugSink.push(attempted.slug);
     try {
       fs.unlinkSync(postFile);
       log(`🗑️ [게이트] 미달 파일을 삭제했습니다: ${fileName}`);
@@ -860,8 +879,9 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
 /**
  * Tier 2 내장 심층글 생성 엔진 (Built-in Deep Article Generator)
  */
-export async function runBuiltinDeepArticleGenerator({ category, sessionName, targetDateStr, selectedChart }) {
+export async function runBuiltinDeepArticleGenerator({ category, sessionName, targetDateStr, selectedChart, options = {} }) {
   const env = loadEnvConfig();
+  const avoidTopics = Array.isArray(options.avoidTopics) ? options.avoidTopics : [];
   log(`🚀 [Tier 2 엔진 가동] 내장 심층글 생성기를 호출합니다. (카테고리: ${category}, 세션: ${sessionName}, 차트: ${selectedChart.name})`);
 
   const systemPrompt = `당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 시니어 에디터입니다.
@@ -869,6 +889,11 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
 구글 애드센스 고수익 승인 표준 및 개발자/실무자 수준의 정확하고 깊이 있는 금융 분석 기준을 엄격히 준수하세요.
 
 [필수 작성 지침]
+0. [절대 금지 - 이미 발행된 주제]
+${buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts'))}
+${avoidTopics.length ? `   - 이번 실행에서 이미 시도했으나 채택되지 않은 주제입니다. 이 주제 및 동일 주제는 절대 다시 선택하지 마세요: ${avoidTopics.join(', ')}` : ''}
+   - 위 목록에 있는 주제와 사실상 같은 글은 어떤 경우에도 생성하지 마세요. 제목이나 슬러그만 살짝 바꾼 변형도 금지입니다.
+   - 목록에 없는 완전히 새로운 주제를 고르세요. 목록이 비어 있지 않다면 반드시 그 밖의 주제를 선택해야 합니다.
 1. [골디락스 난이도 및 주제 선정]
    - 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 실전 생활금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(근로장려금/소상공인 지원) 등 다채롭고 구체적인 실무 주제를 선정하세요.
 2. [필수 분량 규격]
@@ -927,6 +952,7 @@ affiliate: false
     category,
     targetDateStr,
     selectedChart,
+    rejectedSlugSink: Array.isArray(options.rejectedSlugs) ? options.rejectedSlugs : [],
   });
 
   return parsed;
@@ -963,6 +989,10 @@ export async function generateArticleWithFallback({
   // 두 경우 모두 MAX_LLM_RETRY 회까지만 시도하고, 최종 실패 시 throw 하여
   // 호출부(D1 발행 단계)에 절대 도달하지 못하게 한다.
   let lastError = null;
+  // [P0] 재시도 때 같은 주제를 다시 뽑는 것을 막기 위한 목록.
+  // 2026-09-29 저녁 재실행 시 1·2차 시도 모두 '근로장려금 반기 신청' 을 골랐던
+  // 것처럼, 재시도는 같은 확률적 분포에서 다시 뽑히므로 방치하면 무한 반복된다.
+  const avoidTopics = [];
   for (let attempt = 0; attempt <= QUALITY_GATE.MAX_LLM_RETRY; attempt++) {
     if (attempt > 0) {
       log(`🔄 [LLM 재시도 ${attempt}/${QUALITY_GATE.MAX_LLM_RETRY}] 사유: ${lastError?.message?.slice(0, 140) || '알 수 없음'}`);
@@ -973,7 +1003,7 @@ export async function generateArticleWithFallback({
         sessionName,
         targetDateStr,
         selectedChart,
-        options: { compactRetry: attempt > 0, attempt },
+        options: { compactRetry: attempt > 0, attempt, avoidTopics: [...avoidTopics], rejectedSlugs: avoidTopics },
       });
 
       // 방어: LLM 이 파일을 만들지 못한 채 성공으로 보고하는 경우 차단
@@ -984,13 +1014,48 @@ export async function generateArticleWithFallback({
         log(`⚠️ 신규 파일이 감지되지 않아 기존 파일로 판단합니다: ${result.postFile}`);
       }
 
+      // [P0 · 중복 주제 차단] 이미 발행된 글과 같은 글이 나오면 폐기하고 재생성한다.
+      // 프롬프트로 막지 못한 경우를 여기서 하드하게 차단한다.
+      // 방치하면 publish-post.mjs 의 ON CONFLICT(slug) DO UPDATE 가
+      // 기존 글을 덮어써 새 글이 목록에서 사라지고 기존 글이 잃어진다.
+      const dupInfo = readPostIdentity(result.postFile);
+      // 제외할 것은 "방금 막 생성된 이 파일" 뿐이다.
+      // 나머지 디스크의 파일은 모두 기존 발행글이므로 비교 대상이 되어야 한다.
+      // (beforeFiles 를 제외 대상으로 넘기면 발행글과 대조하지 못해 방어선이 무의미해진다)
+      const dup = findDuplicatePost(
+        postsDir,
+        dupInfo.slug,
+        dupInfo.title,
+        new Set([path.basename(result.postFile)])
+      );
+      if (dup) {
+        try {
+          fs.unlinkSync(result.postFile);
+          log(`🗑️ 중복 산출물 폐기: ${path.basename(result.postFile)} (${dup.reason}) → 기존 글 ${dup.file}`);
+        } catch (_) {}
+        const err = new Error(`이미 발행된 글과 중복입니다: ${dup.reason} (${dup.file})`);
+        err.duplicate = true;
+        if (dupInfo.slug) avoidTopics.push(dupInfo.slug);
+        throw err;
+      }
+
       result.tier = 'Gemini Native';
       result.attempts = attempt + 1;
       return result;
     } catch (err) {
       lastError = err;
-      const reason = err.qualityGate ? '품질 게이트 미달' : err.truncated ? '응답 잘림' : '생성 오류';
+      const reason = err.duplicate
+        ? '중복 주제'
+        : err.qualityGate
+          ? '품질 게이트 미달'
+          : err.truncated
+            ? '응답 잘림'
+            : '생성 오류';
       log(`⛔ [LLM ${reason}] ${err.message.slice(0, 200)}`);
+      // 중복 주제는 프롬프트에 금지 목록을 주입했으므로 재시도로 해결될 가능성이 높다
+      if (err.duplicate) {
+        log(`🔁 [중복 회피 재시도 ${attempt + 1}/${QUALITY_GATE.MAX_LLM_RETRY}] 다른 주제를 선택하도록 다시 생성합니다.`);
+      }
     }
   }
 
@@ -1002,6 +1067,186 @@ export async function generateArticleWithFallback({
 /**
  * 실제 포스트 생성 및 배포 파이프라인
  */
+/**
+ * 파일의 frontmatter 블록만 안전하게 읽는다.
+ *
+ * 왜 단순 read �� 수가 아닌가
+ *   앞부분 N 바이트만 읽으면 title/description 이 길어 slug 이 그 뒤에 놓일 때
+ *   조용히 놓친다. 중복 방어 로직에서 "놓쳤다" 는 것은 "중복이 없다" 와 구분되지
+ *   않으므로 위험하다. frontmatter 종료(---)까지 필요한 만큼만 읽되,
+ *   비정상적으로 큰 파일은 상한으로 자른다.
+ */
+const FRONTMATTER_MAX_BYTES = 65536;
+
+function readFrontmatterHead(filePath) {
+  let fd;
+  try {
+    fd = fs.openSync(filePath, 'r');
+  } catch (_) {
+    return '';
+  }
+  try {
+    const CHUNK = 8192;
+    const buf = Buffer.alloc(FRONTMATTER_MAX_BYTES);
+    let total = 0;
+    while (total < FRONTMATTER_MAX_BYTES) {
+      const n = fs.readSync(fd, buf, total, CHUNK, total);
+      if (n <= 0) break;
+      total += n;
+      const so_far = buf.slice(0, total).toString('utf8');
+      // 두 번째 구분선(---) 이 나오면 frontmatter 종료
+      if (/^---\r?\n[\s\S]*?^---/m.test(so_far)) break;
+    }
+    return buf.slice(0, total).toString('utf8');
+  } catch (_) {
+    return '';
+  } finally {
+    try {
+      fs.closeSync(fd);
+    } catch (_) {}
+  }
+}
+
+/** 생성된 포스트 파일의 frontmatter 에서 slug / title 을 읽는다 */
+function readPostIdentity(filePath) {
+  const head = readFrontmatterHead(filePath);
+  const s = head.match(/^slug:\s*["']?([^"'\n]+)["']?\s*$/m);
+  const t = head.match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m);
+  return { slug: s ? s[1].trim() : '', title: t ? t[1].trim() : '' };
+}
+
+/**
+ * 이미 발행된 글의 주제 목록을 프롬프트에 주입하기 위한 문자열을 만든다.
+ *
+ * 왜 필요한가
+ *   2026-09-29 저녁에 LLM 이 이미 발행된 youth-leap-account-2026-guide 와
+ *   사실상 같은 주제를 다시 생성했다. 프롬프트에 "중복 금지" 는 있었지만
+ *   **무엇이 이미 발행되었는지 알려주는 목록이 아예 없었다.**
+ *   즉 prohibition 없이 prohibition 만 있었다.
+ */
+function buildExcludedTopicList(postsDir) {
+  const items = [];
+  let files = [];
+  try {
+    files = fs
+      .readdirSync(postsDir)
+      .filter((f) => f.endsWith('.md') && f !== 'template.md')
+      .sort();
+  } catch (_) {
+    return '   - (발행된 글이 없어 제한 없음)';
+  }
+
+  for (const f of files) {
+    const head = readFrontmatterHead(path.join(postsDir, f));
+    if (!head) continue;
+    const t = head.match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m);
+    const s = head.match(/^slug:\s*["']?([^"'\n]+)["']?\s*$/m);
+    const title = t ? t[1].trim() : '';
+    const slug = s ? s[1].trim() : '';
+    if (title || slug) items.push(`   - ${title || slug}${slug ? ` (slug: ${slug})` : ''}`);
+  }
+
+  if (!items.length) return '   - (발행된 글이 없어 제한 없음)';
+  return `   아래 ${items.length}건은 이미 발행된 글입니다. 이 주제들과 겹치는 글은 생성 금지:` + `\n${items.join('\n')}`;
+}
+
+/**
+ * [P0] 생성된 글이 이미 발행된 글과 사실상 같은지 검사한다.
+ *
+ * 판정 기준
+ *   - frontmatter slug 이 정확히 같으면 중복 (D1 upsert 로 기존 글을 덮어씀)
+ *   - 제목을 한글/영문/숫자만 남긴 정규화 키로 비교했을 때 같으면 중복
+ *     (예: "청년도약계좌 2026년 최신 가이드" vs "청년도약계좌 2026 가이드")
+ *
+ * @param {Set<string>|null} exclude 비교에서 제외할 파일명 (이번 실행에서 만든 파일 등)
+ * @returns {null | { file: string, reason: string }}
+ */
+function findDuplicatePost(postsDir, slug, title, exclude = null) {
+  const norm = (s) =>
+    String(s || '')
+      .toLowerCase()
+      .replace(/[^0-9a-z가-힣]+/g, '')
+      .trim();
+
+  const wantSlug = String(slug || '').trim();
+  const wantTitle = norm(title);
+
+  let files = [];
+  try {
+    files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md') && f !== 'template.md');
+  } catch (_) {
+    return null;
+  }
+
+  for (const f of files) {
+    // 방금 생긴 파일을 자기 자신과 비교하면 항상 "중복" 으로 판정된다
+    if (exclude && exclude.has(f)) continue;
+    const head = readFrontmatterHead(path.join(postsDir, f));
+    if (!head) continue;
+    const t = head.match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m);
+    const s = head.match(/^slug:\s*["']?([^"'\n]+)["']?\s*$/m);
+    const hasSlug = s ? s[1].trim() : '';
+    const hasTitle = t ? t[1].trim() : '';
+
+    if (wantSlug && hasSlug === wantSlug) {
+      return { file: f, reason: `slug 중복 ("${wantSlug}")` };
+    }
+    if (wantTitle && hasTitle && norm(hasTitle) === wantTitle) {
+      return { file: f, reason: `제목 중복 ("${hasTitle}")` };
+    }
+  }
+  return null;
+}
+
+/**
+ * [P0] 이미 다른 글이 사용 중인 slug 인지 확인하고, 충돌하면 유일한 slug 로 바꿔준다.
+ *
+ * 왜 필요한가
+ *   publish-post.mjs 가 ON CONFLICT(slug) DO UPDATE 라, 같은 slug 가 들어오면
+ *   새 글이 삽입되는 대신 기존 글이 조용히 덮어써진다. 덮어쓰는 동안
+ *   created_at 은 옛 값으로 유지되므로 새 글은 D1 최근순 목록에서 사라지고,
+ *   기존 글의 내용도 잃게 된다.
+ *
+ * 파일명(YYMMDDNN-...)은 유일해도 frontmatter slug 은 유일하지 않다.
+ * 2026-09-29 저녁 youth-leap-account-2026-guide 충돌이 이 경로였다.
+ *
+ * @returns {{ slug: string, changed: boolean, requested: string, owner?: string }}
+ */
+function resolveSlugCollision(postsDir, requestedSlug) {
+  const taken = new Map(); // slug -> 소유 파일명
+  let files = [];
+  try {
+    files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md') && f !== 'template.md');
+  } catch (_) {
+    return { slug: requestedSlug, changed: false, requested: requestedSlug };
+  }
+
+  for (const f of files) {
+    const head = readFrontmatterHead(path.join(postsDir, f));
+    if (!head) continue;
+    const m = head.match(/^slug:\s*["']?([^"'\n]+)["']?\s*$/m);
+    if (m) taken.set(m[1].trim(), f);
+  }
+
+  if (!taken.has(requestedSlug)) {
+    return { slug: requestedSlug, changed: false, requested: requestedSlug };
+  }
+
+  for (let n = 2; n <= 50; n++) {
+    const candidate = `${requestedSlug}-${n}`;
+    if (!taken.has(candidate)) {
+      return { slug: candidate, changed: true, requested: requestedSlug, owner: taken.get(requestedSlug) };
+    }
+  }
+  // 극단적으로 -N 이 모두 소진되면 타임스탬프로 우회
+  return {
+    slug: `${requestedSlug}-${Date.now().toString().slice(-6)}`,
+    changed: true,
+    requested: requestedSlug,
+    owner: taken.get(requestedSlug),
+  };
+}
+
 export async function runPublishPipeline(sessionName, options = {}) {
   const { dateStr, timeStr } = getKSTDate();
   console.log(`\n========================================`);
