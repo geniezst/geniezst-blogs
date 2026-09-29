@@ -1,0 +1,107 @@
+---
+title: "모두의카드 출퇴근 환급 12월까지 연장 | 휴면자산 매년 3월 공개 & 소상공인 온라인 판로 확대"
+slug: "26092901-morning-money-digest-commute-refund-dormant-assets-sme-online-sales"
+description: "오늘 아침 꼭 알아야 할 주요 정책 및 생활 금융 소식 4가지를 핵심 요약합니다. 모두의카드 출퇴근 환급 연장, 휴면자산 공개 의무화, 소상공인 온라인 판로 확대 소식입니다."
+category: "news"
+tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
+author: "포켓머니"
+reading_time: 4
+featured_image: "/api/images/2026/09/morning-money-digest-commute-refund-dorm-d560a8b89c11.webp"
+affiliate: false
+post_type: "digest"
+image_width: 720
+image_height: 547
+og_image: "/api/images/2026/09/morning-money-digest-commute-refund-dorm-d560a8b89c11-og.jpg"
+---
+
+:::tip[오늘의 모닝 브리핑 1분 핵심 요약]
+- **모두의카드 출퇴근 시차시간 환급**: 12월까지 연장되고 내년 예산 반영으로 지속됩니다.
+- **휴면자산 매년 3월말 공개**: 금융회사가 자발적 환급을 유도하며 숨은 돈을 찾기 쉬워집니다.
+- **정년 앞둔 직원의 인건비 지원**: 고령자 계속 고용 장려금으로 기업의 부담을 덜어줍니다.
+- **쿠팡 '착한상점' 소상공인 지원**: 전북 소상공인 누적 매출 2000억원 달성, 온라인 판로 확대에 기여합니다.
+:::
+
+---
+
+## 모두의카드 '출퇴근 시차시간 환급' 12월까지 연장
+
+![모두의카드 '출퇴근 시차시간 환급' 12월까지 연장](/api/images/2026/09/morning-money-digest-commute-refund-dorm-d560a8b89c11.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972677" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
+> **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972677)  
+> **발행**: 2026-09-29 00:16 KST | **신뢰도**: 공식 발표
+
+:::fact[기사 요약]
+- '모두의카드'의 출퇴근 시차시간 환급 제도가 12월까지 연장됩니다.
+- 해당 제도는 내년도 예산에 반영되어 지속될 예정입니다.
+- 출퇴근 시간 분산 및 대중교통 이용 활성화를 위한 정책입니다.
+:::
+
+### 가계 영향 및 실전 팁
+출퇴근 시차시간 환급 제도가 연장되고 내년 예산에 반영되면서, 대중교통을 이용하는 직장인들의 교통비 부담이 지속적으로 경감될 것으로 보입니다. 특히 수도권 등 대중교통 이용률이 높은 지역의 직장인들에게 실질적인 혜택이 될 것입니다. 모두의카드를 이용하는 시민들은 출퇴근 시간대를 유연하게 활용하여 교통 체증을 줄이고, 동시에 환급 혜택으로 가계 지출을 절약할 수 있습니다. 아직 모두의카드를 사용하지 않는다면, 대중교통 이용 패턴을 고려하여 카드 발급을 검토해보는 것이 좋습니다.
+
+> **관련 가이드**:  
+> [추석 연휴 주차장 무료 개방 & 퇴직연금 수령 시점 변화](/posts/26092401-morning-money-digest-holiday-parking-pension-changes)
+
+---
+
+## 휴면자산 잔액 매년 3월말 공개 | 금융회사 자발적 환급 유도
+
+![휴면자산 잔액 매년 3월말 공개 | 금융회사 자발적 환급 유도](/api/images/2026/09/morning-money-digest-commute-refund-dorm-91bc9898b54b.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972679" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
+> **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972679)  
+> **발행**: 2026-09-29 00:16 KST | **신뢰도**: 공식 발표
+
+:::fact[기사 요약]
+- 금융회사는 매년 3월 말 기준으로 휴면자산 잔액을 공개해야 합니다.
+- 이는 금융회사의 자발적인 휴면자산 환급을 유도하기 위함입니다.
+- 국민들이 잠자고 있는 자신의 자산을 더 쉽게 찾아갈 수 있도록 돕는 정책입니다.
+:::
+
+### 가계 영향 및 실전 팁
+이번 정책으로 인해 숨겨진 휴면 예금, 보험금 등을 찾아내는 것이 훨씬 쉬워질 전망입니다. 매년 3월 말 공개되는 정보를 통해 본인이나 가족의 휴면 자산이 있는지 정기적으로 확인할 수 있게 됩니다. 금융회사의 자발적 환급 유도 노력도 더해져, 잊고 있던 소액이라도 돌려받는 경우가 늘어날 것입니다. '내 계좌 한눈에' 서비스 등을 활용하여 본인의 휴면 자산을 조회하고, 해당 금융기관에 연락하여 환급 절차를 진행하는 것이 중요합니다. 주기적인 확인 습관을 들이면 예상치 못한 목돈을 발견할 수도 있습니다.
+
+> **관련 가이드**:  
+> [연말정산 환급금 극대화 - 2024년 놓치면 후회할 세액공제 꿀팁 총정리](/posts/year-end-tax-refund-maximization-2024)
+
+---
+
+## 정년을 앞둔 직원, 함께 일하고 싶은데 인건비가 걱정이신가요?
+
+> **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972667)  
+> **발행**: 2026-09-29 00:16 KST | **신뢰도**: 공식 발표
+
+:::fact[기사 요약]
+- 정년을 앞둔 숙련된 직원을 계속 고용하고자 하는 기업을 위한 지원 정책이 있습니다.
+- '고령자 계속 고용 장려금' 제도를 통해 기업의 인건비 부담을 덜어줍니다.
+- 숙련 인력의 활용을 장려하고 고령 근로자의 안정적인 일자리 유지를 지원합니다.
+:::
+
+### 가계 영향 및 실전 팁
+이 정책은 정년퇴직을 앞둔 근로자들에게 매우 긍정적인 영향을 미칠 수 있습니다. 기업이 숙련된 인력을 계속 고용할 유인이 생기면서, 고령 근로자들은 더 오랫동안 경제 활동을 지속하며 안정적인 소득을 유지할 수 있게 됩니다. 특히 은퇴 후 재취업의 어려움을 겪을 수 있는 상황에서, 기존 직장에서의 계속 고용은 노후 대비에 큰 도움이 됩니다. 근로자들은 본인의 숙련도를 높이고, 기업은 이 제도를 적극 활용하여 우수 인재를 유지하고 인건비 부담을 줄이는 상생 효과를 기대할 수 있습니다.
+
+> **관련 가이드**:  
+> [2026년 중소기업 재직자 우대 저축공제 가입 조건과 만기 수령액 총정리](/posts/sme-worker-preferential-savings-guide-2026)
+
+---
+
+## 쿠팡 '착한상점', 전북 소상공인 누적 매출 2000억원…온라인 판로 확대
+
+![쿠팡 '착한상점', 전북 소상공인 누적 매출 2000억원…온라인 판로 확대](/api/images/2026/09/morning-money-digest-commute-refund-dorm-0e031e73cd27.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://news.google.com/rss/articles/CBMiX0FVX3lxTE9ET0RsZG9SemdfQXhnX2FSZ0xvcWE2VVg1YVpCbVhMYjZ3bW9TTXZHNUZ4MkJRNzQxZW9nMXlISmtwanRCN3pqeGdjRkpuMHp1TnRQRmZQRzIyOEloY3E40gFkQVVfeXFMTWNRTEt6WUE3X2tSS0lFQ3dhNEdvUUpNX0pjblNVSXoxemJCNUI5bElrb0YyT2hMLXdpd1h5UnJGcnRVNVdfWklJcjJNSU44WG1XeHpsNVNiNlBzbFhnOWpINUpTbQ?oc=5" target="_blank" rel="noopener noreferrer">뉴스1</a></p>
+
+> **출처**: [뉴스1](https://news.google.com/rss/articles/CBMiX0FVX3lxTE9ET0RsZG9SemdfQXhnX2FSZ0xvcWE2VVg1YVpCbVhMYjZ3bW9TTXZHNUZ4MkJRNzQxZW9nMXlISmtwanRCN3pqeGdjRkpuMHp1TnRQRmZQRzIyOEloY3E40gFkQVVfeXFMTWNRTEt6WUE3X2tSS0lFQ3dhNEdvUUpNX0pjblNVSXoxemJCNUI5bElrb0YyT2hMLXdpd1h5UnJGcnRVNVdfWklJcjJNSU44WG1XeHpsNVNiNlBzbFhnOWpINUpTbQ?oc=5)  
+> **발행**: 2026-09-28 23:48 KST | **신뢰도**: 경제전문지
+
+:::fact[기사 요약]
+- 쿠팡 '착한상점'을 통해 전북 지역 소상공인들의 누적 매출이 2000억원을 달성했습니다.
+- 이는 소상공인의 온라인 판로 확대 및 매출 증대에 크게 기여하고 있습니다.
+- 지역 특산물 및 우수 제품의 전국적인 판매 기회를 제공합니다.
+:::
+
+### 가계 영향 및 실전 팁
+이 소식은 소상공인과 소비자 모두에게 긍정적인 영향을 미칩니다. 소상공인들은 대형 온라인 플랫폼을 통해 전국 단위의 고객을 확보하고 매출을 증대할 수 있으며, 이는 지역 경제 활성화로 이어집니다. 소비자들은 '착한상점'을 통해 지역의 우수하고 신선한 제품들을 더욱 편리하게 접하고 구매할 수 있게 됩니다. 소상공인이라면 이러한 온라인 플랫폼 입점 지원 프로그램을 적극적으로 활용하여 사업 확장의 기회를 잡는 것이 중요합니다. 소비자들은 착한상점을 통해 지역 특색 상품을 구매하며 지역 경제에 기여할 수 있습니다.
+
+> **관련 가이드**:  
+> [청약통장 전환 1년 연장 & 자영업자 연체율](/posts/26092501-morning-money-digest-housing-debt-economy)
