@@ -28,7 +28,7 @@ import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
-import { gitPublish } from './lib/git-publish.mjs';
+import { gitPublish, publishPreflight } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { acquireDaemonLock } from './lib/runtime-lock.mjs';
 
@@ -523,6 +523,19 @@ export async function runMorningNewsDigestPipeline(options = {}) {
   console.log(`🌅 [포켓머니 아침 모닝 브리핑 시작] ${dateStr} (morning) 실행 시각: ${timeStr} KST`);
   console.log(`========================================`);
 
+  // [P0 · 2026-09-29] 발행 착수 전 GitHub 인증 사전 점검.
+  // push 권한이 없으면 D1 등록까지 끝난 뒤 사이트가 이전 빌드를 서빙하는
+  // 최악의 상태가 되므로, 아무것도 쓰기 전에 먼저 차단한다.
+  if (!options.dryRun) {
+    const pre = publishPreflight(BLOG_ROOT, (m) => console.log(m));
+    if (!pre.ok) {
+      console.error(`❌ [사전 점검 실패] ${pre.error}`);
+      console.error(`   ${pre.hint}`);
+      console.error(`   발행 착수를 중단합니다. (D1/R2 미등록, 로컬 변경 없음)`);
+      throw new Error(`GitHub 사전 점검 실패로 발행 중단: ${pre.error}`);
+    }
+  }
+
   const state = loadState();
 
   // 1. 중복 실행 검사
@@ -949,6 +962,19 @@ export async function runPublishPipeline(sessionName, options = {}) {
   console.log(`\n========================================`);
   console.log(`🚀 [blogs 생활경제 자동 게시 시작] ${dateStr} (${sessionName}) 실행 시각: ${timeStr} KST`);
   console.log(`========================================`);
+
+  // [P0 · 2026-09-29] 발행 착수 전 GitHub 인증 사전 점검.
+  // push 권한이 없으면 D1 등록까지 끝난 뒤 사이트가 이전 빌드를 서빙하는
+  // 최악의 상태가 되므로, 아무것도 쓰기 전에 먼저 차단한다.
+  if (!options.dryRun) {
+    const pre = publishPreflight(BLOG_ROOT, (m) => console.log(m));
+    if (!pre.ok) {
+      console.error(`❌ [사전 점검 실패] ${pre.error}`);
+      console.error(`   ${pre.hint}`);
+      console.error(`   발행 착수를 중단합니다. (D1/R2 미등록, 로컬 변경 없음)`);
+      throw new Error(`GitHub 사전 점검 실패로 발행 중단: ${pre.error}`);
+    }
+  }
 
   const state = loadState();
 

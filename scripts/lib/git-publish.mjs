@@ -19,19 +19,119 @@
  *   - rebase 실패를 절대 삼키지 않고 throw -> 텔레그램 경보가 실제로 울린다
  *   - 실패 시 git rebase --abort 로 저장소를 깨끗한 상태로 되돌린다
  *
+ * [2026-09-29 추가 · GitHub 인증 전면 실패]
+ *   당일 저녁 2건이 D1 등록까지 끝난 뒤 push 에서 죽었다.
+ *     fatal: could not read Username for 'https://github.com': terminal prompts disabled
+ *     remote: Invalid username or token.
+ *   근본 원인: git 은 `env: { ...process.env }` 로 실행되지만,
+ *   토큰을 담고 있는 .env 는 loadEnvConfig() 가 **로컬 객체**로만 파싱하고
+ *   process.env 에는 쓰지 않는다. 전역 credential.helper 가 참조하는
+ *   $GITHUB_TOKEN 이 비어 있어 빈 비밀번호가 전송되었다.
+ *   (= 토큰이 유효한데도 실패하는, 조용하고 반복적인 결함)
+ *
+ *   조치:
+ *   - git 은 더 이상 전역 환경변수에 의존하지 않는다. 토큰을 모듈이 직접
+ *     .env 에서 읽어 GIT_ASKPASS 로 주입한다 (argv 에 노출되지 않음).
+ *   - 깨진 전역 helper 는 `-c credential.helper=` 로 초기화해 우회한다.
+ *   - publishPreflight() 로 세션 시작 시 인증을 먼저 검증해
+ *     "D1 등록 후 push 실패" 로网站가 이전 빌드를 서빙하는 상황을 원천 차단.
+ *
  * 공용 모듈: /workspace/projects/{blog,blogs}/scripts/lib/git-publish.mjs (동일 사본)
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const GIT_TIMEOUT_MS = 120000;
+const AUTH_RETRY = 3;
+
+/** .env 파일에서 KEY=VALUE 를 읽는다 (process.env 는 건드리지 않음) */
+function parseEnvFile(filePath) {
+  const out = {};
+  let content;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch (_) {
+    return out;
+  }
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx <= 0) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    let val = trimmed.slice(eqIdx + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    out[key] = val;
+  }
+  return out;
+}
+
+/**
+ * GitHub 토큰을 모듈이 직접 확보한다.
+ * 우선순위: process.env → 저장소 .env → /workspace/.env → /workspace/scripts/.env
+ * (프로세스에 주입된 값이 데몬 기동 시점의 낡은 값일 수 있어 파일 값을 우선 보완)
+ */
+function resolveGithubToken(repoRoot) {
+  const candidates = [
+    process.env.GITHUB_TOKEN,
+    repoRoot && parseEnvFile(path.join(repoRoot, '.env')).GITHUB_TOKEN,
+    parseEnvFile('/workspace/.env').GITHUB_TOKEN,
+    parseEnvFile('/workspace/scripts/.env').GITHUB_TOKEN,
+  ];
+  for (const c of candidates) {
+    if (c && String(c).trim()) return String(c).trim();
+  }
+  return null;
+}
+
+const ASKPASS_SRC = `#!/bin/sh
+case "$1" in
+  *sername*) printf '%s\\n' "$GIT_ASKPASS_USERNAME" ;;
+  *)         printf '%s\\n' "$GIT_ASKPASS_PASSWORD" ;;
+esac
+`;
+
+let askpassPath = null;
+function ensureAskpass() {
+  if (askpassPath) return askpassPath;
+  // PID 를 넣어 동시 실행되는 데몬끼리 경로가 겹치지 않게 한다
+  const p = path.join(os.tmpdir(), `agy-git-askpass-${process.pid}.sh`);
+  fs.writeFileSync(p, ASKPASS_SRC, { mode: 0o700 });
+  try {
+    fs.chmodSync(p, 0o700);
+  } catch (_) {}
+  askpassPath = p;
+  return p;
+}
+
+/**
+ * git 실행용 환경변수를 만든다.
+ * GIT_ASKPASS 로 토큰을 직접 넘기고, GIT_TERMINAL_PROMPT=0 으로 프롬프트 대기를
+ * 원천 봉쇄한다. 토큰은 argv 가 아닌 자식 프로세스 환경변수로만 전달된다.
+ */
+function buildGitEnv(repoRoot) {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  const token = resolveGithubToken(repoRoot);
+  if (token) {
+    env.GIT_ASKPASS = ensureAskpass();
+    env.GIT_ASKPASS_USERNAME = 'x-access-token';
+    env.GIT_ASKPASS_PASSWORD = token;
+  }
+  return env;
+}
 
 /**
  * 셸 없이 git 실행.
  * 데몬이 root 로 돌고 저장소가 다른 UID 소유일 때 생기는
  * `fatal: detected dubious ownership` 를 원천 차단한다.
+ *
+ * `credential.helper=` 로 전역 helper 목록을 초기화해, 환경변수에 의존하는
+ * 깨진 helper 가 빈 비밀번호를 내보내는 경로를 제거한다.
  */
 export function runGit(repoRoot, args, opts = {}) {
   const roots = new Set([repoRoot]);
@@ -40,15 +140,16 @@ export function runGit(repoRoot, args, opts = {}) {
   } catch (_) {}
 
   const safeDirs = [...roots].flatMap((r) => ['-c', `safe.directory=${r}`]);
+  const noHelper = ['-c', 'credential.helper='];
 
   try {
-    return execFileSync('git', [...safeDirs, ...args], {
+    return execFileSync('git', [...safeDirs, ...noHelper, ...args], {
       cwd: repoRoot,
       encoding: 'utf8',
       timeout: opts.timeout || GIT_TIMEOUT_MS,
       maxBuffer: 16 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      env: buildGitEnv(repoRoot),
     }).toString();
   } catch (err) {
     const stderr = (err.stderr || '').toString().trim();
@@ -60,6 +161,85 @@ export function runGit(repoRoot, args, opts = {}) {
     e.gitStatus = err.status;
     throw e;
   }
+}
+
+const AUTH_ERROR_HINTS = [
+  'authentication failed',
+  'invalid username or token',
+  'could not read username',
+  'terminal prompts disabled',
+  'permission denied',
+  '403',
+  '401',
+];
+
+/** 실패가 인증/토큰 문제인지 판별한다 (네트워크 일시 오류와 구분) */
+function isAuthFailure(err) {
+  const text = `${err?.gitStderr || ''} ${err?.message || ''}`.toLowerCase();
+  return AUTH_ERROR_HINTS.some((h) => text.includes(h));
+}
+
+/**
+ * [세션 시작 전 인증 사전 점검]
+ *
+ * 목적: "D1 등록 성공 → GitHub push 실패" 로 사이트가 이전 빌드를 서빙하는
+ * 상태를 만들지 않는다. 발행 작업에 착수하기 전에 원격 접근 권한부터 확인한다.
+ *
+ * @returns {{ ok: true } | { ok: false, error: string, hint: string }}
+ */
+export function publishPreflight(repoRoot, log = () => {}) {
+  if (!resolveGithubToken(repoRoot)) {
+    return {
+      ok: false,
+      error: 'GITHUB_TOKEN 을 찾을 수 없습니다',
+      hint: '프로젝트 .env 또는 /workspace/.env 에 GITHUB_TOKEN 을 확인하세요.',
+    };
+  }
+
+  try {
+    // 가장 저렴한 원격 왕복. HEAD 가 없어도 인증 실패는 정상적으로 드러난다.
+    runGit(repoRoot, ['ls-remote', '--exit-code', 'origin', 'HEAD'], { timeout: 30000 });
+    log('✅ GitHub 인증 사전 점검 통과 (원격 접근 정상)');
+    return { ok: true };
+  } catch (err) {
+    if (isAuthFailure(err)) {
+      return {
+        ok: false,
+        error: `GitHub 인증 실패: ${err.gitStderr || err.message}`,
+        hint:
+          '토큰이 만료되었거나 스코프(repo)가 없습니다. ' +
+          'https://github.com/settings/tokens 에서 ' +
+          '"repo" 스코프를 가진 토큰을 발급받아 .env 의 GITHUB_TOKEN 을 갱신하세요.',
+      };
+    }
+    return {
+      ok: false,
+      error: `원격 저장소 접근 실패: ${err.gitStderr || err.message}`,
+      hint: '네트워크/DNS 문제일 수 있습니다. git ls-remote origin 을 직접 확인하세요.',
+    };
+  }
+}
+
+/**
+ * 인증 실패에 한해 지수 백오프로 재시도한다.
+ * (일시적인 네트워크 오류와 인증 실패를 구분하기 위해 authOnly 옵션 제공)
+ */
+export function runGitWithAuthRetry(repoRoot, args, opts = {}) {
+  const retries = opts.retries ?? (opts.authOnly ? AUTH_RETRY : 0);
+  let lastErr;
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    try {
+      return runGit(repoRoot, args, opts);
+    } catch (err) {
+      lastErr = err;
+      if (attempt > retries) break;
+      if (opts.authOnly && !isAuthFailure(err)) break;
+      const waitMs = 2000 * attempt;
+      if (opts.log) opts.log(`⚠️ git ${args[0]} 실패 (${attempt}/${retries}회), ${waitMs}ms 후 재시도`);
+      execFileSync('sleep', [String(waitMs / 1000)]);
+    }
+  }
+  throw lastErr;
 }
 
 /** 워킹트리에 커밋되지 않은 변경이 있는지 확인 */
@@ -121,7 +301,7 @@ export function gitPublish({ repoRoot, paths, message, branch = 'main', log = ()
   }
 
   // 2) 원격 동기화 — 실패를 삼키지 않는다
-  runGit(repoRoot, ['fetch', 'origin', branch], { timeout: 60000 });
+  runGitWithAuthRetry(repoRoot, ['fetch', 'origin', branch], { timeout: 60000, authOnly: true, log });
 
   try {
     runGit(repoRoot, ['-c', 'rebase.autoStash=true', 'rebase', `origin/${branch}`]);
@@ -161,8 +341,19 @@ export function gitPublish({ repoRoot, paths, message, branch = 'main', log = ()
     }
   }
 
-  // 3) push
-  runGit(repoRoot, ['push', 'origin', branch], { timeout: 180000 });
+  // 3) push — 인증 실패는 지수 백오프로 재시도하고, 그래도 실패하면
+  //    어떤 경로로 토큰을 고쳐야 하는지 actionable 한 힌트를 함께 던진다.
+  try {
+    runGitWithAuthRetry(repoRoot, ['push', 'origin', branch], { timeout: 180000, authOnly: true, log });
+  } catch (err) {
+    if (isAuthFailure(err)) {
+      throw new Error(
+        `GitHub 인증으로 push 에 실패했습니다. D1/R2 등록은 완료되었으나 사이트는 이전 빌드를 서빙합니다. ` +
+          `토큰이 만료되었거나 스코프(repo)가 없는지 확인하세요. 원인: ${err.gitStderr || err.message}`
+      );
+    }
+    throw err;
+  }
 
   if (!committed) {
     return { committed: false, pushed: true, reason: 'no-local-changes' };
