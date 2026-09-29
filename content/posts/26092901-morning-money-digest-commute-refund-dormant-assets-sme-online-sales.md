@@ -88,10 +88,9 @@ og_image: "/api/images/2026/09/morning-money-digest-commute-refund-dorm-d560a8b8
 
 ## 쿠팡 '착한상점', 전북 소상공인 누적 매출 2000억원…온라인 판로 확대
 
-![쿠팡 '착한상점', 전북 소상공인 누적 매출 2000억원…온라인 판로 확대](/api/images/2026/09/morning-money-digest-commute-refund-dorm-0e031e73cd27.webp)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://news.google.com/rss/articles/CBMiX0FVX3lxTE9ET0RsZG9SemdfQXhnX2FSZ0xvcWE2VVg1YVpCbVhMYjZ3bW9TTXZHNUZ4MkJRNzQxZW9nMXlISmtwanRCN3pqeGdjRkpuMHp1TnRQRmZQRzIyOEloY3E40gFkQVVfeXFMTWNRTEt6WUE3X2tSS0lFQ3dhNEdvUUpNX0pjblNVSXoxemJCNUI5bElrb0YyT2hMLXdpd1h5UnJGcnRVNVdfWklJcjJNSU44WG1XeHpsNVNiNlBzbFhnOWpINUpTbQ?oc=5" target="_blank" rel="noopener noreferrer">뉴스1</a></p>
-
-> **출처**: [뉴스1](https://news.google.com/rss/articles/CBMiX0FVX3lxTE9ET0RsZG9SemdfQXhnX2FSZ0xvcWE2VVg1YVpCbVhMYjZ3bW9TTXZHNUZ4MkJRNzQxZW9nMXlISmtwanRCN3pqeGdjRkpuMHp1TnRQRmZQRzIyOEloY3E40gFkQVVfeXFMTWNRTEt6WUE3X2tSS0lFQ3dhNEdvUUpNX0pjblNVSXoxemJCNUI5bElrb0YyT2hMLXdpd1h5UnJGcnRVNVdfWklJcjJNSU44WG1XeHpsNVNiNlBzbFhnOWpINUpTbQ?oc=5)  
+![쿠팡 '착한상점', 전북 소상공인 누적 매출 2000억원…온라인 판로 확대](/api/images/2026/09/morning-money-digest-commute-refund-dorm-9f7bdc19ad75.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.news1.kr/industry/distribution/6304024" target="_blank" rel="noopener noreferrer">뉴스1</a></p>
+> **출처**: [뉴스1](https://www.news1.kr/industry/distribution/6304024)  
 > **발행**: 2026-09-28 23:48 KST | **신뢰도**: 경제전문지
 
 :::fact[기사 요약]

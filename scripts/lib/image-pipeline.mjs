@@ -113,6 +113,13 @@ export async function readDimensions(buffer) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Google News 래퍼 페이지(news.google.com/rss/articles/...)가 og:image 로 내보내는
+ * 기본 이미지 자산 ID. 어떤 언론사 기사를 크롤링하든 항상 같은 구글 로고가 나온다.
+ */
+const GOOGLE_NEWS_DEFAULT_ASSET =
+  /J6_coFbogxhRI9iM864NL_liGXvsQp2AupsKei7z0cNNfDvGUmWUy20n/i;
+
+/**
  * 기사 본문과 무관한 사이트 공통 로고, 플레이스홀더, 기자 증명사진, 배너 여부 판별
  */
 export function isPlaceholderOrLogo(url) {
@@ -150,6 +157,15 @@ export function isPlaceholderOrLogo(url) {
     'profile_img', 'member_photo', 'staff_photo'
   ];
   if (reporterPatterns.some((p) => lower.includes(p))) return true;
+
+  // 5. 뉴스 애그리게이터 래퍼 페이지 자산 (출처 기사 이미지가 절대로 아님)
+  //    [P0] 2026-09-29 실제 오발생. Google News RSS 링크(news.google.com/rss/articles/CBMi...)
+  //    를 그대로 크롤링하면 래퍼 페이지의 og:image 인 구글 자체 기본 이미지
+  //    (J6_coFbogxhRI9iM864NL_liGXvsQp2AupsKei7z0cNNfDvGUmWUy20n)가 잡히고,
+  //    모든 카드가 동일한 구글 로고로 채워졌다. URL 만 바꿔선 막을 수 없으므로
+  //    여기서 원천 차단하고, 원문 URL 로 되돌린 뒤(generate-news-digest) 이미지를 얻는다.
+  if (/^https?:\/\/(?:[a-z0-9-]+\.)*news\.google\.[a-z.]{2,6}\//i.test(url.trim())) return true;
+  if (GOOGLE_NEWS_DEFAULT_ASSET.test(url)) return true;
 
   return false;
 }

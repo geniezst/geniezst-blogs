@@ -65,5 +65,14 @@ ok('default_thumb.jpg 기각', isPlaceholderOrLogo('https://news.com/img/default
 ok('기자 프로필 사진 기각', isPlaceholderOrLogo('https://news.com/img/reporter_hong.jpg'));
 ok('실제 기사 본문 사진은 통과', !isPlaceholderOrLogo('https://www.korea.kr/newsWeb/resources/attaches/2026.09/26/6b0feaf8eacb86e383db446ba2c172e.jpg'));
 
+// [P0 회귀 방지] 2026-09-29 오발생: Google News RSS 링크를 그대로 크롤링하면
+// 래퍼 페이지의 기본 og:image(구글 자체 로고)가 출처 이미지로 게시되었다.
+// 실제로 1호/2호 블로그에 동일 해시(0e031e73cd27)의 1024x1024 로고가 게시된 사실이 확인되었다.
+console.log('\n[7] Google News 래퍼 기본 이미지 회귀 방지');
+ok('Google News 래퍼 호스트 이미지 기각', isPlaceholderOrLogo('https://news.google.com/rss/articles/CBMiX0FVX3lxTE9ET0RsZG9S/assets/main.png'));
+ok('Google News 기본 OG 자산(구글 로고) 기각', isPlaceholderOrLogo('https://lh3.googleusercontent.com/J6_coFbogxhRI9iM864NL_liGXvsQp2AupsKei7z0cNNfDvGUmWUy20nuUhkREQyrpY4bEeIBuc=s0-w300'));
+ok('실제 언론사 이미지는 통과', !isPlaceholderOrLogo('https://i3n.news1.kr/system/photos/2026/9/29/8130670/high.jpg'));
+ok('실제 Daum CDN 이미지는 통과', !isPlaceholderOrLogo('https://img1.daumcdn.net/thumb/S1200x630/?fname=https://t1.daumcdn.net/news/202609/29/kedtv/20260929081232299tfpx.png'));
+
 console.log(`\n===== 결과: ${pass} 통과 / ${fail} 실패 =====`);
 process.exit(fail?1:0);

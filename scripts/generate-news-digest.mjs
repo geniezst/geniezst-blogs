@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { execSync, spawnSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { gitPublish } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { mirrorArticleImage, looksLikeThumbnail, isPlaceholderOrLogo } from './lib/image-pipeline.mjs';
@@ -138,32 +138,95 @@ export function cleanDigestTitle(rawTitle) {
 }
 
 /**
- * Google News CBMi... 암호화 URL을 실제 언론사 원문 URL로 디코딩
+ * Google News CBMi... URL을 실제 언론사 원문 URL로 디코딩 (순수 Node 구현)
+ *
+ * [왜 바꿨가 — 2026-09-29]
+ * 기존 구현은 `python3 -c "import googlenewsdecoder"` 브릿지였는데,
+ * 시스템/venv 어디에도 `googlenewsdecoder` 가 로컬 임포트 불가
+ * (venv 의 selectolax 네이티브 모듈 손상) → 예외를 삼키고 원본 URL 을 그대로 반환했다.
+ * 결과: Google News RSS 항목 100%가 미해결 상태로 남았고, 아래 이미지 파이프라인이
+ * 래퍼 페이지를 직접 크롤링해 **구글 기본 로고**를 출처 이미지로 게시했다.
+ * 의존성(Python 패키지) 없이 동작하도록 Google 이 쓰는 batchexecute API 로 직접 구현한다.
+ *
+ * [동작]
+ * 1) 래퍼 페이지에서 data-n-a-sg(서명) / data-n-a-ts(타임스탬프) 추출
+ * 2) DotsSplashUi/data/batchexecute 에 garturlreq 로 원문 URL 요청
+ * 3) 해석 안 되면 원본 URL 을 그대로 반환 (호출측이 실패로 판단)
+ *
+ * @param {string} googleUrl
+ * @returns {Promise<string>} 실제 원문 URL (해석 실패 시 입력값 그대로)
  */
-export function decodeGoogleNewsUrl(googleUrl) {
-  if (!googleUrl) return '';
-  if (!googleUrl.includes('news.google.com')) return googleUrl;
+export async function decodeGoogleNewsUrl(googleUrl) {
+  if (!googleUrl || !googleUrl.includes('news.google.com')) return googleUrl;
+
+  const idMatch = googleUrl.match(/news\.google\.[a-z.]+\/rss\/articles\/([^?&/]+)/i);
+  if (!idMatch) return googleUrl;
+  const base64 = idMatch[1];
 
   try {
-    const pyCode = `
-import sys, googlenewsdecoder
-try:
-    res = googlenewsdecoder.gnewsdecoder(sys.argv[1])
-    print(res.get("decoded_url", ""))
-except Exception:
-    pass
-`.trim();
-    const res = spawnSync('python3', ['-c', pyCode, googleUrl], {
-      encoding: 'utf8',
-      timeout: 8000,
+    const pageRes = await fetch(`https://news.google.com/rss/articles/${base64}`, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
     });
-    const decoded = res.stdout?.trim();
-    if (decoded && decoded.startsWith('http')) {
+    if (!pageRes.ok) return googleUrl;
+
+    const html = await pageRes.text();
+    const signature = html.match(/data-n-a-sg="([^"]+)"/)?.[1];
+    const timestamp = html.match(/data-n-a-ts="([^"]+)"/)?.[1];
+    if (!signature || !timestamp) return googleUrl;
+
+    const payload = [
+      'garturlreq',
+      [
+        ['X', 'X', ['X', 'X'], null, null, 1, 1, 'US:en', null, 1, null, null, null, null, null, 0, 1],
+        'X', 'X', 1, [1, 1, 1], 1, 1, null, 0, 0, null, 0,
+      ],
+      base64,
+      Number(timestamp),
+      signature,
+    ];
+
+    const apiRes = await fetch('https://news.google.com/_/DotsSplashUi/data/batchexecute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      },
+      body: new URLSearchParams({
+        'f.req': JSON.stringify([[['Fbv4je', JSON.stringify(payload), null, 'generic']]]),
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!apiRes.ok) return googleUrl;
+
+    const text = await apiRes.text();
+    const chunk = text.split('\n\n')[1];
+    if (!chunk) return googleUrl;
+
+    const decoded = JSON.parse(JSON.parse(chunk)[0][2])[1];
+    if (typeof decoded === 'string' && /^https?:\/\//i.test(decoded)) {
       return decoded;
     }
-  } catch (_) {}
+  } catch (_) {
+    /* 해석 실패는 조용히 통과시킨다 (호출측이 이미지 미확보로 처리) */
+  }
 
   return googleUrl;
+}
+
+/**
+ * Google News 래퍼 URL 을 실제 원문 URL 로 되돌린다.
+ * 되돌릴 수 없으면 null 을 반환해, 호출측이 래퍼 페이지 이미지를 쓰지 않도록 한다.
+ */
+export async function resolveSourceArticleUrl(articleUrl) {
+  if (!articleUrl || !articleUrl.includes('news.google.com')) return articleUrl;
+  const resolved = await decodeGoogleNewsUrl(articleUrl);
+  return resolved !== articleUrl ? resolved : null;
 }
 
 /**
@@ -322,6 +385,14 @@ export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug =
  */
 export async function fetchArticleOgImage(articleUrl, depth = 0) {
   if (!articleUrl || !articleUrl.startsWith('http')) return null;
+
+  // [P0] Google News 래퍼 URL 은 반드시 원문으로 되돌린 뒤 크롤링한다.
+  // 되돌릴 수 없으면 그대로 크롤링했을 때 구글 기본 로고(og:image)가 나온다.
+  if (articleUrl.includes('news.google.com')) {
+    const resolved = await resolveSourceArticleUrl(articleUrl);
+    if (!resolved) return null;
+    articleUrl = resolved;
+  }
 
   try {
     const res = await fetch(articleUrl, {
@@ -983,7 +1054,7 @@ async function deduplicateAndRank(items) {
     topCandidates.map(async (item) => {
       try {
         if (!item.originalLink || item.originalLink === item.link) {
-          const decoded = decodeGoogleNewsUrl(item.link);
+          const decoded = await decodeGoogleNewsUrl(item.link);
           item.originalLink = decoded;
         }
         if (!item.imageUrl) {
@@ -1255,8 +1326,16 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
 
       // 출처 정보 파싱
       const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
-      const matchedHref = linkMatch ? linkMatch[2].trim() : '';
+      const rawHref = linkMatch ? linkMatch[2].trim() : '';
       const sourceName = linkMatch ? linkMatch[1].trim() : '공식 출처';
+      // [P0] 출처 링크가 Google News 래퍼면 실제 언론사 원문으로 되돌린다.
+      // 이미지 조회와 핫링크 Referer 모두 원문 기준이어야 출처 이미지가 나온다.
+      const matchedHref = rawHref.includes('news.google.com')
+        ? (await resolveSourceArticleUrl(rawHref)) || ''
+        : rawHref;
+      if (rawHref && !matchedHref) {
+        console.log(`  ⚠️ [카드 ${secIdx}] Google News 원문 URL 해석 실패 → 출처 이미지 미사용`);
+      }
       const sourceHost = matchedHref ? safeHost(matchedHref) : '';
 
       // 이미지 후보를 순서대로 시도 (FR-1.6: 단일 실패에 포기하지 않는다)
@@ -1267,14 +1346,16 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
         return fetched && !usedImageUrls.has(fetched) ? fetched : null;
       };
       const tryMatchFromCandidates = () => {
-        if (!matchedHref || !candidates || candidates.length === 0) return null;
+        if (!rawHref || !candidates || candidates.length === 0) return null;
         const found = candidates.find(
           (c) =>
             c.imageUrl &&
             !usedImageUrls.has(c.imageUrl) &&
-            (c.link === matchedHref ||
+            (c.link === rawHref ||
+              c.originalLink === rawHref ||
+              c.link === matchedHref ||
               c.originalLink === matchedHref ||
-              (c.originalLink && matchedHref.includes(c.originalLink)))
+              (c.originalLink && (rawHref.includes(c.originalLink) || matchedHref.includes(c.originalLink))))
         );
         return found ? found.imageUrl : null;
       };
@@ -1331,7 +1412,8 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
 
       // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 검증 이미지만 삽입 (중복 이미지 절대 금지)
       if (finalImgUrl) {
-        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${matchedHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
+        const captionHref = matchedHref || rawHref;
+        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${captionHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
         return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
       }
       // 실패 카드: 사진 없이 텍스트 카드로 구성하되 마커로 남긴다
@@ -1452,7 +1534,7 @@ export async function runNewsDigestGeneration(options = {}) {
   for (const item of rankedItems) {
     if (!item.originalLink || item.originalLink === item.link) {
       try {
-        const decoded = decodeGoogleNewsUrl(item.link);
+        const decoded = await decodeGoogleNewsUrl(item.link);
         if (decoded) item.originalLink = decoded;
       } catch (_) {}
     }
