@@ -28,7 +28,7 @@ import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
-import { gitPublish, publishPreflight } from './lib/git-publish.mjs';
+import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { acquireDaemonLock } from './lib/runtime-lock.mjs';
 
@@ -517,6 +517,51 @@ HTML 구조 규격:
  * - 매일(주 7일) 무휴식 구동
  * - 다채널 뉴스 피드 수집 + LLM(Groq/Gemini) 큐레이션 + D1 발행 + 텔레그램 연동
  */
+/**
+ * [자가 복구] 원격에 반영되지 못한 로컬 커밋이 남아 있으면 밀어낸다.
+ *
+ * 왜 필요한가
+ *   2026-09-29 저녁 발행 2건이 D1 등록까지 성공한 뒤 push 에서 죽었다.
+ *   그런데 상태 파일에는 이미 `success` 로 기록돼 있었기 때문에
+ *   중복 실행 방지 로직이 이후 재시도를 전부 건너뛰었다.
+ *   결과적으로 사람이 알기 전까지 사이트가 이전 빌드를 서빙했다.
+ *
+ * 무엇을 하는가
+ *   글 생성 없이, 남은 커밋만 원격으로 밀어낸다.
+ *   (재발행은 slug 충돌·중복 콘텐츠 위험이 있어 하지 않는다)
+ */
+function drainPendingDeploys() {
+  let pending = 0;
+  try {
+    const out = runGit(BLOG_ROOT, ['rev-list', '--count', 'origin/main..HEAD'], { timeout: 30000 });
+    pending = parseInt(String(out).trim(), 10) || 0;
+  } catch (err) {
+    // 원격에 아직 접근 못 하면 조용히 넘어간다 (사전 점검이 별도로 알린다)
+    log(`ℹ️ [자가 복구] 미반영 커밋 확인 불가: ${err.gitStderr || err.message}`);
+    return;
+  }
+
+  if (pending === 0) {
+    log(`✅ [자가 복구] 미반영 커밋 없음 (로컬과 원격 동기화 완료)`);
+    return;
+  }
+
+  log(`⚠️ [자가 복구] 원격에 반영되지 못한 커밋 ${pending}건 발견 — 푸시합니다.`);
+  try {
+    gitPublish({
+      repoRoot: BLOG_ROOT,
+      paths: [], // 이미 커밋되어 있으므로 스테이징 대상 없음
+      message: 'chore: drain pending deploy',
+      log: (m) => log(`   ${m}`),
+    });
+    log(`✅ [자가 복구] ${pending}건 커밋을 원격에 반영했습니다.`);
+  } catch (err) {
+    // 자가 복구 실패는 조용히 넘기지 않는다 — 운영자가 알아야 한다
+    log(`❌ [자가 복구 실패] ${pending}건 커밋을 원격에 반영하지 못했습니다: ${err.message}`);
+    log(`   ⚠️ 사이트가 이전 빌드를 서빙 중입니다. 수동 확인이 필요합니다.`);
+  }
+}
+
 export async function runMorningNewsDigestPipeline(options = {}) {
   const { dateStr, timeStr } = getKSTDate();
   console.log(`\n========================================`);
@@ -1215,6 +1260,12 @@ async function startDaemon() {
   log(`🤖 [blogs 포켓머니 2-Track 자동화 스케줄러 데몬 가동]`);
   log(`- 오전 범위: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식)`);
   log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
+
+  // [자가 복구] 이전 실행에서 push 에 실패해 원격에 반영되지 못한 커밋이
+  // 남아 있을 수 있다. 2026-09-29 저녁 1건이 정확히 그 상태였고,
+  // 상태 파일은 이미 success 로 기록돼 있어 어떤 자동 재시도도 걸리지 않았다.
+  // 글을 재생성하지 않고 남은 커밋만 밀어내는 방식으로 복구한다.
+  drainPendingDeploys();
 
   let currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
   let currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
