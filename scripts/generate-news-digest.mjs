@@ -490,6 +490,111 @@ export async function fetchArticleOgImage(articleUrl, depth = 0) {
 }
 
 /**
+ * [P2] 기사에서 대표 이미지 **후보 목록**을 수집한다.
+ *
+ * fetchArticleOgImage 는 og:image / link / amp / 본문 중 "첫 번째로 발견한 1장"만 반환한다.
+ * 그 1장이 로고·썸네일·저해상도면 그대로 실패하고, 같은 기사에 실린 720px급 실사 사진은
+ * 시도조차 되지 않는다 (2026-09-30 실제로 3/4 카드가 여기서 실패).
+ *
+ * 따라서 우선순위별 후보를 모두 모아 검증까지 통과한 것만 반환하고,
+ * 호출부가 앞에서부터 순서대로 시도하며 성공하는 첫 장을 사용한다.
+ *
+ * @returns {Promise<string[]>} 검증 통과한 원본 이미지 URL (우선순위 순)
+ */
+export async function collectArticleImageCandidates(articleUrl, max = 4) {
+  if (!articleUrl || !articleUrl.startsWith('http')) return [];
+  if (articleUrl.includes('news.google.com')) {
+    const resolved = await resolveSourceArticleUrl(articleUrl);
+    if (!resolved) return [];
+    articleUrl = resolved;
+  }
+
+  let html = '';
+  try {
+    const res = await fetch(articleUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      signal: AbortSignal.timeout(8000),
+      redirect: 'follow',
+    });
+    if (!res.ok) return [];
+    html = await res.text();
+  } catch (_) {
+    return [];
+  }
+
+  const toAbs = (u) => {
+    if (!u) return null;
+    let s = decodeEntities(String(u).trim());
+    if (s.startsWith('//')) s = 'https:' + s;
+    else if (s.startsWith('/')) {
+      try {
+        s = `${new URL(articleUrl).origin}${s}`;
+      } catch (_) {
+        return null;
+      }
+    }
+    if (!/^https?:\/\//i.test(s)) return null;
+    return isPlaceholderOrLogo(s) ? null : s;
+  };
+
+  // 1순위: 메타 태그 (og:image / twitter:image / image_src)
+  const metaRaw = [
+    ...html.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*content=["']([^"']+)["']/gi),
+    ...html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["']/gi),
+    ...html.matchAll(/<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/gi),
+  ].map((m) => m[1]);
+
+  // 2순위: JSON-LD image
+  const jsonLdRaw = [];
+  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const parsed = JSON.parse(m[1]);
+      const img = parsed?.image;
+      if (typeof img === 'string') jsonLdRaw.push(img);
+      else if (Array.isArray(img) && img[0]) jsonLdRaw.push(img[0]);
+      else if (img?.url) jsonLdRaw.push(img.url);
+    } catch (_) {}
+  }
+
+  // 3순위: 본문 실사 이미지 (카드뉴스/첨부파일)
+  const bodyRaw = [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
+    .map((m) => m[1])
+    .filter((s) => /attaches|orgPhoto|photo|upload|news\/thumbnail|media/i.test(s));
+
+  const ordered = [...new Set([...metaRaw, ...jsonLdRaw, ...bodyRaw].map(toAbs).filter(Boolean))];
+  if (!ordered.length) return [];
+
+  // 썸네일 URL 은 원본으로 승격해 먼저 시도
+  const promoted = [];
+  for (const u of ordered) {
+    if (/_v\d+|_s\d+|_thumb|\b150x150\b|-150x150|_tc\./i.test(u)) {
+      promoted.push(
+        u
+          .replace(/_v\d+\./i, '.')
+          .replace(/_s\d+\./i, '.')
+          .replace(/_thumb\./i, '.')
+          .replace(/-?150x150\./i, '.')
+          .replace(/_tc\./i, '.')
+      );
+    }
+  }
+
+  const finalOrder = [...new Set([...promoted, ...ordered])];
+  const valid = [];
+  for (const u of finalOrder) {
+    if (valid.length >= max) break;
+    const v = await validateAndNormalizeImageUrl(u);
+    if (v) valid.push(v);
+  }
+  return valid;
+}
+
+/**
  * 4. RSS 피드 파싱
  */
 function parseRssXml(xmlText, defaultSource = '') {
@@ -1340,31 +1445,37 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
 
       // 이미지 후보를 순서대로 시도 (FR-1.6: 단일 실패에 포기하지 않는다)
       const attempts = [];
+      // [P2] 대표 이미지 단일 실패로 카드 전체가 실패하지 않도록, 같은 기사에 실린
+      // 검증 통과 후보를 우선순위대로 모두 시도한다 (og 로고/썸네일 → 본문 720px 실사).
       const tryFetchFromArticle = async () => {
-        if (!matchedHref) return null;
-        const fetched = await fetchArticleOgImage(matchedHref);
-        return fetched && !usedImageUrls.has(fetched) ? fetched : null;
+        if (!matchedHref) return [];
+        const list = await collectArticleImageCandidates(matchedHref, 4);
+        return list.filter((u) => !usedImageUrls.has(u));
       };
       const tryMatchFromCandidates = () => {
-        if (!rawHref || !candidates || candidates.length === 0) return null;
-        const found = candidates.find(
-          (c) =>
-            c.imageUrl &&
-            !usedImageUrls.has(c.imageUrl) &&
-            (c.link === rawHref ||
-              c.originalLink === rawHref ||
-              c.link === matchedHref ||
-              c.originalLink === matchedHref ||
-              (c.originalLink && (rawHref.includes(c.originalLink) || matchedHref.includes(c.originalLink))))
-        );
-        return found ? found.imageUrl : null;
+        if (!rawHref || !candidates || candidates.length === 0) return [];
+        return candidates
+          .filter(
+            (c) =>
+              c.imageUrl &&
+              !usedImageUrls.has(c.imageUrl) &&
+              !isPlaceholderOrLogo(c.imageUrl) &&
+              (c.link === rawHref ||
+                c.originalLink === rawHref ||
+                c.link === matchedHref ||
+                c.originalLink === matchedHref ||
+                (c.originalLink && (rawHref.includes(c.originalLink) || matchedHref.includes(c.originalLink))))
+          )
+          .map((c) => c.imageUrl);
       };
       // [엄격 규칙] 오직 해당 출처 기사에 실린 실제 이미지만 시도 (타 기사 이미지 대체 절대 금지)
-      const articleImg = await tryFetchFromArticle();
-      if (articleImg) attempts.push(articleImg);
-
-      const candidateImg = tryMatchFromCandidates();
-      if (candidateImg && !attempts.includes(candidateImg)) attempts.push(candidateImg);
+      attempts.push(...(await tryFetchFromArticle()));
+      for (const c of tryMatchFromCandidates()) {
+        if (!attempts.includes(c)) attempts.push(c);
+      }
+      if (!attempts.length) {
+        console.log(`  ⚠️ [카드 ${secIdx}] 출처 이미지 후보 0건 (검증 통과 이미지 없음)`);
+      }
 
       imageStats.total++;
       let finalImgUrl = null;

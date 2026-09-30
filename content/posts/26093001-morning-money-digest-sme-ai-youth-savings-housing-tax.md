@@ -25,6 +25,9 @@ og_image: "/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-acea9296
 
 ## 강원·경북 소상공인 가게 운영 및 지역 정착 '맞춤형 AI서비스'
 
+![강원·경북 소상공인 가게 운영 및 지역 정착 '맞춤형 AI서비스'](/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-bc562fc67eed.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972766" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972766)  
 > **발행**: 2026-09-30 00:43 KST | **신뢰도**: 공식 발표
 
@@ -40,9 +43,10 @@ og_image: "/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-acea9296
 > **관련 가이드**:  
 > [모두의카드 출퇴근 환급 12월까지 연장 | 휴면자산 매년 3월 공개 & 소상공인 온라인 판로 확대](/posts/26092901-morning-money-digest-commute-refund-dormant-assets-sme-online-sales)
 
----
+---## 저소득 청년 자립 지원 '청년내일저축계좌' 올해 2만 4145명 선정
 
-## 저소득 청년 자립 지원 '청년내일저축계좌' 올해 2만 4145명 선정
+![저소득 청년 자립 지원 '청년내일저축계좌' 올해 2만 4145명 선정](/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-9b0ed8a17b37.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972747" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972747)  
 > **발행**: 2026-09-30 00:43 KST | **신뢰도**: 공식 발표
@@ -59,9 +63,10 @@ og_image: "/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-acea9296
 > **관련 가이드**:  
 > [청년도약계좌 2026년 최신 가이드- 월 70만원 납입 시 최대 5,000만원 목돈 마련 기회](/posts/youth-jump-account-2026-guide)
 
----
+---## 하나금융, 청년 소상공인 상권 활성화 프로젝트 '하나 On, 청년 On' 출범
 
-## 하나금융, 청년 소상공인 상권 활성화 프로젝트 '하나 On, 청년 On' 출범
+![하나금융, 청년 소상공인 상권 활성화 프로젝트 '하나 On, 청년 On' 출범](/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-0c88bec82dc6.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.newspim.com/news/view/20260930000225" target="_blank" rel="noopener noreferrer">뉴스핌</a></p>
 
 > **출처**: [뉴스핌](https://www.newspim.com/news/view/20260930000225)  
 > **발행**: 2026-09-30 00:23 KST | **신뢰도**: 경제전문지
@@ -78,9 +83,7 @@ og_image: "/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-acea9296
 > **관련 가이드**:  
 > [모두의카드 출퇴근 환급 12월까지 연장 | 휴면자산 매년 3월 공개 & 소상공인 온라인 판로 확대](/posts/26092901-morning-money-digest-commute-refund-dormant-assets-sme-online-sales)
 
----
-
-## 조정대상지역 일시적 2주택 특례 '2년'으로 단축…내달 1일 시행
+---## 조정대상지역 일시적 2주택 특례 '2년'으로 단축…내달 1일 시행
 
 ![조정대상지역 일시적 2주택 특례 '2년'으로 단축…내달 1일 시행](/api/images/2026/09/morning-money-digest-sme-ai-youth-saving-acea929615c7.webp)
 <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972735" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
