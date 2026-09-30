@@ -73,7 +73,7 @@ export function log(...args) {
  * 0. 환경 변수 자동 로드 (.env 다중 경로)
  */
 export function loadEnvConfig() {
-  const env = { ...process.env };
+  const env = {};
   const envCandidates = [
     path.resolve('/workspace/.env'),
     path.resolve('/workspace/scripts/.env'),
@@ -102,6 +102,12 @@ export function loadEnvConfig() {
       } catch (_) {}
     }
   }
+
+  // 프로세스 환경변수는 .env에 없는 키만 보충
+  for (const [k, v] of Object.entries(process.env)) {
+    if (!env[k] && v) env[k] = v;
+  }
+
   return env;
 }
 
