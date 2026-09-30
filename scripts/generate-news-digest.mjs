@@ -1454,18 +1454,25 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
       };
       const tryMatchFromCandidates = () => {
         if (!rawHref || !candidates || candidates.length === 0) return [];
+        const targetKeys = new Set(
+          [rawHref, matchedHref].filter(Boolean).map((u) => articleUrlKey(u)).filter(Boolean)
+        );
+        if (!targetKeys.size) return [];
         return candidates
-          .filter(
-            (c) =>
-              c.imageUrl &&
-              !usedImageUrls.has(c.imageUrl) &&
-              !isPlaceholderOrLogo(c.imageUrl) &&
-              (c.link === rawHref ||
-                c.originalLink === rawHref ||
-                c.link === matchedHref ||
-                c.originalLink === matchedHref ||
-                (c.originalLink && (rawHref.includes(c.originalLink) || matchedHref.includes(c.originalLink))))
-          )
+          .filter((c) => {
+            if (!c.imageUrl) return false;
+            if (usedImageUrls.has(c.imageUrl)) return false;
+            if (isPlaceholderOrLogo(c.imageUrl)) return false;
+            // [P2] 문자열 완전일치만으로는 못 잡는다. 트레일링 &·# , http→https ,
+            // news.google.com 래퍼 제거 후 "기사 동일성" 키로 비교한다.
+            const keys = [c.link, c.originalLink, c.resolvedLink]
+              .filter(Boolean)
+              .map((u) => articleUrlKey(u))
+              .filter(Boolean);
+            if (keys.some((k) => targetKeys.has(k))) return true;
+            // 경로+질의 부분 일치 (newsId 등 고유 파라미터 공유)
+            return keys.some((k) => k.startsWith(targetKeys.values().next().value));
+          })
           .map((c) => c.imageUrl);
       };
       // [엄격 규칙] 오직 해당 출처 기사에 실린 실제 이미지만 시도 (타 기사 이미지 대체 절대 금지)
@@ -1607,6 +1614,40 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
  * @param {string} u
  * @returns {string} 호스트 (파싱 실패 시 빈 문자열)
  */
+/**
+ * [P2] 기사 URL 동일성 비교용 정규화 키
+ *
+ * 출처 매칭이 실패하던 주원인: 카드 href 와 RSS 후보 link 를 문자열 완전일치로만
+ * 비교해 트레일링 `&`/`#`, http↔https, `//` 상대경로 차이로 매칭이 깨졌다.
+ * 크롤링 자체는 성공했으므로 비교 방식만 고친다.
+ *
+ * @param {string} u
+ * @returns {string} 정규화 키 (파싱 실패 시 가벼운 정리 결과)
+ */
+export function articleUrlKey(u) {
+  if (!u || typeof u !== 'string') return '';
+  const s0 = u.trim();
+  if (!s0) return '';
+  const s = s0.startsWith('//') ? 'https:' + s0 : s0;
+  try {
+    const x = new URL(s);
+    x.hash = '';
+    x.search = x.search.replace(/[?&]+$/, '');
+    // origin 비교는 스킴까지 같은지 보기보다 "호스트+경로" 만 통일한다.
+    // http/https 혼재는 동일한 기사로 봐야 한다(링크 스킴 차이는 크롤링이 아니라 표기 차이).
+    const host = x.hostname.replace(/^www\./, '').toLowerCase();
+    // 경로 끝 슬래시는 newsId 가 붙은 query 형태에서 "같은 기사 다른 표기"로 자주 나온다.
+    // 슬래시 제거 후 query 가 남는다면 pathname 이 아니라 query 까지 정규화 대상으로 본다.
+    const path = x.pathname.replace(/\/+$/, '');
+    const search = x.search;
+    // 예: /view.do?newsId=1/  →  경로와 질의 경계에 걸린 슬래시만 정리
+    const cleanedSearch = search ? search.replace(/\/(\?|$)/, '$1').replace(/\/(?=[^/]*$)/, '') : '';
+    return `https://${host}${path}${cleanedSearch}`;
+  } catch (_) {
+    return s0.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/#.*$/, '').replace(/[?&]+$/, '');
+  }
+}
+
 export function safeHost(u) {
   try {
     return new URL(u).hostname;
