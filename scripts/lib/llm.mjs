@@ -57,8 +57,10 @@ export function blogEnvCandidates(blogRoot) {
   ];
 }
 
-// gemini-2.5-* 계열은 신규 계정에서 404(deprecated)로 차단되어 제거함 (2026-09-29).
-// flash-latest는 3.8 Flash로 매핑되며, 3.8을 명시 폴백으로 두어 alias 일시적 503에 대비한다.
+// gemini-2.5-flash 는 "과거에 실제로 사용한 계정"(grandfathered)에만 허용된다.
+// 신규 계정에서는 404(no longer available to new users)로 차단되므로 기본값에서 제외하고,
+// GEMINI_MODEL 로 명시 지정하는 방식으로 쓴다 (2026-09-30, 이전 키 AQ.Ab8RN6L… 로 2.5 접근 확인).
+// flash-latest 는 3.8 Flash 로 매핑되며, 3.8 을 명시 폴백으로 두어 alias 일시적 503 에 대비한다.
 const DEFAULT_MODELS = ['gemini-flash-latest', 'gemini-3.8-flash'];
 
 // 503/429/5xx 는 모델 문제가 아니라 엔드포인트의 일시적 수치 부족이다.
