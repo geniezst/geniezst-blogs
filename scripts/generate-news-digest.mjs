@@ -3,7 +3,7 @@
  * blogs 아침 뉴스 다이제스트 자동 생성 및 배포 파이프라인
  * - 대상: 포켓머니 (blogs, 생활금융/정부지원금/소상공인/환급금)
  * - 수집 채널: Google News RSS, 대한민국 정책브리핑, 공공/비즈니스 금융 RSS
- * - LLM: Groq (llama-3.3-70b-versatile) -> Gemini (gemini-2.5-flash) Fallback
+ * - LLM: Groq (llama-3.3-70b-versatile) -> Gemini (gemini-flash-latest = 3.8 Flash) Fallback
  * - 배포: Cloudflare D1 (publish-post.mjs) & Telegram 알림
  * 
  * 사용법:

@@ -57,7 +57,15 @@ export function blogEnvCandidates(blogRoot) {
   ];
 }
 
-const DEFAULT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+// gemini-2.5-* 계열은 신규 계정에서 404(deprecated)로 차단되어 제거함 (2026-09-29).
+// flash-latest는 3.8 Flash로 매핑되며, 3.8을 명시 폴백으로 두어 alias 일시적 503에 대비한다.
+const DEFAULT_MODELS = ['gemini-flash-latest', 'gemini-3.8-flash'];
+
+// 503/429/5xx 는 모델 문제가 아니라 엔드포인트의 일시적 수치 부족이다.
+// 모델을 바꿔도 동일하게 실패하므로, 다음 모델로 넘어가기 전에 같은 모델을 재시도해야 한다.
+const TRANSIENT_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Gemini 네이티브 API 단일 호출 (모델 fallback 체인 내장)
@@ -69,6 +77,7 @@ const DEFAULT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-fla
  * @param {number} [p.maxOutputTokens=16384]
  * @param {number} [p.temperature=0.6]
  * @param {number} [p.timeoutMs=180000]
+ * @param {number} [p.transientRetry=3] 503/429 등 일시 오류 시 동일 모델 backoff 재시도 횟수
  * @param {(msg: string) => void} [p.log]
  * @returns {Promise<{ text: string, model: string, usage: object }>}
  * @throws {Error} 모든 모델 실패 시. 잘림(MAX_TOKENS)이면 `err.truncated === true`
@@ -80,6 +89,7 @@ export async function callGemini({
   maxOutputTokens = 16384,
   temperature = 0.6,
   timeoutMs = 180000,
+  transientRetry = 3,
   log = () => {},
 }) {
   const apiKey = env.GEMINI_API_KEY;
@@ -91,78 +101,103 @@ export async function callGemini({
     .replace(/\/+$/, '')
     .replace(/\/openai$/i, '');
 
-  const models = [env.GEMINI_MODEL, ...DEFAULT_MODELS].filter(Boolean);
+  // GEMINI_MODEL이 DEFAULT_MODELS와 겹칠 수 있으므로 중복 제거 (동일 모델 재시도 방지)
+  const models = [...new Set([env.GEMINI_MODEL, ...DEFAULT_MODELS].filter(Boolean))];
   let lastError = null;
 
   for (const model of models) {
     const url = `${base}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    log(`🧠 [LLM] Gemini 네이티브 호출 (${model}, thinkingBudget: 0, maxOutputTokens: ${maxOutputTokens})...`);
 
-    try {
-      const body = {
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens,
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      };
-      if (systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      }
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-
-      if (!res.ok) {
-        const errText = (await res.text().catch(() => '')).slice(0, 200);
-        log(`⚠️ [LLM] Gemini ${model} HTTP ${res.status}: ${errText} → 다음 모델 시도`);
-        lastError = new Error(`Gemini ${model} HTTP ${res.status}: ${errText}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const candidate = data?.candidates?.[0];
-      const finishReason = candidate?.finishReason;
-      const text = (candidate?.content?.parts || [])
-        .map((p) => p.text || '')
-        .join('')
-        .trim();
-
+    for (let attempt = 0; attempt <= transientRetry; attempt++) {
       log(
-        `📊 [LLM] Gemini ${model} 응답 완료 — finishReason: ${finishReason}, ` +
-          `글자 수: ${text.length}, usage:`,
-        data?.usageMetadata || {}
+        attempt === 0
+          ? `🧠 [LLM] Gemini 네이티브 호출 (${model}, thinkingBudget: 0, maxOutputTokens: ${maxOutputTokens})...`
+          : `🔄 [LLM] 일시 오류 재시도 ${attempt}/${transientRetry} (${model})...`
       );
 
-      if (!text) {
-        lastError = new Error(`Gemini ${model} 이 빈 응답을 반환했습니다. (${errBlock(data)})`);
-        log(`⚠️ [LLM] ${lastError.message} → 다음 모델 시도`);
-        continue;
-      }
+      try {
+        const body = {
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        };
+        if (systemPrompt) {
+          body.systemInstruction = { parts: [{ text: systemPrompt }] };
+        }
 
-      if (finishReason === 'MAX_TOKENS') {
-        // 조용히 성공시키지 않는다. 호출자가 재시도/중단을 결정할 수 있게 표면화한다.
-        const err = new Error(
-          `Gemini ${model} 응답이 maxOutputTokens(${maxOutputTokens}) 에서 잘렸습니다 ` +
-            `(수신 ${text.length}자). 분량을 줄이거나 maxOutputTokens 를 늘려 재시도해야 합니다.`
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+
+        if (!res.ok) {
+          const errText = (await res.text().catch(() => '')).slice(0, 200);
+          lastError = new Error(`Gemini ${model} HTTP ${res.status}: ${errText}`);
+
+          // 503/429 등은 전체 엔드포인트의 일시적 수치 부족이며 모델을 바꿔도 동일하다.
+          // 다음 모델로 넘어가기 전에 동일 모델을 backoff 로 재시도한다.
+          if (TRANSIENT_STATUS.has(res.status) && attempt < transientRetry) {
+            const waitMs = 2000 * 2 ** attempt;
+            log(`⚠️ [LLM] ${res.status} 일시 오류 — ${waitMs}ms 후 동일 모델 재시도`);
+            await sleep(waitMs);
+            continue;
+          }
+
+          log(`⚠️ [LLM] Gemini ${model} HTTP ${res.status}: ${errText} → 다음 모델 시도`);
+          break;
+        }
+
+        const data = await res.json();
+        const candidate = data?.candidates?.[0];
+        const finishReason = candidate?.finishReason;
+        const text = (candidate?.content?.parts || [])
+          .map((p) => p.text || '')
+          .join('')
+          .trim();
+
+        log(
+          `📊 [LLM] Gemini ${model} 응답 완료 — finishReason: ${finishReason}, ` +
+            `글자 수: ${text.length}, usage:`,
+          data?.usageMetadata || {}
         );
-        err.truncated = true;
-        err.model = model;
-        err.partialText = text;
-        log(`⛔ [LLM] ${err.message}`);
-        throw err;
-      }
 
-      return { text, model, usage: data?.usageMetadata || {} };
-    } catch (err) {
-      if (err.truncated) throw err; // 잘림은 다음 모델로 넘기지 않고 즉시 표면화
-      log(`⚠️ [LLM] Gemini ${model} 예외: ${err.message} → 다음 모델 시도`);
-      lastError = err;
+        if (!text) {
+          lastError = new Error(`Gemini ${model} 이 빈 응답을 반환했습니다. (${errBlock(data)})`);
+          log(`⚠️ [LLM] ${lastError.message} → 다음 모델 시도`);
+          break;
+        }
+
+        if (finishReason === 'MAX_TOKENS') {
+          // 조용히 성공시키지 않는다. 호출자가 재시도/중단을 결정할 수 있게 표면화한다.
+          const err = new Error(
+            `Gemini ${model} 응답이 maxOutputTokens(${maxOutputTokens}) 에서 잘렸습니다 ` +
+              `(수신 ${text.length}자). 분량을 줄이거나 maxOutputTokens 를 늘려 재시도해야 합니다.`
+          );
+          err.truncated = true;
+          err.model = model;
+          err.partialText = text;
+          log(`⛔ [LLM] ${err.message}`);
+          throw err;
+        }
+
+        return { text, model, usage: data?.usageMetadata || {} };
+      } catch (err) {
+        if (err.truncated) throw err; // 잘림은 다음 모델로 넘기지 않고 즉시 표면화
+        lastError = err;
+        if (attempt < transientRetry) {
+          const waitMs = 2000 * 2 ** attempt;
+          log(`⚠️ [LLM] ${model} 예외: ${err.message} — ${waitMs}ms 후 동일 모델 재시도`);
+          await sleep(waitMs);
+          continue;
+        }
+        log(`⚠️ [LLM] Gemini ${model} 예외: ${err.message} → 다음 모델 시도`);
+        break;
+      }
     }
   }
 
