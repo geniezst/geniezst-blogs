@@ -6,7 +6,7 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-youth-savings-healt-50d41cdaf45b.webp"
 affiliate: false
 post_type: "digest"
 ---
@@ -21,6 +21,9 @@ post_type: "digest"
 ---
 
 ## 청년미래적금 2차, 10월 7일부터 가입 신청 연 최대 19.4% 혜택
+
+![청년미래적금 2차, 10월 7일부터 가입 신청 연 최대 19.4% 혜택](/api/images/2026/10/morning-money-digest-youth-savings-healt-50d41cdaf45b.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972819" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972819)  
 > **발행**: 2026-09-30 23:35 KST | **신뢰도**: 공식 발표
@@ -41,6 +44,9 @@ post_type: "digest"
 
 ## 희귀·소외암 치료제 건강보험 적용 확대 10월부터 부담 완화
 
+![희귀·소외암 치료제 건강보험 적용 확대 10월부터 부담 완화](/api/images/2026/10/morning-money-digest-youth-savings-healt-3b55ba5019fd.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972823" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972823)  
 > **발행**: 2026-09-30 23:35 KST | **신뢰도**: 공식 발표
 
@@ -60,6 +66,9 @@ post_type: "digest"
 
 ## 주가조작 근절 합동대응단 미공개정보 이용세력 적발
 
+![주가조작 근절 합동대응단 미공개정보 이용세력 적발](/api/images/2026/10/morning-money-digest-youth-savings-healt-04abf5b5cff7.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972808" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972808)  
 > **발행**: 2026-09-30 23:35 KST | **신뢰도**: 공식 발표
 
@@ -78,6 +87,9 @@ post_type: "digest"
 ---
 
 ## 소진공, 청년 소상공인 상권 활성화 프로젝트 출범 지역에 활력 기대
+
+![소진공, 청년 소상공인 상권 활성화 프로젝트 출범 지역에 활력 기대](/api/images/2026/10/morning-money-digest-youth-savings-healt-b60334a54163.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.gukjenews.com/news/articleView.html?idxno=3709925" target="_blank" rel="noopener noreferrer">gukjenews.com</a></p>
 
 > **출처**: [gukjenews.com](https://www.gukjenews.com/news/articleView.html?idxno=3709925)  
 > **발행**: 2026-09-30 12:57 KST | **신뢰도**: 보도자료

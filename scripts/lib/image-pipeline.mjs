@@ -436,6 +436,37 @@ export function wranglerBin(blogRoot) {
   return _wranglerPath;
 }
 
+function getCloudflareEnv(blogRoot) {
+  const env = { ...process.env };
+  const envPaths = [
+    '/workspace/.env',
+    path.join(blogRoot, '.env'),
+    path.resolve(process.cwd(), '.env'),
+  ];
+  for (const p of envPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const content = fs.readFileSync(p, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eq = trimmed.indexOf('=');
+          if (eq > 0) {
+            const k = trimmed.slice(0, eq).trim();
+            let v = trimmed.slice(eq + 1).trim();
+            if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+              v = v.slice(1, -1);
+            }
+            if (!env[k]) env[k] = v;
+            if (!process.env[k]) process.env[k] = v;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  return env;
+}
+
 export function uploadToR2({ blogRoot, bucket, key, buffer, log = () => {} }) {
   // [P1] 임시 파일 확장자를 실제 키 확장자와 맞춘다.
   //   OG 크롭본(jpg) 을 올릴 때도 .webp 로 저장하면 wrangler 가
@@ -446,6 +477,7 @@ export function uploadToR2({ blogRoot, bucket, key, buffer, log = () => {} }) {
   try {
     // stdio 를 버리지 않는다 — 기존 코드의 stdio:'ignore' 는 업로드 실패 원인을 지웠다.
     const bin = wranglerBin(blogRoot);
+    const execEnv = getCloudflareEnv(blogRoot);
     // npx 폴백이면 'wrangler' 서브커맨드를 앞에 붙여야 한다
     const args =
       bin === 'npx'
@@ -453,6 +485,7 @@ export function uploadToR2({ blogRoot, bucket, key, buffer, log = () => {} }) {
         : ['r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote'];
     execFileSync(bin, args, {
       cwd: blogRoot,
+      env: execEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 60000,
       maxBuffer: 4 * 1024 * 1024,

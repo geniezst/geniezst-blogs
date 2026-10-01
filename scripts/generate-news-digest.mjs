@@ -363,8 +363,17 @@ export async function mirrorImageToR2(remoteImgUrl, bucketName = 'blogs', slug =
 
     fs.writeFileSync(tmpPath, buffer);
     try {
+      const wranglerEnv = { ...process.env };
+      if (!wranglerEnv.CLOUDFLARE_API_TOKEN) {
+        try {
+          const envTxt = fs.readFileSync('/workspace/.env', 'utf8');
+          const m = envTxt.match(/CLOUDFLARE_API_TOKEN=(.*)/);
+          if (m) wranglerEnv.CLOUDFLARE_API_TOKEN = m[1].trim().replace(/^["']|["']$/g, '');
+        } catch (_) {}
+      }
       execSync(`wrangler r2 object put "${bucketName}/${r2Key}" --file="${tmpPath}" --remote`, {
         cwd: BLOG_ROOT,
+        env: wranglerEnv,
         stdio: 'ignore',
         timeout: 15000,
       });

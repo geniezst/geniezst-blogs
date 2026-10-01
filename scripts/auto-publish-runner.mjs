@@ -44,6 +44,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
+const POSTS_DIR = path.join(BLOG_ROOT, 'content', 'posts');
 const STATE_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-state.json');
 const LOG_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish.log');
 
@@ -98,6 +99,9 @@ export function loadEnvConfig() {
           if (!env[key]) {
             env[key] = val;
           }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
         }
       } catch (_) {}
     }
@@ -109,6 +113,37 @@ export function loadEnvConfig() {
   }
 
   return env;
+}
+
+// 모듈 로드 시 환경변수 최우선 동기화
+loadEnvConfig();
+
+/**
+ * [P0] 세션 단위 원자적 락 (다중 데몬 및 동시 실행 레이스 컨디션 원천 차단)
+ */
+function acquireSessionLock(sessionName, dateStr) {
+  const lockDir = path.join(BLOG_ROOT, 'data');
+  if (!fs.existsSync(lockDir)) fs.mkdirSync(lockDir, { recursive: true });
+  const lockFile = path.join(lockDir, `session-${sessionName}-${dateStr}.lock`);
+  try {
+    const fd = fs.openSync(lockFile, 'wx');
+    const info = { pid: process.pid, session: sessionName, date: dateStr, startedAt: new Date().toISOString() };
+    fs.writeSync(fd, JSON.stringify(info, null, 2), 'utf8');
+    fs.closeSync(fd);
+    log(`🔒 [세션 락 획득] ${sessionName} 세션 락 생성 (pid: ${process.pid}, ${lockFile})`);
+    return {
+      acquired: true,
+      releaseOnFailure: () => {
+        try { fs.unlinkSync(lockFile); } catch (_) {}
+      }
+    };
+  } catch (err) {
+    if (err.code === 'EEXIST') {
+      log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 진행 중이거나 완료되었습니다 (${lockFile}).`);
+      return { acquired: false };
+    }
+    throw err;
+  }
 }
 
 /**
@@ -590,12 +625,34 @@ export async function runMorningNewsDigestPipeline(options = {}) {
   const state = loadState();
 
   // 1. 중복 실행 검사
-  const isDone = state.history.some(
-    (h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success'
-  );
-  if (isDone && !options.force) {
-    console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 아침 다이제스트 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
-    return true;
+  let sessionLock = null;
+  if (!options.force && !options.dryRun) {
+    const isDone = state.history.some(
+      (h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success'
+    );
+    if (isDone) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 아침 다이제스트 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
+      return true;
+    }
+
+    // 파일시스템 기반 실제 포스트 존재 여부 2차 검증 (YYMMDD 형태 중복 방지)
+    const yy = dateStr.slice(2, 4);
+    const mm = dateStr.slice(5, 7);
+    const dd = dateStr.slice(8, 10);
+    const prefix = `${yy}${mm}${dd}`;
+    const existingPosts = fs.existsSync(POSTS_DIR)
+      ? fs.readdirSync(POSTS_DIR).filter(f => f.startsWith(prefix) && (f.endsWith('.md') || f.endsWith('.mdx')) && f !== 'template.md')
+      : [];
+    if (existingPosts.length > 0) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
+      return true;
+    }
+
+    // 원자적 세션 락 획득 시도 (동시 구동 레이스 컨디션 차단)
+    sessionLock = acquireSessionLock('morning', dateStr);
+    if (!sessionLock.acquired) {
+      return true;
+    }
   }
 
   try {
@@ -628,6 +685,9 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     return true;
   } catch (err) {
     console.error(`❌ [아침 다이제스트 파이프라인 실패]`, err.message);
+    if (sessionLock?.releaseOnFailure) {
+      sessionLock.releaseOnFailure();
+    }
 
     state.history.push({
       date: dateStr,
@@ -1275,9 +1335,17 @@ export async function runPublishPipeline(sessionName, options = {}) {
   const state = loadState();
 
   // 1. 중복 실행 검사 (--force 옵션 지원)
-  if (isSessionAlreadyDone(state, sessionName, dateStr) && !options.force) {
-    console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) ${sessionName} 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
-    return true;
+  let sessionLock = null;
+  if (!options.force && !options.dryRun) {
+    if (isSessionAlreadyDone(state, sessionName, dateStr)) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) ${sessionName} 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
+      return true;
+    }
+
+    sessionLock = acquireSessionLock(sessionName, dateStr);
+    if (!sessionLock.acquired) {
+      return true;
+    }
   }
 
   // 2. 카테고리 선정
@@ -1447,6 +1515,9 @@ ${deployLine}`;
     return deploySynced;
   } catch (err) {
     console.error(`❌ [자동 게시 실패]`, err.message);
+    if (sessionLock?.releaseOnFailure) {
+      sessionLock.releaseOnFailure();
+    }
 
     // 실패 상태 기록
     state.history.push({

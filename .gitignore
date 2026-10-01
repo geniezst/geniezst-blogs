@@ -49,3 +49,4 @@ data/*.lock
 *-*.json
 blog-509810-*.json
 gsc-*.json
+data/*.out
