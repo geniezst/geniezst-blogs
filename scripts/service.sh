@@ -10,21 +10,7 @@ BLOG_DIR="/workspace/projects/blogs"
 SCHEDULER_SCRIPT="${BLOG_DIR}/scripts/auto-publish-runner.mjs"
 SCHEDULER_LOG="${BLOG_DIR}/data/auto-publish.log"
 
-check_status() {
-  echo "=================================================="
-  echo "🔍 [blogs 백그라운드 스케줄러 동작 상태 확인]"
-  echo "=================================================="
-
-  SCHED_PID=$(pgrep -f "blogs/scripts/auto-publish-runner.mjs daemon" | head -n 1)
-  if [ -n "${SCHED_PID}" ]; then
-    SCHED_PPID=$(ps -o ppid= -p "${SCHED_PID}" | tr -d ' ')
-    echo "✅ blogs 자동 발행 스케줄러 (daemon): 실행 중 (PID: ${SCHED_PID}, 부모PID: ${SCHED_PPID})"
-  else
-    echo "❌ blogs 자동 발행 스케줄러 (daemon): 중지됨"
-  fi
-  echo "=================================================="
-}
-
+# 데몬은 Node 22 로 기동
 NODE22_BIN="/workspace/.node22/bin"
 NODE_BIN="$(command -v node || true)"
 if [ -x "${NODE22_BIN}/node" ]; then
@@ -32,11 +18,49 @@ if [ -x "${NODE22_BIN}/node" ]; then
   export PATH="${NODE22_BIN}:${PATH}"
 fi
 
+# 환경 변수 일괄 로드 (Cloudflare R2, D1, Gemini API Key 등 전체 데몬에 전달)
+if [ -f "/workspace/.env" ]; then
+  set -a
+  source "/workspace/.env"
+  set +a
+elif [ -f "${BLOG_DIR}/.env" ]; then
+  set -a
+  source "${BLOG_DIR}/.env"
+  set +a
+fi
+
+get_blog2_pids() {
+  local pids=()
+  for pid in $(pgrep -f "auto-publish-runner.mjs daemon" 2>/dev/null); do
+    cwd=$(readlink /proc/${pid}/cwd 2>/dev/null)
+    cmd=$(tr '\0' ' ' < /proc/${pid}/cmdline 2>/dev/null)
+    if [[ "$cwd" == *"/blogs"* || "$cmd" == *"/blogs/"* ]]; then
+      pids+=("$pid")
+    fi
+  done
+  echo "${pids[@]}"
+}
+
+check_status() {
+  echo "=================================================="
+  echo "🔍 [blogs 백그라운드 스케줄러 동작 상태 확인]"
+  echo "=================================================="
+
+  local pids=($(get_blog2_pids))
+  if [ ${#pids[@]} -gt 0 ]; then
+    echo "✅ blogs 자동 발행 스케줄러 (daemon): 실행 중 (PID: ${pids[*]})"
+  else
+    echo "❌ blogs 자동 발행 스케줄러 (daemon): 중지됨"
+  fi
+  echo "=================================================="
+}
+
 start_services() {
   echo "🚀 [blogs 독립 백그라운드 서비스 시작]"
 
-  if pgrep -f "blogs/scripts/auto-publish-runner.mjs daemon" >/dev/null; then
-    echo "ℹ️ blogs 스케줄러 데몬이 이미 실행 중입니다."
+  local pids=($(get_blog2_pids))
+  if [ ${#pids[@]} -gt 0 ]; then
+    echo "ℹ️ blogs 스케줄러 데몬이 이미 실행 중입니다 (PID: ${pids[*]})."
   else
     echo "▶️ blogs 자동 발행 스케줄러 데몬 가동 중..."
     mkdir -p "${BLOG_DIR}/data"
@@ -49,7 +73,11 @@ start_services() {
 
 stop_services() {
   echo "🛑 [blogs 백그라운드 서비스 중지]"
-  pkill -f "blogs/scripts/auto-publish-runner.mjs daemon" && echo "⏹️ blogs 스케줄러 데몬 중지 완료" || echo "ℹ️ blogs 스케줄러 데몬 실행 중 아님"
+  local pids=($(get_blog2_pids))
+  for pid in "${pids[@]}"; do
+    kill -9 "${pid}" 2>/dev/null && echo "⏹️ blogs 스케줄러 데몬 중지 완료 (PID: ${pid})"
+  done
+  rm -f "${BLOG_DIR}/data/auto-publish-runner.lock" 2>/dev/null
   sleep 1
   check_status
 }

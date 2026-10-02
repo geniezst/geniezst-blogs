@@ -6,9 +6,12 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473.webp"
 affiliate: false
 post_type: "digest"
+image_width: 800
+image_height: 990
+og_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473-og.jpg"
 ---
 
 :::tip[오늘의 모닝 브리핑 1분 핵심 요약]
@@ -21,6 +24,9 @@ post_type: "digest"
 ---
 
 ## 청년미래적금, 10월 7일부터 2차 가입신청 시작
+
+![청년미래적금, 10월 7일부터 2차 가입신청 시작](/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972874&pWise=sub&pWiseSub=I1" target="_blank" rel="noopener noreferrer">정책브리핑</a></p>
 
 > **출처**: [정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972874&pWise=sub&pWiseSub=I1)  
 > **발행**: 2026-10-01 07:44 KST | **신뢰도**: 공식 발표
@@ -41,6 +47,9 @@ post_type: "digest"
 
 ## 9월 소비자물가 상승률 2.9% 기록, 한 달 만에 2%대로 내려와
 
+![9월 소비자물가 상승률 2.9% 기록, 한 달 만에 2%대로 내려와](/api/images/2026/10/morning-money-digest-youth-savings-infla-568f325d593a.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.yna.co.kr/view/AKR20261002017600002" target="_blank" rel="noopener noreferrer">연합뉴스</a></p>
+
 > **출처**: [연합뉴스](https://www.yna.co.kr/view/AKR20261002017600002)  
 > **발행**: 2026-10-01 23:00 KST | **신뢰도**: 경제전문지
 
@@ -60,6 +69,9 @@ post_type: "digest"
 
 ## IBK기업은행, 소상공인에 1.8조 금융지원… 최대 1.5%p 금리 감면
 
+![IBK기업은행, 소상공인에 1.8조 금융지원… 최대 1.5%p 금리 감면](/api/images/2026/10/morning-money-digest-youth-savings-infla-e2ed8d31506d.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://digitalchosun.dizzo.com/site/data/html_dir/2026/10/01/2026100180178.html" target="_blank" rel="noopener noreferrer">디지틀조선일보</a></p>
+
 > **출처**: [디지틀조선일보](https://digitalchosun.dizzo.com/site/data/html_dir/2026/10/01/2026100180178.html)  
 > **발행**: 2026-10-01 07:17 KST | **신뢰도**: 경제전문지
 
@@ -78,6 +90,9 @@ post_type: "digest"
 ---
 
 ## 공공재개발사업 속도…이주비·사업비 이차보전 지원 확대
+
+![공공재개발사업 속도…이주비·사업비 이차보전 지원 확대](/api/images/2026/10/morning-money-digest-youth-savings-infla-c9f7b72900d7.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972898" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972898)  
 > **발행**: 2026-10-01 23:20 KST | **신뢰도**: 공식 발표

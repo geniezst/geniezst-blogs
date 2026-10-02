@@ -33,8 +33,37 @@ import { collectArticleImageCandidates } from './generate-news-digest.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const POSTS_DIR = path.join(BLOG_ROOT, 'content/posts');
-const D1_NAME = process.env.TARGET_D1 || 'blogs';
-const R2_BUCKET = process.env.TARGET_R2 || 'blogs';
+
+// 환경 변수 명시적 로드
+const envCandidates = [
+  path.resolve('/workspace/.env'),
+  path.resolve('/workspace/scripts/.env'),
+  path.join(BLOG_ROOT, '.env'),
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, 'utf8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    } catch (_) {}
+  }
+}
+
+const D1_NAME = process.env.TARGET_D1 || process.env.CLOUDFLARE_D1_DATABASE_BLOGS || 'blogs';
+const R2_BUCKET = process.env.TARGET_R2 || process.env.CLOUDFLARE_R2_BUCKET_BLOGS || 'blogs';
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes('--apply');
@@ -55,7 +84,7 @@ function d1Query(sql) {
   const out = execFileSync(
     'npx',
     ['wrangler', 'd1', 'execute', D1_NAME, '--remote', '--command', sql],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, cwd: BLOG_ROOT }
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, cwd: BLOG_ROOT, env: process.env }
   );
   const m = out.match(/\[[\s\S]*\]/g);
   if (!m) return [];
@@ -151,7 +180,7 @@ for (let i = 0; i < cards.length; i++) {
   rest = rest.replace(/!\[[^\]]*\]\([^)]+\)\s*/g, '');
   rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
   const caption = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
-  cards[i] = `${h2Line}\n\n![${title}](${mirrored.url})\n${caption}\n\n${rest}`;
+  cards[i] = `${h2Line}\n\n![${title}](${mirrored.url})\n${caption}\n\n${rest}\n\n`;
 
   results.push({
     idx: i,
@@ -176,7 +205,19 @@ if (!okCount) {
 }
 
 const newBody = cards.join('');
-const newRaw = frontmatter + newBody;
+let newFrontmatter = frontmatter;
+const firstOk = results.find((r) => r.status === 'ok');
+
+if (firstOk && /featured_image:\s*["']?["']?/.test(frontmatter)) {
+  newFrontmatter = frontmatter.replace(/featured_image:\s*["']?["']?/, `featured_image: "${firstOk.url}"`);
+  if (firstOk.size) {
+    const [w, h] = firstOk.size.split('x');
+    if (!/image_width:/.test(newFrontmatter)) {
+      newFrontmatter = newFrontmatter.replace(/---\r?\n$/, `image_width: ${w || 1600}\nimage_height: ${h || 900}\n---\n`);
+    }
+  }
+}
+const newRaw = newFrontmatter + newBody;
 
 if (!APPLY) {
   console.log('\n  ⏸ DRY-RUN — 실제 반영은 --apply 를 붙이세요');
@@ -187,11 +228,17 @@ fs.writeFileSync(file, newRaw, 'utf8');
 console.log(`\n  💾 로컬 파일 반영: ${path.relative(BLOG_ROOT, file)}`);
 
 if (!NO_D1) {
-  const rows = d1Query(
-    `UPDATE blog_posts SET content='${esc(newBody)}', updated_at=datetime('now') WHERE slug='${esc(targetSlug)}'; SELECT changes() AS updated;`
-  );
-  console.log(`  🗄️ D1 content 갱신: ${rows?.[0]?.updated ?? 0}행`);
-  console.log(`     (다음 배포에서 사이트 반영 — featured_image 는 기존 값 유지)`);
+  let updateSql = `UPDATE blog_posts SET content='${esc(newBody)}', updated_at=datetime('now')`;
+  if (firstOk) {
+    updateSql += `, featured_image=CASE WHEN featured_image IS NULL OR featured_image='' THEN '${esc(firstOk.url)}' ELSE featured_image END`;
+    if (firstOk.size) {
+      const [w, h] = firstOk.size.split('x');
+      updateSql += `, image_width=COALESCE(image_width, ${w || 1600}), image_height=COALESCE(image_height, ${h || 900})`;
+    }
+  }
+  updateSql += ` WHERE slug='${esc(targetSlug)}'; SELECT changes() AS updated;`;
+  const rows = d1Query(updateSql);
+  console.log(`  🗄️ D1 content & featured_image 갱신: ${rows?.[0]?.updated ?? 0}행`);
 }
 
 console.log('\n  다음 단계: npm run build 후 git 커밋·푸시');

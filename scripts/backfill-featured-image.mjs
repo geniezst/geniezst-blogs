@@ -36,13 +36,44 @@ import { execFileSync } from 'node:child_process';
 import { mirrorArticleImage, cropOgImage, uploadToR2 } from './lib/image-pipeline.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
-const D1_NAME = process.env.TARGET_D1 || 'blogs';
-const R2_BUCKET = process.env.TARGET_R2 || 'blogs';
+
+// 환경 변수 명시적 로드
+const envCandidates = [
+  path.resolve('/workspace/.env'),
+  path.resolve('/workspace/scripts/.env'),
+  path.join(BLOG_ROOT, '.env'),
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, 'utf8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    } catch (_) {}
+  }
+}
+
+const D1_NAME = process.env.TARGET_D1 || process.env.CLOUDFLARE_D1_DATABASE_BLOGS || 'blogs';
+const R2_BUCKET = process.env.TARGET_R2 || process.env.CLOUDFLARE_R2_BUCKET_BLOGS || 'blogs';
 
 const argv = process.argv.slice(2);
 const APPLY = argv.includes('--apply');
 const FORCE = argv.includes('--force');
 const ALL = argv.includes('--all');
+const slugIdx = argv.indexOf('--slug');
+const SLUG = slugIdx !== -1 ? argv[slugIdx + 1] : null;
 const catIdx = argv.indexOf('--category');
 const CATEGORY = catIdx !== -1 ? argv[catIdx + 1] : 'news';
 
@@ -50,7 +81,7 @@ function d1Query(sql) {
   const out = execFileSync(
     'npx',
     ['wrangler', 'd1', 'execute', D1_NAME, '--remote', '--json', '--command', sql],
-    { cwd: BLOG_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 120000 }
+    { cwd: BLOG_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 120000, env: process.env }
   );
   const parsed = JSON.parse(out);
   return parsed?.[0]?.results ?? [];
@@ -203,7 +234,7 @@ async function main() {
   // 주의: 일반 문자열 안의 ${...} 는 템플릿 리터럴이 아니므로 그대로 문자열이 된다.
   // 카테고리 슬러그를 치환하려면 여기서 실제로 값을 넣어야 한다.
   const catFilter = `status='published' AND category_id=(SELECT id FROM blog_categories WHERE slug='${esc(CATEGORY)}')`;
-  const where = ALL ? `status='published'` : catFilter;
+  const where = SLUG ? `slug='${esc(SLUG)}'` : (ALL ? `status='published'` : catFilter);
   const rows = d1Query(
     `SELECT slug, title, featured_image, content FROM blog_posts WHERE ${where} ORDER BY published_at DESC`
   );

@@ -457,12 +457,16 @@ function getCloudflareEnv(blogRoot) {
             if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
               v = v.slice(1, -1);
             }
-            if (!env[k]) env[k] = v;
-            if (!process.env[k]) process.env[k] = v;
+            if (k.startsWith('CLOUDFLARE_') || !env[k]) env[k] = v;
+            if (k.startsWith('CLOUDFLARE_') || !process.env[k]) process.env[k] = v;
           }
         }
       } catch (_) {}
     }
+  }
+  const NODE22_BIN = '/workspace/.node22/bin';
+  if (fs.existsSync(NODE22_BIN) && !env.PATH?.startsWith(`${NODE22_BIN}:`)) {
+    env.PATH = `${NODE22_BIN}:${env.PATH || ''}`;
   }
   return env;
 }
