@@ -1,21 +1,21 @@
 ---
-title: "청년미래적금 2차 신청 시작 & 9월 물가 2%대 진입 | 소상공인 금리 감면, 재개발 이차보전 확대"
+title: "우리아이 자립펀드 최대 7천만원 & 9월 물가 2%대 진입 | 소상공인 금리 감면, 재개발 이차보전 확대"
 slug: "26100201-morning-money-digest-youth-savings-inflation-sme-housing"
-description: "오늘 아침 꼭 알아야 할 주요 정책 및 생활 금융 소식 4가지를 핵심 요약합니다. 청년미래적금 2차 신청, 9월 물가 2%대 진입, 소상공인 금융지원, 공공재개발 지원 확대 소식입니다."
+description: "오늘 아침 꼭 알아야 할 주요 정책 및 생활 금융 소식 4가지를 핵심 요약합니다. 우리아이 자립펀드 최대 7000만원 지원, 9월 물가 2%대 진입, 소상공인 금융지원, 공공재개발 지원 확대 소식입니다."
 category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473.webp"
+featured_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-7ecf9a0fcc9a.webp"
 affiliate: false
 post_type: "digest"
-image_width: 800
-image_height: 990
-og_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473-og.jpg"
+image_width: 720
+image_height: 435
+og_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-7ecf9a0fcc9a-og.jpg"
 ---
 
 :::tip[오늘의 모닝 브리핑 1분 핵심 요약]
-- **청년미래적금 2차 신청**: 10월 7일부터 청년미래적금 2차 가입 신청이 시작됩니다.
+- **우리아이 자립펀드 내년 출시**: 태어날 때부터 19년간 부모와 정부가 매월 적립해 최대 7,000만 원 목돈을 모으는 비과세 자립펀드가 추진됩니다.
 - **9월 소비자물가 2.9%**: 한 달 만에 소비자물가 상승률이 2%대로 내려왔습니다.
 - **IBK기업은행 소상공인 금융지원**: 1.8조 원 규모의 금융지원과 최대 1.5%p 금리 감면 혜택이 제공됩니다.
 - **공공재개발 이주비 이차보전 확대**: 공공재개발사업의 이주비 및 사업비 이차보전 지원이 확대됩니다.
@@ -23,25 +23,25 @@ og_image: "/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8f
 
 ---
 
-## 청년미래적금, 10월 7일부터 2차 가입신청 시작
+## 자녀에 최대 7,000만 원 목돈 지원… '우리아이 자립펀드' 내년 출시
 
-![청년미래적금, 10월 7일부터 2차 가입신청 시작](/api/images/2026/10/morning-money-digest-youth-savings-infla-ce930f8fe473.webp)
-<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148972874&pWise=sub&pWiseSub=I1" target="_blank" rel="noopener noreferrer">정책브리핑</a></p>
+![자녀에 최대 7,000만 원 목돈 지원… '우리아이 자립펀드' 내년 출시](/api/images/2026/10/morning-money-digest-youth-savings-infla-7ecf9a0fcc9a.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972878" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
-> **출처**: [정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972874&pWise=sub&pWiseSub=I1)  
-> **발행**: 2026-10-01 07:44 KST | **신뢰도**: 공식 발표
+> **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148972878)  
+> **발행**: 2026-10-01 10:00 KST | **신뢰도**: 공식 발표
 
 :::fact[기사 요약]
-- 청년미래적금 2차 가입신청이 10월 7일부터 시작됩니다.
-- 이 적금은 청년들의 자산 형성을 돕기 위해 정부가 지원하는 상품입니다.
-- 일정 소득 기준을 충족하는 만 19~34세 청년이 가입 대상입니다.
+- 태어날 때부터 최대 19년 동안 부모와 정부가 함께 연 최대 200만 원씩 모아 종잣돈을 만드는 '우리아이 자립펀드'가 내년 하반기 출시됩니다.
+- 연 수익률 6% 가정 시 19세 만기 적립금이 최대 7,000만 원에 달할 것으로 예상되며 발생 이자·배당소득은 전액 비과세됩니다.
+- 정부가 일정 비율 매칭 지원금을 더하고 장기 복리 효과를 극대화해 청년 독립 시 학자금, 창업, 주거 안정을 돕는 구조입니다.
 :::
 
 ### 가계 영향 및 실전 팁
-청년미래적금은 정부의 지원을 받아 높은 이자 혜택을 누릴 수 있는 상품으로, 청년층의 목돈 마련에 매우 유리합니다. 월 납입액에 따라 정부 기여금이 추가되고 비과세 혜택까지 있어 일반 적금보다 훨씬 높은 실질 수익률을 기대할 수 있습니다. 가입을 희망하는 청년들은 신청 기간과 자격 요건을 미리 확인하고, 필요한 서류를 준비하여 서둘러 신청하는 것이 좋습니다. 특히, 소득 기준과 가구 소득 기준 등 세부 요건을 꼼꼼히 살펴 자신에게 해당되는지 확인해야 합니다.
+자녀의 미래 자립을 위한 획기적인 국가 매칭 지원 펀드입니다. 기존의 단순 아동수당 수령을 넘어, 부모의 소액 적립에 정부 지원금과 세제 혜택(비과세)이 장기 복리로 결합되어 20세 성인이 될 때 든든한 7,000만 원 수준의 사회 진출 자본금을 마련할 수 있습니다. 어린 자녀를 둔 가구나 출산을 계획 중인 부모라면 내년 하반기 출시 일정과 소득별 정부 매칭 비율을 면밀히 주시하고, 미리 아동 명의 자산 형성 플랜을 세워두는 것이 유리합니다.
 
 > **관련 가이드**:  
-> [청년미래적금 2차 신청 시작 & 희귀암 치료 건강보험 확대 | 주가조작 합동대응단 적발](/posts/26100101-morning-money-digest-youth-savings-health-insurance-stock-manipulation)
+> [2026년 청년도약계좌 최신 가이드 - 월 70만원 납입 시 최대 5,000만원 목돈 마련 기회](/posts/youth-jump-account-2026-guide)
 
 ---
 

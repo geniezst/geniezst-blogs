@@ -945,6 +945,124 @@ function calculateJaccardSimilarity(str1, str2) {
 }
 
 /**
+ * 고도화된 다이제스트 중복 검사기 (Multi-layer Deduplication Engine)
+ * 1) 어절 Overlap (Szymkiewicz–Simpson) 계수: 짧은 제목 어절의 40% 이상 일치 시 중복 (2단어 이상)
+ * 2) 어절 Jaccard 계수: 0.28 이상 일치 시 중복
+ * 3) 문자 2-gram(Bigram) Overlap 계수: 띄어쓰기 차이, 조사 결합과 무관하게 42% 이상 일치 시 중복 (4글자 이상)
+ * 4) 핵심 엔티티(정책명, 기업명, 인물, 기술명) + 동작어 교차 일치 검증
+ */
+function checkTitleDuplicate(candidateTitle, existingTitle) {
+  if (!candidateTitle || !existingTitle) return { isDuplicate: false, score: 0, reason: '' };
+
+  const clean = (s) =>
+    s
+      .toLowerCase()
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/[^가-힣a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const cleanCand = clean(candidateTitle);
+  const cleanExist = clean(existingTitle);
+
+  if (!cleanCand || !cleanExist) return { isDuplicate: false, score: 0, reason: '' };
+
+  // 1) 어절 토큰 분석 (길이 2 이상)
+  const tokensCand = new Set(cleanCand.split(' ').filter((w) => w.length >= 2));
+  const tokensExist = new Set(cleanExist.split(' ').filter((w) => w.length >= 2));
+
+  if (tokensCand.size > 0 && tokensExist.size > 0) {
+    let intersection = 0;
+    for (const t of tokensCand) {
+      if (tokensExist.has(t)) intersection++;
+    }
+
+    const minTokenSize = Math.min(tokensCand.size, tokensExist.size);
+    const tokenOverlap = minTokenSize > 0 ? intersection / minTokenSize : 0;
+    const tokenUnion = tokensCand.size + tokensExist.size - intersection;
+    const tokenJaccard = tokenUnion > 0 ? intersection / tokenUnion : 0;
+
+    if (tokenOverlap >= 0.40 && intersection >= 2) {
+      return {
+        isDuplicate: true,
+        score: tokenOverlap,
+        reason: `어절 Overlap (${(tokenOverlap * 100).toFixed(1)}%, ${intersection}단어 일치)`,
+      };
+    }
+    if (tokenJaccard >= 0.28 && intersection >= 2) {
+      return {
+        isDuplicate: true,
+        score: tokenJaccard,
+        reason: `어절 Jaccard (${(tokenJaccard * 100).toFixed(1)}%)`,
+      };
+    }
+  }
+
+  // 2) 문자 2-gram(Bigram) Overlap (띄어쓰기 불일치 및 한국어 조사 결합 완벽 방어)
+  const noSpaceCand = cleanCand.replace(/\s+/g, '');
+  const noSpaceExist = cleanExist.replace(/\s+/g, '');
+
+  if (noSpaceCand.length >= 4 && noSpaceExist.length >= 4) {
+    const getBigrams = (str) => {
+      const bg = new Set();
+      for (let i = 0; i < str.length - 1; i++) {
+        bg.add(str.slice(i, i + 2));
+      }
+      return bg;
+    };
+    const bgCand = getBigrams(noSpaceCand);
+    const bgExist = getBigrams(noSpaceExist);
+
+    let bgIntersect = 0;
+    for (const b of bgCand) {
+      if (bgExist.has(b)) bgIntersect++;
+    }
+
+    const minBgSize = Math.min(bgCand.size, bgExist.size);
+    const bgOverlap = minBgSize > 0 ? bgIntersect / minBgSize : 0;
+
+    if (bgOverlap >= 0.42 && bgIntersect >= 4) {
+      return {
+        isDuplicate: true,
+        score: bgOverlap,
+        reason: `문자 Bigram Overlap (${(bgOverlap * 100).toFixed(1)}%, ${bgIntersect}개 2-gram 일치)`,
+      };
+    }
+  }
+
+  // 3) 핵심 엔티티(정책명, 기업명, 기술명) + 보조 동작어 교차 일치 검사
+  const entityRegex =
+    /(청년미래적금|우리아이자립펀드|우리아이|청년도약계좌|근로장려금|청년내일저축|주택연금|디딤돌대출|보금자리론|특판예금|이차보전|주가조작|소상공인|소진공|이주비|희귀암|소비자물가|오픈ai|openai|클로드|claude|엔비디아|nvidia|챗gpt|chatgpt|딥시크|deepseek|애플|구글|ms|마이크로소프트)/gi;
+  const candEntities = cleanCand.match(entityRegex) || [];
+  const existEntities = cleanExist.match(entityRegex) || [];
+
+  if (candEntities.length > 0 && existEntities.length > 0) {
+    const norm = (s) => s.toLowerCase();
+    const candNorm = candEntities.map(norm);
+    const existNorm = existEntities.map(norm);
+
+    for (const ce of candNorm) {
+      if (existNorm.includes(ce)) {
+        const actionRegex =
+          /(신청|출시|지원|적발|확대|감면|시작|선정|인상|인하|개편|소환장|피소|해킹|조사|투자|인수|공개|발표)/g;
+        const candActions = cleanCand.match(actionRegex) || [];
+        const existActions = cleanExist.match(actionRegex) || [];
+        const hasActionMatch = candActions.some((a) => existActions.includes(a));
+        if (hasActionMatch) {
+          return {
+            isDuplicate: true,
+            score: 0.99,
+            reason: `핵심 엔티티('${ce}') 및 동작어 동시 일치`,
+          };
+        }
+      }
+    }
+  }
+
+  return { isDuplicate: false, score: 0, reason: '' };
+}
+
+/**
  * 출처(언론사명) 정규화 유틸리티
  */
 function normalizeSourceName(source) {
@@ -1072,11 +1190,11 @@ async function deduplicateAndRank(items) {
       }
     }
 
-    // 1-2) 최근 기존 글 제목 및 H2 소제목과의 유사도(자카드 >= 0.35) 배제
+    // 1-2) 최근 기존 글 제목 및 H2 소제목과의 고도화된 유사도(어절 Overlap, Bigram, 엔티티) 배제
     for (const prevTitle of recentCovered.titles) {
-      const sim = calculateJaccardSimilarity(item.title, prevTitle);
-      if (sim >= 0.35) {
-        console.log(`  🚫 [최근 기사 중복 배제] 제목 유사도(${sim.toFixed(2)}): "${item.title.slice(0, 25)}" vs "${prevTitle.slice(0, 25)}"`);
+      const dup = checkTitleDuplicate(item.title, prevTitle);
+      if (dup.isDuplicate) {
+        console.log(`  🚫 [최근 기사 중복 배제] ${dup.reason}: "${item.title.slice(0, 25)}" vs "${prevTitle.slice(0, 25)}"`);
         return false;
       }
     }
@@ -1188,13 +1306,13 @@ async function deduplicateAndRank(items) {
   // 5) 최종 핫이슈 점수(hotnessScore) 순으로 내림차순 재정렬
   topCandidates.sort((a, b) => b.hotnessScore - a.hotnessScore);
 
-  // 6) 자카드 유사도 0.45 이상 중복 제거 및 상위 18개(15~20건) 압축
+  // 6) 고도화된 유사도 기반 중복 제거 및 상위 18개(15~20건) 압축
   const uniqueItems = [];
   for (const candidate of topCandidates) {
     let isDuplicate = false;
     for (const accepted of uniqueItems) {
-      const similarity = calculateJaccardSimilarity(candidate.title, accepted.title);
-      if (similarity >= 0.45) {
+      const dup = checkTitleDuplicate(candidate.title, accepted.title);
+      if (dup.isDuplicate) {
         isDuplicate = true;
         break;
       }
@@ -1717,10 +1835,12 @@ export async function runNewsDigestGeneration(options = {}) {
 - 원문 링크: ${item.originalLink || item.link}
 - 대표 이미지: ${item.imageUrl || '없음'}
 - 발행 시점: ${item.pubDate.toISOString().replace('T', ' ').slice(0, 16)} KST
-- 주요 내용: ${item.description || '본문 요약 없음'}
 `.trim()
     )
     .join('\n\n');
+
+  const recentCovered = getRecentCoveredTopics();
+  const recentCoveredTitlesText = recentCovered.titles.slice(-25).map((t) => `- ${t}`).join('\n');
 
   const systemPrompt = `
 당신은 대한민국 국민들의 실생활 금융, 정부 지원금, 세제 혜택, 복지 정책을 가장 쉽고 명쾌하게 전하는 대표 생활금융 미디어 '포켓머니'의 수석 에디터입니다.
@@ -1730,8 +1850,10 @@ export async function runNewsDigestGeneration(options = {}) {
 1. [핫이슈 점수 기반 상위 4개 킬러 뉴스 엄선]:
    제공된 뉴스 후보 중 [핫이슈 점수: XX점, 교차보도: N개사] 지표가 가장 높으면서, 가계 지출 절감, 숨은 돈 환급, 저축/대출 금리 혜택, 소상공인/청년 지원 등 독자들의 지갑과 실생활 영향도가 가장 큰 최상위 4개 뉴스를 엄선하세요.
 1.5. [기존 포스트 및 어제 기사 중복 배제 - ★ 절대 규칙]:
-   - 아래 [블로그 기존 심층 가이드 목록]이나 어제/그제 이미 다이제스트로 다룬 주제(예: 청약통장 종합저축 전환 1년 연장, OECD 성장률 등)는 절대로 오늘 다이제스트에 다시 선정하거나 작성하지 마세요!
+   - 아래 [최근 이미 다룬 기사/주제 목록]이나 어제/그제 이미 다이제스트로 다룬 주제(예: 청년미래적금 2차 신청, 청약통장 전환 등)는 절대로 오늘 다이제스트에 다시 선정하거나 작성하지 마세요!
    - 기존에 다루지 않은 완전히 새로운 신규 발표 및 최신 이슈 4개만 엄선하세요.
+   [최근 이미 다룬 기사/주제 목록 (동일/유사 이슈 선정 절대 금지)]:
+${recentCoveredTitlesText}
 2. [High-CTR 제목 네이밍 규칙 - ★ 절대 규칙]:
    - ⚠️ [절대 금지 1] 제목에 날짜(예: 09/23, (09/24), 2026-09-24, 9월 24일, 오늘자, 금일 등)를 일체 넣지 마세요! 포스트 본문과 메타데이터에 작성일이 표시되므로 제목에 날짜를 쓸 필요가 없습니다.
    - ⚠️ [절대 금지 2] 제목에 콜론(:)을 일체 사용하지 마세요! (DB 배포 시 콜론 앞부분이 잘려나가는 버그가 있습니다. 콜론 대신 파이프 | 또는 따옴표를 사용하세요)
