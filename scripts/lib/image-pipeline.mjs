@@ -52,7 +52,7 @@ const UA =
 
 /** 정규화 정책 (FR-2.4) */
 export const IMAGE_POLICY = {
-  MIN_WIDTH: 500, // 본문 하한. 500px 이상 프레스/언론사 포토 허용
+  MIN_WIDTH: 350, // 본문 하한. 350px 이상 프레스/언론사 보도사진 허용 (아이콘/프로필 기각)
   TARGET_WIDTH: 1200, // 정규화 기준 폭
   MAX_WIDTH: 1600, // 이 값을 넘으면 축소
   WEBP_QUALITY: 82,
@@ -306,7 +306,16 @@ export function buildHdCandidates(url) {
     parsed.pathname.replace(/\/small\//i, '/'),
     parsed.pathname.replace(/\/c_limit[/_-]/i, '/'),
   ];
-  // A-2) 확장자 앞 접미사 제거
+  // A-2) 그누보드(Gnuboard) 및 CMS 썸네일 접두사/접미사 역추적
+  const gnuboardVariants = [
+    // /thumb-filename_600x337.jpg -> /filename.jpg
+    parsed.pathname.replace(/\/thumb-([^/]+?)_\d+x\d+(\.[a-z0-9]+)$/i, '/$1$2'),
+    // /thumb-filename.jpg -> /filename.jpg
+    parsed.pathname.replace(/\/thumb-([^/]+)$/i, '/$1'),
+    // filename_600x337.jpg -> filename.jpg
+    parsed.pathname.replace(/_\d+x\d+(?=\.[a-z0-9]+$)/i, ''),
+  ];
+  // A-3) 확장자 앞 접미사 제거
   const suffixVariants = [
     parsed.pathname.replace(/[-_]v\d+(?=\.)/i, ''),
     parsed.pathname.replace(/[-_]s\d+(?=\.)/i, ''),
@@ -320,7 +329,7 @@ export function buildHdCandidates(url) {
     parsed.pathname.replace(/[-_]small(?=\.)/i, ''),
     parsed.pathname.replace(/[-_]\d+x\d+(?=\.)/i, ''),
   ];
-  for (const p of [...dirVariants, ...suffixVariants]) {
+  for (const p of [...dirVariants, ...gnuboardVariants, ...suffixVariants]) {
     if (p !== parsed.pathname && p.includes('.')) {
       add(parsed.origin + p + parsed.search);
     }

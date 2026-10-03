@@ -581,9 +581,17 @@ export async function collectArticleImageCandidates(articleUrl, max = 4) {
   // 썸네일 URL 은 원본으로 승격해 먼저 시도
   const promoted = [];
   for (const u of ordered) {
-    if (/_v\d+|_s\d+|_thumb|\b150x150\b|-150x150|_tc\./i.test(u)) {
+    if (
+      /\/thumb-[^/]+?_\d+x\d+\.[a-z0-9]+$/i.test(u) ||
+      /\/thumb-[^/]+$/i.test(u) ||
+      /_\d+x\d+\.[a-z0-9]+$/i.test(u) ||
+      /_v\d+|_s\d+|_thumb|\b150x150\b|-150x150|_tc\./i.test(u)
+    ) {
       promoted.push(
         u
+          .replace(/\/thumb-([^/]+?)_\d+x\d+(\.[a-z0-9]+)$/i, '/$1$2')
+          .replace(/\/thumb-([^/]+)$/i, '/$1')
+          .replace(/_\d+x\d+(?=\.[a-z0-9]+$)/i, '')
           .replace(/_v\d+\./i, '.')
           .replace(/_s\d+\./i, '.')
           .replace(/_thumb\./i, '.')
