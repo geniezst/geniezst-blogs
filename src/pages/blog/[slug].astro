@@ -181,7 +181,11 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
       {post.affiliate_disclosure === 1 && <AffiliateNotice />}
 
       <!-- 대표 삽화 (R2 연동 고화질 에디토리얼 일러스트) -->
-      {post.featured_image && (
+      {/*
+        새소식(news/digest) 다이제스트는 본문 첫 번째 카드(Card 1) 내부에 동일한 사진이 포함되어 있으므로
+        상세 페이지 최상단 대표 이미지 배너 출력을 제외하여 중복 노출을 방지한다.
+      */}
+      {post.featured_image && post.category_slug !== 'news' && post.category_slug !== 'digest' && (
         /*
           [P2] 세로 이미지 잘림 제거 + CLS 제거
             - 기존 `max-h-[500px]` + `object-cover` 조합은 세로 사진을 위에서 잘라
