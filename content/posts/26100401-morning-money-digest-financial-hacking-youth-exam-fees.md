@@ -6,7 +6,8 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-financial-hacking-y-84f0124476f5.webp"
+og_image: "/api/images/2026/10/morning-money-digest-financial-hacking-y-84f0124476f5-og.jpg"
 affiliate: false
 post_type: "digest"
 ---
@@ -24,6 +25,9 @@ post_type: "digest"
 
 > **출처**: [노컷뉴스](https://www.nocutnews.co.kr/news/6586898)  
 > **발행**: 2026-10-03 11:50 KST | **신뢰도**: 보도자료
+
+![금융권 해킹 공격 확산 긴급 회의](/api/images/2026/10/morning-money-digest-financial-hacking-y-84f0124476f5.webp)
+<p class="text-xs text-center text-neutral-500 -mt-4 mb-4">사진 출처: 노컷뉴스</p>
 
 :::fact[기사 요약]
 - 연휴 기간 중 금융권을 대상으로 한 해킹 공격이 확산됨에 따라 금융위원회가 4일 전 금융권 CEO를 긴급 소집합니다.
@@ -44,6 +48,9 @@ post_type: "digest"
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972936)  
 > **발행**: 2026-10-03 23:31 KST | **신뢰도**: 공식 발표
 
+![청년 자격증 응시료 지원 정책](/api/images/2026/10/morning-money-digest-financial-hacking-y-e6dbbaebce80.webp)
+<p class="text-xs text-center text-neutral-500 -mt-4 mb-4">사진 출처: 대한민국 정책브리핑 (korea.kr)</p>
+
 :::fact[기사 요약]
 - 정부가 청년들의 구직 활동과 역량 강화를 지원하기 위해 국가기술자격증 응시료 부담을 낮추는 정책을 추진합니다.
 - 이는 청년들이 취업 준비 과정에서 겪는 경제적 어려움을 해소하고, 자기 계발 기회를 확대하기 위함입니다.
@@ -63,6 +70,9 @@ post_type: "digest"
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148972938)  
 > **발행**: 2026-10-03 23:31 KST | **신뢰도**: 공식 발표
 
+![한미 전략투자 프로젝트 추진 방안](/api/images/2026/10/morning-money-digest-financial-hacking-y-ca1446c96354.webp)
+<p class="text-xs text-center text-neutral-500 -mt-4 mb-4">사진 출처: 대한민국 정책브리핑 (korea.kr)</p>
+
 :::fact[기사 요약]
 - 한미 양국이 핵심 기술 및 미래 산업 분야에서의 전략적 투자를 확대하기 위한 구체적인 프로젝트 추진 방안을 공개했습니다.
 - 이 프로젝트는 반도체, 배터리, 바이오 등 첨단 산업 분야에서 양국의 협력을 강화하고, 공급망 안정화를 목표로 합니다.
@@ -81,6 +91,9 @@ post_type: "digest"
 
 > **출처**: [뉴스N제주](https://www.newsnjeju.com/news/articleView.html?idxno=301289)  
 > **발행**: 2026-10-03 11:46 KST | **신뢰도**: 보도자료
+
+![외국인 국민연금 추납 허점 방지법 국회 본회의 통과](/api/images/2026/10/morning-money-digest-financial-hacking-y-8eccdf931c6f.webp)
+<p class="text-xs text-center text-neutral-500 -mt-4 mb-4">사진 출처: 뉴스N제주 (newsnjeju.com)</p>
 
 :::fact[기사 요약]
 - 외국인 국민연금 가입자의 ‘추납 허점’을 막기 위한 국민연금법 개정안이 국회 본회의를 통과했습니다.

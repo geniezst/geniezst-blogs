@@ -65,9 +65,11 @@ export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
-  try {
-    fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
-  } catch (_) {}
+  if (process.stdout.isTTY) {
+    try {
+      fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
+    } catch (_) {}
+  }
 }
 
 /**
@@ -1342,6 +1344,19 @@ export async function runPublishPipeline(sessionName, options = {}) {
       return true;
     }
 
+    // 파일시스템 기반 실제 오후 심층 포스트 존재 여부 2차 검증 (YYMMDD 형태 중복 방지)
+    const yy = dateStr.slice(2, 4);
+    const mm = dateStr.slice(5, 7);
+    const dd = dateStr.slice(8, 10);
+    const prefix = `${yy}${mm}${dd}`;
+    const existingPosts = fs.existsSync(POSTS_DIR)
+      ? fs.readdirSync(POSTS_DIR).filter(f => f.startsWith(prefix) && (f.endsWith('.md') || f.endsWith('.mdx')) && f !== 'template.md' && !f.includes('morning-money-digest'))
+      : [];
+    if (existingPosts.length > 0) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 오후 심층 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
+      return true;
+    }
+
     sessionLock = acquireSessionLock(sessionName, dateStr);
     if (!sessionLock.acquired) {
       return true;
@@ -1593,15 +1608,20 @@ async function startDaemon() {
   let currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
   let lastCheckedDay = '';
   let isAfternoonSkippedToday = false;
+  let morningExecutedToday = false;
+  let eveningExecutedToday = false;
+  let eveningSkippedLoggedToday = false;
+  let isSessionRunning = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
   log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
-  let morningExecutedToday = false;
-  let eveningExecutedToday = false;
-  let eveningSkippedLoggedToday = false;
-
   while (true) {
+    if (isSessionRunning) {
+      await new Promise((r) => setTimeout(r, 15000));
+      continue;
+    }
+
     const { dateStr, hours, minutes, dayOfWeek } = getKSTDate();
     const currentTotal = hours * 60 + minutes;
     const morningTargetTotal = currentMorningTarget.hour * 60 + currentMorningTarget.minute;
@@ -1636,10 +1656,13 @@ async function startDaemon() {
     if (!morningDone && !morningExecutedToday && currentTotal >= morningTargetTotal && currentTotal < 12 * 60) {
       log(`🌅 [오전 세션 트리거] 목표 시각(${formatTarget(currentMorningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
       morningExecutedToday = true;
+      isSessionRunning = true;
       try {
         await runMorningNewsDigestPipeline();
       } catch (e) {
         log(`❌ [오전 세션 오류 방어] ${e.message}`);
+      } finally {
+        isSessionRunning = false;
       }
       await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
     }
@@ -1661,10 +1684,13 @@ async function startDaemon() {
       } else {
         log(`📚 [오후 세션 트리거] 목표 시각(${formatTarget(currentEveningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
         eveningExecutedToday = true;
+        isSessionRunning = true;
         try {
           await runPublishPipeline('evening');
         } catch (e) {
           log(`❌ [오후 세션 오류 방어] ${e.message}`);
+        } finally {
+          isSessionRunning = false;
         }
         await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
       }

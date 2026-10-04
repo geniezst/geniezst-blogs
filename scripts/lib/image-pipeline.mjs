@@ -474,9 +474,8 @@ function getCloudflareEnv(blogRoot) {
     }
   }
   const NODE22_BIN = '/workspace/.node22/bin';
-  if (fs.existsSync(NODE22_BIN) && !env.PATH?.startsWith(`${NODE22_BIN}:`)) {
-    env.PATH = `${NODE22_BIN}:${env.PATH || ''}`;
-  }
+  const LOCAL_BIN = path.join(blogRoot, 'node_modules', '.bin');
+  env.PATH = `${NODE22_BIN}:${LOCAL_BIN}:${env.PATH || ''}`;
   return env;
 }
 
@@ -488,14 +487,25 @@ export function uploadToR2({ blogRoot, bucket, key, buffer, log = () => {} }) {
   const tmp = path.join(os.tmpdir(), `r2img_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.${keyExt}`);
   fs.writeFileSync(tmp, buffer);
   try {
-    // stdio 를 버리지 않는다 — 기존 코드의 stdio:'ignore' 는 업로드 실패 원인을 지웠다.
-    const bin = wranglerBin(blogRoot);
+    const node22 = path.join(NODE22_BIN, 'node');
+    const nodeBin = fs.existsSync(node22) ? node22 : process.execPath;
+    const wranglerJs = path.join(blogRoot, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+    const wranglerBinPath = path.join(blogRoot, 'node_modules', '.bin', 'wrangler');
     const execEnv = getCloudflareEnv(blogRoot);
-    // npx 폴백이면 'wrangler' 서브커맨드를 앞에 붙여야 한다
-    const args =
-      bin === 'npx'
-        ? ['wrangler', 'r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote']
-        : ['r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote'];
+
+    let bin = nodeBin;
+    let args = [wranglerJs, 'r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote'];
+
+    if (!fs.existsSync(wranglerJs)) {
+      if (fs.existsSync(wranglerBinPath)) {
+        bin = wranglerBinPath;
+        args = ['r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote'];
+      } else {
+        bin = 'npx';
+        args = ['wrangler', 'r2', 'object', 'put', `${bucket}/${key}`, '--file', tmp, '--remote'];
+      }
+    }
+
     execFileSync(bin, args, {
       cwd: blogRoot,
       env: execEnv,
