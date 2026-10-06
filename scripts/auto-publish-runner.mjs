@@ -243,6 +243,55 @@ function isSessionAlreadyDone(state, sessionName, todayDateStr) {
   );
 }
 
+const FRONTMATTER_MAX_BYTES = 65536;
+
+/**
+ * 포스트 파일의 Frontmatter 헤더 블록만 고속으로 읽는다.
+ */
+function readFrontmatterHead(filePath) {
+  let fd;
+  try {
+    fd = fs.openSync(filePath, 'r');
+  } catch (_) {
+    return '';
+  }
+  try {
+    const CHUNK = 8192;
+    const buf = Buffer.alloc(FRONTMATTER_MAX_BYTES);
+    let total = 0;
+    while (total < FRONTMATTER_MAX_BYTES) {
+      const n = fs.readSync(fd, buf, total, CHUNK, total);
+      if (n <= 0) break;
+      total += n;
+      const so_far = buf.slice(0, total).toString('utf8');
+      if (/^---\r?\n[\s\S]*?^---/m.test(so_far)) break;
+    }
+    return buf.slice(0, total).toString('utf8');
+  } catch (_) {
+    return '';
+  } finally {
+    try {
+      fs.closeSync(fd);
+    } catch (_) {}
+  }
+}
+
+/**
+ * 포스트가 모닝 다이제스트(뉴스) 포스트인지 정밀 판별한다.
+ * (파일명이 아닌 Frontmatter의 post_type: "digest" 또는 category: "news" 기준)
+ */
+function isDigestPost(filePath) {
+  try {
+    const head = readFrontmatterHead(filePath);
+    if (/post_type:\s*["']?digest["']?/i.test(head)) return true;
+    if (/category:\s*["']?news["']?/i.test(head)) return true;
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+
 /**
  * 카테고리 균등 배분 알고리즘
  * - 누적 발행 수가 가장 적은 카테고리 우선 선택
@@ -641,12 +690,16 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     const yy = dateStr.slice(2, 4);
     const mm = dateStr.slice(5, 7);
     const dd = dateStr.slice(8, 10);
-    const prefix = `${yy}${mm}${dd}`;
     const existingPosts = fs.existsSync(POSTS_DIR)
-      ? fs.readdirSync(POSTS_DIR).filter(f => f.startsWith(prefix) && (f.endsWith('.md') || f.endsWith('.mdx')) && f !== 'template.md')
+      ? fs.readdirSync(POSTS_DIR).filter(f =>
+          f.startsWith(prefix) &&
+          (f.endsWith('.md') || f.endsWith('.mdx')) &&
+          f !== 'template.md' &&
+          isDigestPost(path.join(POSTS_DIR, f))
+        )
       : [];
     if (existingPosts.length > 0) {
-      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 모닝 다이제스트 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
       return true;
     }
 
@@ -1144,36 +1197,6 @@ export async function generateArticleWithFallback({
  *   않으므로 위험하다. frontmatter 종료(---)까지 필요한 만큼만 읽되,
  *   비정상적으로 큰 파일은 상한으로 자른다.
  */
-const FRONTMATTER_MAX_BYTES = 65536;
-
-function readFrontmatterHead(filePath) {
-  let fd;
-  try {
-    fd = fs.openSync(filePath, 'r');
-  } catch (_) {
-    return '';
-  }
-  try {
-    const CHUNK = 8192;
-    const buf = Buffer.alloc(FRONTMATTER_MAX_BYTES);
-    let total = 0;
-    while (total < FRONTMATTER_MAX_BYTES) {
-      const n = fs.readSync(fd, buf, total, CHUNK, total);
-      if (n <= 0) break;
-      total += n;
-      const so_far = buf.slice(0, total).toString('utf8');
-      // 두 번째 구분선(---) 이 나오면 frontmatter 종료
-      if (/^---\r?\n[\s\S]*?^---/m.test(so_far)) break;
-    }
-    return buf.slice(0, total).toString('utf8');
-  } catch (_) {
-    return '';
-  } finally {
-    try {
-      fs.closeSync(fd);
-    } catch (_) {}
-  }
-}
 
 /** 생성된 포스트 파일의 frontmatter 에서 slug / title 을 읽는다 */
 function readPostIdentity(filePath) {
@@ -1348,9 +1371,13 @@ export async function runPublishPipeline(sessionName, options = {}) {
     const yy = dateStr.slice(2, 4);
     const mm = dateStr.slice(5, 7);
     const dd = dateStr.slice(8, 10);
-    const prefix = `${yy}${mm}${dd}`;
     const existingPosts = fs.existsSync(POSTS_DIR)
-      ? fs.readdirSync(POSTS_DIR).filter(f => f.startsWith(prefix) && (f.endsWith('.md') || f.endsWith('.mdx')) && f !== 'template.md' && !f.includes('morning-money-digest'))
+      ? fs.readdirSync(POSTS_DIR).filter(f =>
+          f.startsWith(prefix) &&
+          (f.endsWith('.md') || f.endsWith('.mdx')) &&
+          f !== 'template.md' &&
+          !isDigestPost(path.join(POSTS_DIR, f))
+        )
       : [];
     if (existingPosts.length > 0) {
       console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 오후 심층 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);

@@ -228,9 +228,9 @@ export async function fetchVerifiedImage(url, opts = {}) {
     return { error: `매직바이트 불일치 (이미지가 아님). 앞부분: "${head}"` };
   }
 
-  // 헤더와 바이트가 어긋나면 경고 (예: PNG 바이트를 image/jpeg 로 광고)
+  // 헤더와 바이트가 어긋나도 매직 바이트가 유효한 이미지이면 포맷 우선 적용 (한국 언론사/CMS 오설정 대응)
   if (ct && ct !== format.mime && !(format.type === 'jpeg' && ct === 'image/jpg')) {
-    return { error: `Content-Type(${ct}) 과 실제 바이트(${format.type}) 불일치` };
+    // Content-Type 불일치는 거부 사유가 아님 (매직 바이트가 실제 포맷임을 입증함)
   }
 
   const dims = await readDimensions(buffer);
@@ -245,7 +245,7 @@ export async function fetchVerifiedImage(url, opts = {}) {
 
 // 확장자 앞 접미사형 축소본 표기 (jtoday _v150, joongang _s150, ...)
 const THUMBNAIL_SUFFIX =
-  /[-_](v\d+|s\d+|m|l|x\d+|xl|xs|thumb|tmb|small|mini)(?=\.(jpg|jpeg|png|webp|gif))/i;
+  /[-_](v\d+|s\d+|m|l|x\d+|xl|xs|thumb|tmb|small|mini|tc)(?=\.(jpg|jpeg|png|webp|gif))/i;
 // 경로형 축소본 표기 (네이버뉴스 /w500/, /h120/, /c250/ 등)
 const THUMBNAIL_PATH = /\/(w|h|c|mw|mh)\d{2,4}(\/|$)/i;
 const THUMBNAIL_DIR = /\/(thumb|thumbnails?|small|mini)\//i;

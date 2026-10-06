@@ -44,6 +44,7 @@ data/*.log
 data/*.json
 data/*.pid
 data/*.lock
+scripts/*_backup*/
 
 # Service account keys
 *-*.json
