@@ -81,10 +81,14 @@ if (!SLUG && !LATEST) {
 const esc = (s) => String(s ?? '').replace(/'/g, "''");
 
 function d1Query(sql) {
+  const node22 = path.join('/workspace/.node22/bin', 'node');
+  const nodeBin = fs.existsSync(node22) ? node22 : process.execPath;
+  const wranglerJs = path.join(BLOG_ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  const execEnv = { ...process.env, PATH: `/workspace/.node22/bin:${process.env.PATH || ''}` };
   const out = execFileSync(
-    'npx',
-    ['wrangler', 'd1', 'execute', D1_NAME, '--remote', '--command', sql],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, cwd: BLOG_ROOT, env: process.env }
+    nodeBin,
+    [wranglerJs, 'd1', 'execute', D1_NAME, '--remote', '--command', sql],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, cwd: BLOG_ROOT, env: execEnv }
   );
   const m = out.match(/\[[\s\S]*\]/g);
   if (!m) return [];
@@ -95,7 +99,7 @@ const targetSlug =
   SLUG ||
   fs
     .readdirSync(POSTS_DIR)
-    .filter((f) => f.endsWith('.md'))
+    .filter((f) => f.endsWith('.md') && /^\d{8}/.test(f))
     .sort()
     .pop()
     .replace(/\.md$/, '');

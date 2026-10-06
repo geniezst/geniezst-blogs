@@ -251,9 +251,9 @@ export async function validateAndNormalizeImageUrl(imgUrl) {
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-          Range: 'bytes=0-500',
+          Range: 'bytes=0-1024',
         },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(6000),
       });
       if (res.ok) {
         const ct = res.headers.get('content-type') || '';
@@ -270,9 +270,9 @@ export async function validateAndNormalizeImageUrl(imgUrl) {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        Range: 'bytes=0-500',
+        Range: 'bytes=0-1024',
       },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(6000),
     });
     if (res.ok) {
       const ct = res.headers.get('content-type') || '';
@@ -511,11 +511,13 @@ export async function fetchArticleOgImage(articleUrl, depth = 0) {
  * @returns {Promise<string[]>} 검증 통과한 원본 이미지 URL (우선순위 순)
  */
 export async function collectArticleImageCandidates(articleUrl, max = 4) {
-  if (!articleUrl || !articleUrl.startsWith('http')) return [];
+  if (!articleUrl || typeof articleUrl !== 'string') return [];
+  articleUrl = decodeEntities(articleUrl.trim());
+  if (!articleUrl.startsWith('http')) return [];
   if (articleUrl.includes('news.google.com')) {
     const resolved = await resolveSourceArticleUrl(articleUrl);
     if (!resolved) return [];
-    articleUrl = resolved;
+    articleUrl = decodeEntities(resolved);
   }
 
   let html = '';
@@ -527,7 +529,7 @@ export async function collectArticleImageCandidates(articleUrl, max = 4) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10000),
       redirect: 'follow',
     });
     if (!res.ok) return [];
@@ -1556,123 +1558,130 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   let featuredImageHeight = null;
   let featuredOgUrl = null;
 
-  const updatedSections = await Promise.all(
-    cardSections.map(async (sec, secIdx) => {
-      if (!sec.startsWith('## ')) return sec;
+  const updatedSections = [];
+  for (let secIdx = 0; secIdx < cardSections.length; secIdx++) {
+    const sec = cardSections[secIdx];
+    if (!sec.startsWith('## ')) {
+      updatedSections.push(sec);
+      continue;
+    }
 
-      const h2EndIdx = sec.indexOf('\n');
-      const h2Line = h2EndIdx !== -1 ? sec.slice(0, h2EndIdx) : sec;
-      const cleanH2Title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
+    const h2EndIdx = sec.indexOf('\n');
+    const h2Line = h2EndIdx !== -1 ? sec.slice(0, h2EndIdx) : sec;
+    const cleanH2Title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
 
-      // 출처 정보 파싱
-      const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
-      const rawHref = linkMatch ? linkMatch[2].trim() : '';
-      const sourceName = linkMatch ? linkMatch[1].trim() : '공식 출처';
-      // [P0] 출처 링크가 Google News 래퍼면 실제 언론사 원문으로 되돌린다.
-      // 이미지 조회와 핫링크 Referer 모두 원문 기준이어야 출처 이미지가 나온다.
-      const matchedHref = rawHref.includes('news.google.com')
-        ? (await resolveSourceArticleUrl(rawHref)) || ''
-        : rawHref;
-      if (rawHref && !matchedHref) {
-        console.log(`  ⚠️ [카드 ${secIdx}] Google News 원문 URL 해석 실패 → 출처 이미지 미사용`);
+    // 출처 정보 파싱
+    const linkMatch = sec.match(/>\s*\*\*출처\*\*:\s*\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/i);
+    let rawHref = linkMatch ? linkMatch[2].trim() : '';
+    if (rawHref) rawHref = decodeEntities(rawHref);
+    const sourceName = linkMatch ? decodeEntities(linkMatch[1].trim()) : '공식 출처';
+    // [P0] 출처 링크가 Google News 래퍼면 실제 언론사 원문으로 되돌린다.
+    // 이미지 조회와 핫링크 Referer 모두 원문 기준이어야 출처 이미지가 나온다.
+    let matchedHref = rawHref;
+    if (rawHref.includes('news.google.com')) {
+      const resolved = await resolveSourceArticleUrl(rawHref);
+      matchedHref = resolved ? decodeEntities(resolved) : '';
+    }
+    if (rawHref && !matchedHref) {
+      console.log(`  ⚠️ [카드 ${secIdx}] Google News 원문 URL 해석 실패 → 출처 이미지 미사용`);
+    }
+    const sourceHost = matchedHref ? safeHost(matchedHref) : '';
+
+    // 이미지 후보를 순서대로 시도 (FR-1.6: 단일 실패에 포기하지 않는다)
+    const attempts = [];
+    // [P2] 대표 이미지 단일 실패로 카드 전체가 실패하지 않도록, 같은 기사에 실린
+    // 검증 통과 후보를 우선순위대로 모두 시도한다 (og 로고/썸네일 → 본문 720px 실사).
+    const tryFetchFromArticle = async () => {
+      if (!matchedHref) return [];
+      const list = await collectArticleImageCandidates(matchedHref, 4);
+      return list.filter((u) => !usedImageUrls.has(u));
+    };
+    const tryMatchFromCandidates = () => {
+      if (!rawHref || !candidates || candidates.length === 0) return [];
+      const targetKeys = new Set(
+        [rawHref, matchedHref].filter(Boolean).map((u) => articleUrlKey(u)).filter(Boolean)
+      );
+      if (!targetKeys.size) return [];
+      return candidates
+        .filter((c) => {
+          if (!c.imageUrl) return false;
+          if (usedImageUrls.has(c.imageUrl)) return false;
+          if (isPlaceholderOrLogo(c.imageUrl)) return false;
+          // [P2] 문자열 완전일치만으로는 못 잡는다. 트레일링 &·# , http→https ,
+          // news.google.com 래퍼 제거 후 "기사 동일성" 키로 비교한다.
+          const keys = [c.link, c.originalLink, c.resolvedLink]
+            .filter(Boolean)
+            .map((u) => articleUrlKey(u))
+            .filter(Boolean);
+          if (keys.some((k) => targetKeys.has(k))) return true;
+          // 경로+질의 부분 일치 (newsId 등 고유 파라미터 공유)
+          return keys.some((k) => k.startsWith(targetKeys.values().next().value));
+        })
+        .map((c) => c.imageUrl);
+    };
+    // [엄격 규칙] 오직 해당 출처 기사에 실린 실제 이미지만 시도 (타 기사 이미지 대체 절대 금지)
+    attempts.push(...(await tryFetchFromArticle()));
+    for (const c of tryMatchFromCandidates()) {
+      if (!attempts.includes(c)) attempts.push(c);
+    }
+    if (!attempts.length) {
+      console.log(`  ⚠️ [카드 ${secIdx}] 출처 이미지 후보 0건 (검증 통과 이미지 없음)`);
+    }
+
+    imageStats.total++;
+    let finalImgUrl = null;
+    let cardOgUrl = null;
+    let imgWidth = null;
+    let imgHeight = null;
+
+    for (const candidateUrl of attempts.filter(Boolean)) {
+      console.log(`  🖼️  [카드 ${secIdx}] 이미지 미러링 시도: ${candidateUrl.slice(0, 90)}`);
+      const mirrored = await mirrorArticleImage(candidateUrl, {
+        blogRoot: BLOG_ROOT,
+        bucket: 'blogs',
+        slug: `${baseSlug}-${secIdx}`,
+        referer: matchedHref || undefined, // 핫링크 보호 포털 대응
+        log: (m) => console.log(m),
+      });
+
+      if (mirrored.url) {
+        finalImgUrl = mirrored.url;
+        cardOgUrl = mirrored.ogUrl || null;
+        imgWidth = mirrored.width;
+        imgHeight = mirrored.height;
+        usedImageUrls.add(candidateUrl);
+        imageStats.ok++;
+        break;
       }
-      const sourceHost = matchedHref ? safeHost(matchedHref) : '';
+      console.log(`  ⚠️ [카드 ${secIdx}] 후보 실패: ${mirrored.error}`);
+    }
 
-      // 이미지 후보를 순서대로 시도 (FR-1.6: 단일 실패에 포기하지 않는다)
-      const attempts = [];
-      // [P2] 대표 이미지 단일 실패로 카드 전체가 실패하지 않도록, 같은 기사에 실린
-      // 검증 통과 후보를 우선순위대로 모두 시도한다 (og 로고/썸네일 → 본문 720px 실사).
-      const tryFetchFromArticle = async () => {
-        if (!matchedHref) return [];
-        const list = await collectArticleImageCandidates(matchedHref, 4);
-        return list.filter((u) => !usedImageUrls.has(u));
-      };
-      const tryMatchFromCandidates = () => {
-        if (!rawHref || !candidates || candidates.length === 0) return [];
-        const targetKeys = new Set(
-          [rawHref, matchedHref].filter(Boolean).map((u) => articleUrlKey(u)).filter(Boolean)
-        );
-        if (!targetKeys.size) return [];
-        return candidates
-          .filter((c) => {
-            if (!c.imageUrl) return false;
-            if (usedImageUrls.has(c.imageUrl)) return false;
-            if (isPlaceholderOrLogo(c.imageUrl)) return false;
-            // [P2] 문자열 완전일치만으로는 못 잡는다. 트레일링 &·# , http→https ,
-            // news.google.com 래퍼 제거 후 "기사 동일성" 키로 비교한다.
-            const keys = [c.link, c.originalLink, c.resolvedLink]
-              .filter(Boolean)
-              .map((u) => articleUrlKey(u))
-              .filter(Boolean);
-            if (keys.some((k) => targetKeys.has(k))) return true;
-            // 경로+질의 부분 일치 (newsId 등 고유 파라미터 공유)
-            return keys.some((k) => k.startsWith(targetKeys.values().next().value));
-          })
-          .map((c) => c.imageUrl);
-      };
-      // [엄격 규칙] 오직 해당 출처 기사에 실린 실제 이미지만 시도 (타 기사 이미지 대체 절대 금지)
-      attempts.push(...(await tryFetchFromArticle()));
-      for (const c of tryMatchFromCandidates()) {
-        if (!attempts.includes(c)) attempts.push(c);
-      }
-      if (!attempts.length) {
-        console.log(`  ⚠️ [카드 ${secIdx}] 출처 이미지 후보 0건 (검증 통과 이미지 없음)`);
-      }
+    if (!finalImgUrl) {
+      imageStats.failed.push(cleanH2Title.slice(0, 40));
+      console.log(`  ❌ [카드 ${secIdx}] "${cleanH2Title.slice(0, 30)}" 이미지 확보 실패 — 마커 삽입`);
+    } else if (secIdx === 1 || (featuredImageUrl === null && secIdx > 0)) {
+      // 첫 번째 H2 카드(index 0는 소제목 성격일 수 있어 1을 우선, 없으면 최초 성공 카드)
+      featuredImageUrl = finalImgUrl;
+      featuredImageWidth = imgWidth;
+      featuredImageHeight = imgHeight;
+      featuredOgUrl = cardOgUrl;
+    }
 
-      imageStats.total++;
-      let finalImgUrl = null;
-      let cardOgUrl = null;
-      let imgWidth = null;
-      let imgHeight = null;
+    // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
+    let rest = h2EndIdx !== -1 ? sec.slice(h2EndIdx).trim() : '';
+    rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
+    rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
-      for (const candidateUrl of attempts.filter(Boolean)) {
-        console.log(`  🖼️  [카드 ${secIdx}] 이미지 미러링 시도: ${candidateUrl.slice(0, 90)}`);
-        const mirrored = await mirrorArticleImage(candidateUrl, {
-          blogRoot: BLOG_ROOT,
-          bucket: 'blogs',
-          slug: `${baseSlug}-${secIdx}`,
-          referer: matchedHref || undefined, // 핫링크 보호 포털 대응
-          log: (m) => console.log(m),
-        });
-
-        if (mirrored.url) {
-          finalImgUrl = mirrored.url;
-          cardOgUrl = mirrored.ogUrl || null;
-          imgWidth = mirrored.width;
-          imgHeight = mirrored.height;
-          usedImageUrls.add(candidateUrl);
-          imageStats.ok++;
-          break;
-        }
-        console.log(`  ⚠️ [카드 ${secIdx}] 후보 실패: ${mirrored.error}`);
-      }
-
-      if (!finalImgUrl) {
-        imageStats.failed.push(cleanH2Title.slice(0, 40));
-        console.log(`  ❌ [카드 ${secIdx}] "${cleanH2Title.slice(0, 30)}" 이미지 확보 실패 — 마커 삽입`);
-      } else if (secIdx === 1 || (featuredImageUrl === null && secIdx > 0)) {
-        // 첫 번째 H2 카드(index 0는 소제목 성격일 수 있어 1을 우선, 없으면 최초 성공 카드
-        featuredImageUrl = finalImgUrl;
-        featuredImageWidth = imgWidth;
-        featuredImageHeight = imgHeight;
-        featuredOgUrl = cardOgUrl;
-      }
-
-      // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
-      let rest = h2EndIdx !== -1 ? sec.slice(h2EndIdx).trim() : '';
-      rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
-      rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
-
-      // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 검증 이미지만 삽입 (중복 이미지 절대 금지)
-      if (finalImgUrl) {
-        const captionHref = matchedHref || rawHref;
-        const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${captionHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
-        return `${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`;
-      }
+    // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 검증 이미지만 삽입 (중복 이미지 절대 금지)
+    if (finalImgUrl) {
+      const captionHref = matchedHref || rawHref;
+      const captionHtml = `<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="${captionHref}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>`;
+      updatedSections.push(`${h2Line}\n\n![${cleanH2Title}](${finalImgUrl})\n${captionHtml}\n\n${rest}`);
+    } else {
       // 실패 카드: 사진 없이 텍스트 카드로 구성하되 마커로 남긴다
-      return `${h2Line}\n\n<!-- no-image -->\n\n${rest}`;
-    })
-  );
+      updatedSections.push(`${h2Line}\n\n<!-- no-image -->\n\n${rest}`);
+    }
+  }
   body = updatedSections.join('\n\n');
 
   // no-image 마커 제거 (LLM 이 만든 가짜 URL 경로 차단의 마지막 단계)
@@ -1683,6 +1692,12 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     `🖼️  [이미지 요약] 카드 ${imageStats.total}개 중 ${imageStats.ok}개 확보` +
       (imageStats.failed.length ? `, 실패 ${imageStats.failed.length}개: ${imageStats.failed.join(' / ')}` : '')
   );
+
+  // [P0 하드 품질 게이트] 출처 이미지 1장도 미확보 시 배포 차단
+  if (imageStats.total > 0 && imageStats.ok === 0) {
+    const failedSummary = imageStats.failed.join(' / ') || '전체 카드 이미지 실패';
+    throw new Error(`[품질 게이트 탈락] 다이제스트 기사 출처 대표 이미지가 0개 확보되었습니다. (실패 카드: ${failedSummary}) 사진 없는 게시글은 발행할 수 없습니다.`);
+  }
   if (featuredImageUrl) {
     console.log(`⭐ [대표 이미지] 첫 카드 이미지를 featured_image 로 승격: ${featuredImageUrl}`);
     // CLS 방지용 intrinsic 크기를 frontmatter 에 함께 기록한다 (publish-post 가 DB 로 옮김)

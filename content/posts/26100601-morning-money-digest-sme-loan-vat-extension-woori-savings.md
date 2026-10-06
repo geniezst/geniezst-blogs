@@ -6,9 +6,11 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-sme-loan-vat-extens-bdd325f0ef74.webp"
 affiliate: false
 post_type: "digest"
+image_width: 600
+image_height: 450
 ---
 
 :::tip[오늘의 모닝 브리핑 1분 핵심 요약]
@@ -21,6 +23,9 @@ post_type: "digest"
 ---
 
 ## 거제·통영 호우 피해 소상공인, 최대 3억 대출 금리 1.5% 인하
+
+![거제·통영 호우 피해 소상공인, 최대 3억 대출 금리 1.5% 인하](/api/images/2026/10/morning-money-digest-sme-loan-vat-extens-bdd325f0ef74.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.m-i.kr/news/articleView.html?idxno=2002584" target="_blank" rel="noopener noreferrer">매일일보</a></p>
 
 > **출처**: [매일일보](https://www.m-i.kr/news/articleView.html?idxno=2002584)  
 > **발행**: 2026-10-05 03:00 KST | **신뢰도**: 경제전문지
@@ -41,6 +46,9 @@ post_type: "digest"
 
 ## 10월 부가세, 호우·홈플러스 피해기업 2개월 납부 연장
 
+![10월 부가세, 호우·홈플러스 피해기업 2개월 납부 연장](/api/images/2026/10/morning-money-digest-sme-loan-vat-extens-1f579aac0fc1.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/briefing/pressReleaseView.do?newsId=156784267&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-10-06&amp;endDate=2026-10-06&srchWord=&amp;period=" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑 (국세청)</a></p>
+
 > **출처**: [대한민국 정책브리핑 (국세청)](https://www.korea.kr/briefing/pressReleaseView.do?newsId=156784267&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-10-06&amp;endDate=2026-10-06&srchWord=&amp;period=)  
 > **발행**: 2026-10-05 23:28 KST | **신뢰도**: 공식 발표
 
@@ -59,6 +67,9 @@ post_type: "digest"
 ---
 
 ## 영천시, 소상공인 특례보증 1억 원 추가 출연
+
+![영천시, 소상공인 특례보증 1억 원 추가 출연](/api/images/2026/10/morning-money-digest-sme-loan-vat-extens-e9946453a786.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="http://www.kbnews.kr/default/index_view_page.php?idx=223686" target="_blank" rel="noopener noreferrer">경북뉴스</a></p>
 
 > **출처**: [경북뉴스](http://www.kbnews.kr/default/index_view_page.php?idx=223686)  
 > **발행**: 2026-10-05 15:08 KST | **신뢰도**: 지역 언론사
@@ -79,6 +90,9 @@ post_type: "digest"
 
 ## 우리은행, ‘우리금융 다함께 페스타’ 연계 최고 연 9.0% 적금 출시
 
+![우리은행, ‘우리금융 다함께 페스타’ 연계 최고 연 9.0% 적금 출시](/api/images/2026/10/morning-money-digest-sme-loan-vat-extens-d2d7723df51d.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="http://www.ksdaily.co.kr/news/articleView.html?idxno=111015" target="_blank" rel="noopener noreferrer">ksdaily.co.kr</a></p>
+
 > **출처**: [ksdaily.co.kr](http://www.ksdaily.co.kr/news/articleView.html?idxno=111015)  
 > **발행**: 2026-10-05 18:58 KST | **신뢰도**: 경제 언론사
 
@@ -93,3 +107,4 @@ post_type: "digest"
 
 > **관련 가이드**:  
 > [2026년 청년저축플러스계좌 - 월 10만원으로 5년 만기 1,000만원 만드는 법](/posts/youth-savings-plus-account-2026-guide)
+
