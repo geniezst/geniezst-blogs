@@ -1372,6 +1372,7 @@ export async function runPublishPipeline(sessionName, options = {}) {
     const yy = dateStr.slice(2, 4);
     const mm = dateStr.slice(5, 7);
     const dd = dateStr.slice(8, 10);
+    const prefix = `${yy}${mm}${dd}`;
     const existingPosts = fs.existsSync(POSTS_DIR)
       ? fs.readdirSync(POSTS_DIR).filter(f =>
           f.startsWith(prefix) &&
@@ -1457,20 +1458,34 @@ ${selectedChart.instruction}
       return true;
     }
 
-    // 6. D1 데이터베이스 발행
-    console.log(`🗄️ Cloudflare D1 원격 데이터베이스에 발행합니다...`);
+    // 6. Astro 프로덕션 빌드 무결성 사전 검증 (빌드가 100% 통과해야만 D1에 발행)
+    console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 무결성을 검증합니다...`);
+    try {
+      execSync(`npm run build`, {
+        cwd: BLOG_ROOT,
+        stdio: 'inherit',
+        env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+      });
+      console.log(`✅ [빌드 사전 검증 통과] 프로덕션 빌드가 에러 없이 완료되었습니다.`);
+    } catch (buildErr) {
+      // 빌드 실패 시 D1 미등록 상태에서 오류 포스트 파일을 롤백 삭제하여 디스크 오염 방지
+      try {
+        if (fs.existsSync(latestPostFile)) {
+          fs.unlinkSync(latestPostFile);
+          log(`🗑️ [빌드 실패 롤백] 오류 포스트 파일을 삭제했습니다: ${path.basename(latestPostFile)}`);
+        }
+      } catch (_) {}
+      throw new Error(`Astro 프로덕션 빌드 검증 실패 (D1 미등록): ${buildErr.message}`);
+    }
+
+    // 7. D1 데이터베이스 발행 (빌드 통과 후에만 안전하게 실행)
+    let d1Published = false;
+    console.log(`🗄️ [D1 발행] Cloudflare D1 원격 데이터베이스에 발행합니다...`);
     execSync(`node scripts/publish-post.mjs "${latestPostFile}"`, {
       cwd: BLOG_ROOT,
       stdio: 'inherit',
     });
-
-    // 7. 프로덕션 빌드 무결성 검증
-    console.log(`⚙️ Astro 프로덕션 빌드 무결성을 검증합니다...`);
-    execSync(`npm run build`, {
-      cwd: BLOG_ROOT,
-      stdio: 'inherit',
-      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
-    });
+    d1Published = true;
 
     // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
     state.category_counts[category] = (state.category_counts[category] || 0) + 1;
@@ -1559,7 +1574,7 @@ ${deployLine}`;
     return deploySynced;
   } catch (err) {
     console.error(`❌ [자동 게시 실패]`, err.message);
-    if (sessionLock?.releaseOnFailure) {
+    if (!d1Published && sessionLock?.releaseOnFailure) {
       sessionLock.releaseOnFailure();
     }
 
