@@ -690,6 +690,7 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     const yy = dateStr.slice(2, 4);
     const mm = dateStr.slice(5, 7);
     const dd = dateStr.slice(8, 10);
+    const prefix = `${yy}${mm}${dd}`;
     const existingPosts = fs.existsSync(POSTS_DIR)
       ? fs.readdirSync(POSTS_DIR).filter(f =>
           f.startsWith(prefix) &&
@@ -1468,6 +1469,7 @@ ${selectedChart.instruction}
     execSync(`npm run build`, {
       cwd: BLOG_ROOT,
       stdio: 'inherit',
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
     });
 
     // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)

@@ -1993,18 +1993,20 @@ post_type: "digest"
     return { title, slug, filePath, success: true };
   }
 
-  // Step 7: Cloudflare D1 등록
+  // Step 7: Astro 프로덕션 빌드 사전 무결성 검증 (빌드 통과 시에만 D1 등록 허용)
+  console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 실행...`);
+  execSync(`npm run build`, {
+    cwd: BLOG_ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+  });
+
+  // Step 8: Cloudflare D1 등록
   console.log(`🗄️ [Cloudflare D1 등록] publish-post.mjs 실행...`);
   execSync(`node scripts/publish-post.mjs "${filePath}"`, {
     cwd: BLOG_ROOT,
     stdio: 'inherit',
-  });
-
-  // Step 8: Astro 프로덕션 빌드 검증
-  console.log(`⚙️ [빌드 검증] Astro 프로덕션 빌드 실행...`);
-  execSync(`npm run build`, {
-    cwd: BLOG_ROOT,
-    stdio: 'inherit',
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
   });
 
   // Step 9: Git Commit & Push (Workers 배포 트리거)
