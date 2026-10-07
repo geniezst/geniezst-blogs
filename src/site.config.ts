@@ -10,7 +10,7 @@ export const siteConfig = {
   url: 'https://pockemoney.com',
   author: '포켓머니',
   lang: 'ko',
-  adsenseClientId: '', // 구글 애드센스 클라이언트 ID (예: ca-pub-XXXXXXXXXXXXXXXX)
+  adsenseClientId: 'ca-pub-9338927727391440', // 구글 애드센스 클라이언트 ID (예: ca-pub-XXXXXXXXXXXXXXXX)
 
   // 2. 프로필 카드 정보 (사이드바에 노출)
   profile: {
