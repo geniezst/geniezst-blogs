@@ -125,17 +125,23 @@ console.log(`\n════ 카드 이미지 백필 ════`);
 console.log(`  대상: ${targetSlug}`);
 console.log(`  모드: ${APPLY ? '적용(APPLY)' : '미리보기(DRY-RUN)'}${NO_D1 ? ' / D1 제외' : ''}\n`);
 
-const cards = body.split(/(?=^##\s+)/gm);
+const normalizedBody = body
+  .replace(/\r\n/g, '\n')
+  .replace(/\r/g, '\n')
+  .replace(/^[ \t\u00A0]*##[\t\u00A0 ]+/gm, '## ');
+
+const cards = normalizedBody.split(/(?=^##\s+)/gm);
 const usedImageUrls = new Set();
 const results = [];
 
 for (let i = 0; i < cards.length; i++) {
   const card = cards[i];
-  if (!card.startsWith('## ')) continue;
+  const trimmedCard = card.trimStart();
+  if (!/^##\s+/.test(trimmedCard)) continue;
 
   const hasImage = /!\[/.test(card);
-  const h2EndIdx = card.indexOf('\n');
-  const h2Line = h2EndIdx !== -1 ? card.slice(0, h2EndIdx) : card;
+  const h2EndIdx = trimmedCard.indexOf('\n');
+  const h2Line = h2EndIdx !== -1 ? trimmedCard.slice(0, h2EndIdx) : trimmedCard;
   const title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
 
   if (hasImage && !FORCE) {

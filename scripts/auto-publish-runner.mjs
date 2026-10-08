@@ -65,11 +65,9 @@ export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
-  if (process.stdout.isTTY) {
-    try {
-      fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
-    } catch (_) {}
-  }
+  try {
+    fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
+  } catch (_) {}
 }
 
 /**

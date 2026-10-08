@@ -231,11 +231,10 @@ export async function resolveSourceArticleUrl(articleUrl) {
 
 /**
  * 이미지 URL 유효성 검증 및 HTTPS 승격
- * - http:// 이미지를 https:// 로 변환 테스트하여 성공 시 승격
- * - Range 요청(GET bytes=0-500)으로 HTTP 200/206 상태 및 이미지 content-type 확인
- * - 깨진 이미지, 404, 403, SSL 만료 필터링
+ * - Range 요청(GET bytes=0-1024) 우선 시도 후 403/416 등 거부 시 일반 GET 재시도
+ * - Referer 헤더 지원으로 언론사 핫링크 방지 서버 통과
  */
-export async function validateAndNormalizeImageUrl(imgUrl) {
+export async function validateAndNormalizeImageUrl(imgUrl, options = {}) {
   if (!imgUrl || !imgUrl.startsWith('http')) return null;
 
   // 파비콘, 1x1 투명 픽셀, svg/ico 제외 및 사이트 로고/플레이스홀더 배제
@@ -243,44 +242,53 @@ export async function validateAndNormalizeImageUrl(imgUrl) {
   if (/1x1|pixel|spacer|blank|tracking|badge/i.test(imgUrl)) return null;
   if (isPlaceholderOrLogo(imgUrl)) return null;
 
-  // 1) http:// -> https:// 승격 시도 (Mixed Content 원천 방지)
-  if (imgUrl.startsWith('http://')) {
-    const httpsCandidate = imgUrl.replace('http://', 'https://');
-    try {
-      const res = await fetch(httpsCandidate, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-          Range: 'bytes=0-1024',
-        },
-        signal: AbortSignal.timeout(6000),
+  const opts = typeof options === 'string' ? { referer: options } : (options || {});
+  const referer = opts.referer || null;
+  const timeoutMs = opts.timeoutMs || 7000;
+
+  const testImageReachability = async (testUrl) => {
+    const doFetch = async (useRange) => {
+      const headers = {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      };
+      if (referer) headers['Referer'] = referer;
+      if (useRange) headers['Range'] = 'bytes=0-1024';
+      return await fetch(testUrl, {
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
       });
+    };
+
+    try {
+      let res = await doFetch(true);
+      // 일부 CDN/보안 서버(403, 416 Range Not Satisfiable, 400, 405 등) 대응: Range 없이 재시도
+      if (!res.ok && (res.status === 403 || res.status === 416 || res.status === 400 || res.status === 405)) {
+        res = await doFetch(false);
+      }
       if (res.ok) {
-        const ct = res.headers.get('content-type') || '';
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
         if (ct.startsWith('image/') || ct === 'application/octet-stream' || !ct) {
-          return httpsCandidate;
+          return true;
         }
       }
     } catch (_) {}
+    return false;
+  };
+
+  // 1) http:// -> https:// 승격 시도 (Mixed Content 원천 방지)
+  if (imgUrl.startsWith('http://')) {
+    const httpsCandidate = imgUrl.replace('http://', 'https://');
+    if (await testImageReachability(httpsCandidate)) {
+      return httpsCandidate;
+    }
   }
 
   // 2) 원본 URL 검증
-  try {
-    const res = await fetch(imgUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        Range: 'bytes=0-1024',
-      },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (res.ok) {
-      const ct = res.headers.get('content-type') || '';
-      if (ct.startsWith('image/') || ct === 'application/octet-stream' || !ct) {
-        return imgUrl;
-      }
-    }
-  } catch (_) {}
+  if (await testImageReachability(imgUrl)) {
+    return imgUrl;
+  }
 
   return null;
 }
@@ -482,12 +490,12 @@ export async function fetchArticleOgImage(articleUrl, depth = 0) {
           .replace(/_s\d+\./i, '.')
           .replace(/_thumb\./i, '.')
           .replace(/-?150x150\./i, '.');
-        const validatedHd = await validateAndNormalizeImageUrl(hdCandidate);
+        const validatedHd = await validateAndNormalizeImageUrl(hdCandidate, { referer: articleUrl });
         if (validatedHd) return validatedHd;
       }
 
       // 2) 일반 유효성 검사 및 정규화
-      const validated = await validateAndNormalizeImageUrl(imgUrl);
+      const validated = await validateAndNormalizeImageUrl(imgUrl, { referer: articleUrl });
       if (validated) return validated;
 
       // 검증되지 않은(깨졌거나 404인) 이미지는 절대 반환하지 않음
@@ -607,7 +615,7 @@ export async function collectArticleImageCandidates(articleUrl, max = 4) {
   const valid = [];
   for (const u of finalOrder) {
     if (valid.length >= max) break;
-    const v = await validateAndNormalizeImageUrl(u);
+    const v = await validateAndNormalizeImageUrl(u, { referer: articleUrl });
     if (v) valid.push(v);
   }
   return valid;
@@ -1550,6 +1558,10 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   //  - 실패해도 조용히 이미지만 지우지 않는다. `<!-- no-image -->` 마커를 남기고
   //    아래 후처리에서 반드시 제거해, LLM 이 만든 가짜 URL 이 살아남는 경로를 차단한다.
   //  - 첫 번째 카드의 이미지를 featured_image 로 승격해 목록 썸네일과 og:image 를 정상화한다.
+  body = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  body = body.replace(/^[ \t\u00A0]*##[\t\u00A0 ]+/gm, '## ');
+  body = body.replace(/^[ \t\u00A0]*###[\t\u00A0 ]+/gm, '### ');
+
   const cardSections = body.split(/(?=^##\s+)/gm);
   const usedImageUrls = new Set();
   const imageStats = { total: 0, ok: 0, failed: [] };
@@ -1561,13 +1573,14 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   const updatedSections = [];
   for (let secIdx = 0; secIdx < cardSections.length; secIdx++) {
     const sec = cardSections[secIdx];
-    if (!sec.startsWith('## ')) {
+    const trimmedSec = sec.trimStart();
+    if (!/^##\s+/.test(trimmedSec)) {
       updatedSections.push(sec);
       continue;
     }
 
-    const h2EndIdx = sec.indexOf('\n');
-    const h2Line = h2EndIdx !== -1 ? sec.slice(0, h2EndIdx) : sec;
+    const h2EndIdx = trimmedSec.indexOf('\n');
+    const h2Line = h2EndIdx !== -1 ? trimmedSec.slice(0, h2EndIdx) : trimmedSec;
     const cleanH2Title = h2Line.replace(/^##\s+(\[[^\]]+\]\s*)?/, '').trim();
 
     // 출처 정보 파싱
@@ -1659,8 +1672,8 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     if (!finalImgUrl) {
       imageStats.failed.push(cleanH2Title.slice(0, 40));
       console.log(`  ❌ [카드 ${secIdx}] "${cleanH2Title.slice(0, 30)}" 이미지 확보 실패 — 마커 삽입`);
-    } else if (secIdx === 1 || (featuredImageUrl === null && secIdx > 0)) {
-      // 첫 번째 H2 카드(index 0는 소제목 성격일 수 있어 1을 우선, 없으면 최초 성공 카드)
+    } else if (featuredImageUrl === null) {
+      // 최초 성공 카드의 이미지를 featured_image 로 승격
       featuredImageUrl = finalImgUrl;
       featuredImageWidth = imgWidth;
       featuredImageHeight = imgHeight;
@@ -1668,7 +1681,7 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     }
 
     // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
-    let rest = h2EndIdx !== -1 ? sec.slice(h2EndIdx).trim() : '';
+    let rest = h2EndIdx !== -1 ? trimmedSec.slice(h2EndIdx).trim() : '';
     rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
     rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
@@ -1694,7 +1707,10 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   );
 
   // [P0 하드 품질 게이트] 출처 이미지 1장도 미확보 시 배포 차단
-  if (imageStats.total > 0 && imageStats.ok === 0) {
+  if (imageStats.total === 0) {
+    throw new Error(`[품질 게이트 탈락] 다이제스트 본문에서 H2 뉴스 카드가 0개 인식되었습니다. 본문 서식(## 헤드라인)을 확인하세요.`);
+  }
+  if (imageStats.ok === 0) {
     const failedSummary = imageStats.failed.join(' / ') || '전체 카드 이미지 실패';
     throw new Error(`[품질 게이트 탈락] 다이제스트 기사 출처 대표 이미지가 0개 확보되었습니다. (실패 카드: ${failedSummary}) 사진 없는 게시글은 발행할 수 없습니다.`);
   }
