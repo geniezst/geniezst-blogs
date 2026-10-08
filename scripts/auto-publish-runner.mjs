@@ -147,6 +147,17 @@ function acquireSessionLock(sessionName, dateStr) {
   }
 }
 
+export const FACT_SHEET_2026 = `[2026년 대한민국 핵심 생활금융·세무·복지 팩트시트 (기준 연도 2026년 철저 준수)]
+- 연도 기준: 올해는 2026년입니다. 과거 연도(2024년, 2025년)를 '최신', '올해'로 언급하지 마십시오.
+- 최저임금: 2026년 최저시급 10,030원 (주 40시간 기준 월 환산액 2,096,270원). 사상 첫 1만원대 진입.
+- 기준 중위소득 (2026년 기준 4인가구): 약 609만원 (1인가구 약 239만원, 2인가구 약 390만원).
+- 청년도약계좌: 5년 만기 시 최대 5,000만원 안팎 목돈 마련, 정부기여금 매칭 및 비과세 혜택.
+- 청년내일저축계좌: 소득 기준 중위소득 100% 이하(차상위 이하는 1:3 매칭, 일반은 1:1 매칭).
+- 근로장려금: 단독가구 최대 165만원, 홑벌이 최대 285만원, 맞벌이 최대 330만원.
+- 국민취업지원제도: 1유형 구직촉진수당 월 50만원 x 6개월(부양가족 1인당 10만원 추가 지원).
+- 출산·육아: 부모급여(0세 월 100만원, 1세 월 50만원), 육아휴직 급여 상한액 인상 적용.
+- 세무/연말정산: 2026년 귀속 소득공제/세액공제 개정 사항 적용.`;
+
 /**
  * 0-3. 마크다운 본문 공백 및 금융 금액 띄어쓰기 규범화
  */
@@ -159,6 +170,8 @@ function acquireSessionLock(sessionName, dateStr) {
 export const QUALITY_GATE = {
   MIN_H2: 5,
   MIN_NON_SPACE_CHARS: 1800,
+  MIN_SPACE_INCLUDED_CHARS: 2800,
+  MIN_REFERENCE_LINKS: 3,
   MAX_LLM_RETRY: 1, // 게이트 실패 시 LLM 재생성 시도 횟수
 };
 
@@ -187,6 +200,104 @@ export function sanitizeProseSpaces(rawText) {
     return cleaned;
   });
   return processed.join('\n');
+}
+
+const INTERNAL_REF_HOSTS = new Set([
+  'pockemoney.com',
+  'blogs.pockemoney.workers.dev',
+  'www.pockemoney.com',
+]);
+
+/**
+ * 본문에서 참고 출처 후보(외부 https 링크)를 추출한다.
+ * 코드 블록과 이미지 태그, 사내 도메인, R2 미러 링크는 제외한다.
+ * @param {string} body
+ * @returns {string[]}
+ */
+function extractReferenceLinks(body) {
+  if (!body) return [];
+  const noCode = body.replace(/```[\s\S]*?```/g, ' ');
+  const matches = [];
+  const linkRe = /(?:^|[^!])\[[^\]]*\]\(\s*(https?:\/\/[^\s)>]+)\s*\)|<https?:\/\/[^\s>]+>/g;
+  let m;
+  while ((m = linkRe.exec(noCode)) !== null) {
+    if (m[1]) matches.push(m[1].replace(/[),.]$/, '').trim());
+    if (m[0] && m[0].startsWith('<')) matches.push(m[0].slice(1, -1).trim());
+  }
+  const seen = new Set();
+  const unique = [];
+  for (const url of matches) {
+    let host;
+    try {
+      host = new URL(url).hostname.toLowerCase();
+    } catch {
+      continue;
+    }
+    if (INTERNAL_REF_HOSTS.has(host)) continue;
+    if (host.endsWith('r2.dev') || host.endsWith('workers.dev')) continue;
+    const norm = `${new URL(url).origin}${new URL(url).pathname}`.replace(/\/+$/, '');
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    unique.push(url);
+  }
+  return unique.slice(0, 12);
+}
+
+/**
+ * 참고 출처 링크의 유효성을 HEAD/GET 요청으로 점검한다.
+ * 404/410 등 명백히 죽은 링크는 배제하고, 봇 차단(403/429)과
+ * 네트워크 오류(타임아웃/DNS)는 유효 가능성으로 허용한다.
+ * @param {string[]} urls
+ * @returns {Promise<{ ok: boolean, active: number, gone: number, errors: number }>}
+ */
+async function verifyReferenceLinks(urls) {
+  if (!urls.length) return { ok: false, active: 0, gone: 0, errors: 0 };
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlogQualityChecker/1.0)' },
+            redirect: 'follow',
+            signal: controller.signal,
+          });
+          const status = res.status;
+          if (status >= 200 && status < 300) return { kind: 'ok' };
+          if (status === 404 || status === 410) return { kind: 'gone' };
+          if (status >= 400 && status < 600) return { kind: 'blocked' };
+          return { kind: 'ok' };
+        } finally {
+          clearTimeout(timer);
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return { kind: 'error' };
+        return { kind: 'error' };
+      }
+    })
+  );
+  const counted = { active: 0, gone: 0, blocked: 0, errors: 0 };
+  for (const r of results) {
+    const kind = r.status === 'fulfilled' && r.value ? r.value.kind : 'error';
+    counted[kind === 'ok' ? 'active' : kind === 'blocked' ? 'active' : kind] += 1;
+  }
+  return {
+    ok: counted.active >= QUALITY_GATE.MIN_REFERENCE_LINKS,
+    active: counted.active,
+    gone: counted.gone,
+    errors: counted.errors,
+  };
+}
+
+/**
+ * 본문 글자 수 기반 읽기 시간(분) 계산. 한국어 1,200자/분 평균 기준.
+ * @param {number} charCount
+ * @returns {number}
+ */
+function estimateReadingMinutes(charCount) {
+  return Math.min(15, Math.max(4, Math.round(charCount / 1200)));
 }
 
 // 6대 카테고리 목록
@@ -808,7 +919,7 @@ export async function callLLMWithFallback(messages, env) {
 /**
  * 마크다운 응답 파싱, Frontmatter 정합성 보정 및 YYMMDDNN-[slug].md 파일 저장
  */
-export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateStr, selectedChart, rejectedSlugSink = [] }) {
+export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateStr, selectedChart, rejectedSlugSink = [] }) {
   const postsDir = path.join(BLOG_ROOT, 'content', 'posts');
   if (!fs.existsSync(postsDir)) {
     fs.mkdirSync(postsDir, { recursive: true });
@@ -904,14 +1015,9 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
     yamlBlock += `\ncategory: "${category}"`;
   }
 
-  // 5) Author 보정
+  // 6) Author 보정
   if (!/author:\s*["']?[^"'\n]+["']?/.test(yamlBlock)) {
     yamlBlock += `\nauthor: "스마트 머니"`;
-  }
-
-  // 6) Reading Time 보정
-  if (!/reading_time:\s*\d+/.test(yamlBlock)) {
-    yamlBlock += `\nreading_time: 8`;
   }
 
   // 7) Affiliate 보정
@@ -922,6 +1028,14 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
   // 8) Tags 기본값 점검
   if (!yamlBlock.includes('tags:')) {
     yamlBlock += `\ntags: [${category}, 생활금융, 정부지원, 절세전략]`;
+  }
+
+  // 9) Reading Time 본문 글자 수 기준 계산 (하드코딩 제거)
+  const readingTime = estimateReadingMinutes(bodyContent.length);
+  if (/reading_time:\s*\d+/.test(yamlBlock)) {
+    yamlBlock = yamlBlock.replace(/reading_time:\s*\d+/, `reading_time: ${readingTime}`);
+  } else {
+    yamlBlock += `\nreading_time: ${readingTime}`;
   }
 
   const finalMarkdown = `---\n${yamlBlock}\n---\n\n${bodyContent}\n`;
@@ -945,16 +1059,16 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
 
   fs.writeFileSync(postFile, finalMarkdown, 'utf8');
 
-  // 무결성 및 통계 로깅
-  const totalChars = finalMarkdown.length;
-  const nonSpaceChars = finalMarkdown.replace(/\s/g, '').length;
-  const h2Count = (finalMarkdown.match(/^##\s+/gm) || []).length;
-  const hasChart = finalMarkdown.includes('financial-chart-box');
+  // 무결성 및 통계 로깅 (본문 기준)
+  const totalChars = bodyContent.length;
+  const nonSpaceChars = bodyContent.replace(/\s/g, '').length;
+  const h2Count = (bodyContent.match(/^##\s+/gm) || []).length;
+  const hasChart = bodyContent.includes('financial-chart-box');
 
   log(`📊 [콘텐츠 무결성 검증]`);
   log(`- 파일명: ${fileName}`);
   log(`- 제목: "${title}" (slug: ${cleanSlug})`);
-  log(`- 총 글자 수: ${totalChars}자 (공백 제외: ${nonSpaceChars}자)`);
+  log(`- 본문 총 글자 수: ${totalChars}자 (공백 제외: ${nonSpaceChars}자)`);
   log(`- H2 대주제 개수: ${h2Count}개`);
   log(`- 필수 차트 컴포넌트 포함 여부: ${hasChart ? '✅ PASS' : '⚠️ WARN (차트 태그 누락)'}`);
 
@@ -967,6 +1081,46 @@ export function parseAndSaveArticleMarkdown({ rawMarkdown, category, targetDateS
   if (h2Count < QUALITY_GATE.MIN_H2) violations.push(`H2 대주제 ${h2Count}개 (최소 ${QUALITY_GATE.MIN_H2}개 필요)`);
   if (nonSpaceChars < QUALITY_GATE.MIN_NON_SPACE_CHARS)
     violations.push(`공백 제외 ${nonSpaceChars}자 (최소 ${QUALITY_GATE.MIN_NON_SPACE_CHARS}자 필요)`);
+  if (totalChars < QUALITY_GATE.MIN_SPACE_INCLUDED_CHARS)
+    violations.push(`공백 포함 ${totalChars}자 (최소 ${QUALITY_GATE.MIN_SPACE_INCLUDED_CHARS}자 필요)`);
+
+  // [P0-2.1] 추가 품질 게이트: 표(Table) 필수 검증
+  const hasTable = /\|[\s-:]+\|/.test(bodyContent);
+  if (!hasTable) {
+    violations.push(`마크다운 분석 표(Table) 누락 (최소 1개 이상의 비교/정리 표 필요)`);
+  }
+
+  // [P0-2.2] 추가 품질 게이트: 시각적 컴포넌트(Callout 박스 또는 차트) 검증
+  const hasCallout = /:::(?:warning|note|checklist|step)\[/.test(bodyContent);
+  if (!hasCallout && !hasChart) {
+    violations.push(`시각적 강조 컴포넌트(Callout 박스 또는 차트) 누락`);
+  }
+
+  // [P0-2.3] 추가 품질 게이트: 연도 환각 검사 (2024년 최신, 2025년 최신 등)
+  const yearHallucination = /(?:2024년|2025년)\s*(?:최신|기준|개정|현재)/g.exec(bodyContent + ' ' + title);
+  if (yearHallucination) {
+    violations.push(`기준 연도 왜곡 감지: "${yearHallucination[0]}" (현재 연도는 2026년이어야 함)`);
+  }
+
+  // 참고 출처 링크 게이트 — 정부/공식 제도 안내 URL 이 실제로 존재해야 발행 가능
+  const refLinks = extractReferenceLinks(bodyContent);
+  const linkCheck = await verifyReferenceLinks(refLinks);
+  if (refLinks.length === 0) {
+    violations.push(`참고 출처 링크 0개 (최소 ${QUALITY_GATE.MIN_REFERENCE_LINKS}개 필요)`);
+  } else if (!linkCheck.ok) {
+    const infraFailure =
+      linkCheck.errors > 0 &&
+      linkCheck.gone === 0 &&
+      linkCheck.active + linkCheck.errors >= QUALITY_GATE.MIN_REFERENCE_LINKS;
+    if (infraFailure) {
+      log(`⚠️ [참고 출처 검증 미완료] 네트워크 오류 ${linkCheck.errors}개로 검증 불가 (활성 ${linkCheck.active}개). 경고만 남기고 진행합니다.`);
+    } else {
+      const detail = `활성 ${linkCheck.active}/${refLinks.length}개 (404/사망: ${linkCheck.gone}개, 네트워크 오류: ${linkCheck.errors}개)`;
+      violations.push(`유효한 참고 출처 링크 부족 (최소 ${QUALITY_GATE.MIN_REFERENCE_LINKS}개 필요) — ${detail}`);
+    }
+  } else if (refLinks.length > 0) {
+    log(`✅ [참고 출처 검증 통과] 활성 링크 ${linkCheck.active}/${refLinks.length}개`);
+  }
 
   if (violations.length > 0) {
     // 불합격 산출물을 디스크에 남기지 않는다 (다음 세션의 중복 방지 상태 오염 방지)
@@ -1009,30 +1163,53 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
 블로그 저장소 위치는 /workspace/projects/blogs 이며 블로그 이름은 '포켓머니(pockemoney)'입니다.
 구글 애드센스 고수익 승인 표준 및 개발자/실무자 수준의 정확하고 깊이 있는 금융 분석 기준을 엄격히 준수하세요.
 
+${FACT_SHEET_2026}
+
 [필수 작성 지침]
 0. [절대 금지 - 이미 발행된 주제]
 ${buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts'))}
 ${avoidTopics.length ? `   - 이번 실행에서 이미 시도했으나 채택되지 않은 주제입니다. 이 주제 및 동일 주제는 절대 다시 선택하지 마세요: ${avoidTopics.join(', ')}` : ''}
    - 위 목록에 있는 주제와 사실상 같은 글은 어떤 경우에도 생성하지 마세요. 제목이나 슬러그만 살짝 바꾼 변형도 금지입니다.
    - 목록에 없는 완전히 새로운 주제를 고르세요. 목록이 비어 있지 않다면 반드시 그 밖의 주제를 선택해야 합니다.
+${buildInternalLinkInstruction(path.join(BLOG_ROOT, 'content', 'posts'), category)}
 1. [골디락스 난이도 및 주제 선정]
    - 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 실전 생활금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(근로장려금/소상공인 지원) 등 다채롭고 구체적인 실무 주제를 선정하세요.
 2. [필수 분량 규격]
-   - 반드시 전체 공백 포함 2,800자 ~ 3,500자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.
+   - 반드시 전체 공백 포함 최소 2,800자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.
 3. [금액 띄어쓰기 규범]
    - '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원', '1억원'처럼 붙여 쓰세요.
 4. [필수 데이터 시각화 차트 삽입 - 이번 세션 지정 유형: ${selectedChart.name}]
 ${selectedChart.instruction}
    - 반드시 본문 첫 번째 H2 또는 두 번째 H2 직후에 위 지정된 유형의 반응형 차트 컴포넌트를 마크다운 코드블록(\`\`\`) 없이 순수 HTML 구조(<div class="financial-chart-box">...</div>)로 완벽하게 삽입하세요.
-5. [필수 구조 (H2 최소 5개 이상 필수 구성)]
+5. [풍부한 시각적 UI 컴포넌트 마크다운 디렉티브 활용]
+   - 독자의 정보 습득력과 가독성을 높이기 위해 다음 4가지 커스텀 디렉티브 문법을 본문 적재적소에 각각 1회 이상 적극 활용하세요:
+   :::warning[신청 시 주의사항 및 결격 사유]
+   기한 경과 시 구제 불가 안내, 중복 수혜 불가 사업 주의점 등...
+   :::
+   :::note[핵심 체크포인트]
+   해당 정책의 최대 수혜 금액 및 핵심 요건 한눈에 보기...
+   :::
+   :::checklist[신청 전 자가진단 체크리스트]
+   - 가구원 소득/재산 기준 충족 여부 확인
+   - 공인인증서 및 신분증 사전 준비
+   - 필수 증빙 서류 발급 완료
+   :::
+   :::step[단계별 신청 절차]
+   1. 온라인 사전 자격 모의계산
+   2. 정부24 / 고용24 온라인 서류 제출
+   3. 적격 심사 및 대상자 통보 수령
+   :::
+6. [필수 구조 (H2 최소 5개 이상 필수 구성)]
    - 구체적인 제도 개요 및 최신 법령/지침 개정 배경
    - 핵심 대상 자격 요건 정밀 분석표 (Table: 대상자, 소득/재산 기준 등)
    - 실제 수혜/납입 금액 또는 혜택 비교표 (Table: 시중 상품 대비 차등 혜택 분석)
    - 실무 비대면 신청/진행 절차 및 필수 구비 서류
    - 신청 전 반드시 점검해야 할 불이익 방지 및 예외 규정
    - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
-   위 6대 요소를 각각 독립된 '## [직관적인 소제목]' 헤딩으로 반드시 5개 이상 구성하세요.
-6. [절대 금지 사항]
+   - 위 6대 요소를 각각 독립된 '## [직관적인 소제목]' 헤딩으로 반드시 5개 이상 구성하세요.
+   - 반드시 마크다운 표(Table: `| 항목 | 기준 | 내용 |`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
+   - 작성한 금액·자격 요건·일정 수치는 반드시 정부/공식 발표 기준으로만 서술하고, 근거가 되는 공식 안내 페이지 링크(정책브리핑, 법제처 국가법령정보센터, 정부24, 고용24, 건강보험공단, 국세청 등)를 실제 존재하는 URL로 최소 3개 이상 인라인 링크 또는 '## 참고 자료' 섹션으로 명시하세요. 존재하지 않는 URL을 지어내는 것은 절대 금지입니다.
+7. [절대 금지 사항]
    - 반드시 현재 연도인 2026년 기준(2026년 최신 개정 및 2026년 정책)으로 작성하세요. 과거 연도(2024년, 2025년 등)를 '최신'으로 서술하거나 제목/슬러그에 넣는 것을 엄격히 금지합니다.
    - 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요.
    - 상투적인 멘트('~에 대해 알아보겠습니다', '이 글에서는 ~를 정리합니다', '도움이 되셨기를 바랍니다') 전면 금지.
@@ -1040,7 +1217,7 @@ ${selectedChart.instruction}
    - 문장마다 볼드체(**단어**)를 남발하지 마세요. 메뉴 경로, 법조문, 액수는 인라인 코드(백틱 또는 작은따옴표)로 표기하고, 볼드는 본문 전체에서 가장 중요한 핵심 결론 1~2개에만 극도로 절제하세요.
    - 소제목 번호 매기기('1.', '1.1') 금지, 직관적이고 매력적인 텍스트 소제목을 쓰세요.
    - 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
-7. [출력 형식]
+8. [출력 형식]
    - 마크다운 Frontmatter로 시작하여 본문으로 이어지는 순수 마크다운 텍스트만 출력하세요.
    - Frontmatter 필수 필드:
 ---
@@ -1068,7 +1245,7 @@ affiliate: false
 
   const rawMarkdown = await callLLMWithFallback(messages, env);
 
-  const parsed = parseAndSaveArticleMarkdown({
+  const parsed = await parseAndSaveArticleMarkdown({
     rawMarkdown,
     category,
     targetDateStr,
@@ -1242,6 +1419,42 @@ function buildExcludedTopicList(postsDir) {
 }
 
 /**
+ * 내부 링크 후보군 추출 및 프롬프트 주입용 헬퍼 (/blog/[slug] 경로 표준 준수)
+ */
+export function getInternalLinkCandidates(postsDir, targetCategory, limit = 5) {
+  const candidates = [];
+  try {
+    const files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md') && f !== 'template.md');
+    for (const f of files) {
+      const head = readFrontmatterHead(path.join(postsDir, f));
+      if (!head) continue;
+      const s = head.match(/^slug:\s*["']?([^"'\n]+)["']?\s*$/m);
+      const t = head.match(/^title:\s*["']?([^"'\n]+)["']?\s*$/m);
+      const c = head.match(/^category:\s*["']?([^"'\n]+)["']?\s*$/m);
+      const slug = s ? s[1].trim() : '';
+      const title = t ? t[1].trim() : '';
+      const cat = c ? c[1].trim() : '';
+      if (slug && title) {
+        candidates.push({ slug, title, category: cat, isSameCat: cat === targetCategory });
+      }
+    }
+  } catch (_) {
+    return [];
+  }
+  candidates.sort((a, b) => (b.isSameCat ? 1 : 0) - (a.isSameCat ? 1 : 0));
+  return candidates.slice(0, limit);
+}
+
+function buildInternalLinkInstruction(postsDir, category) {
+  const candidates = getInternalLinkCandidates(postsDir, category, 6);
+  if (!candidates.length) return '';
+  const lines = candidates.map((c) => `   - [${c.title}](/blog/${c.slug})`);
+  return `\n[내부 추천 링크 (SEO 상호 연결 - 본문 맥락에 맞게 1~2개 자연스럽게 링크 삽입)]
+아래 기존 포스트 중 현재 글의 주제와 연관된 글이 있다면 본문 내 문맥에 어울리게 마크다운 링크(/blog/[slug])로 1~2개 자연스럽게 인라인 인용 또는 '함께 읽으면 좋은 글'로 연결하세요:
+${lines.join('\n')}\n`;
+}
+
+/**
  * [P0] 생성된 글이 이미 발행된 글과 사실상 같은지 검사한다.
  *
  * 판정 기준
@@ -1402,44 +1615,12 @@ export async function runPublishPipeline(sessionName, options = {}) {
   console.log(`📊 이번 세션 선정 차트 스타일: "${selectedChart.name}" (유형: ${selectedChart.type})`);
 
   try {
-    // 4. 안전 프롬프트 작성 (백틱 및 커맨드 치환 방어)
-    const prompt = `
-당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 에디터입니다.
-블로그 저장소 위치는 /workspace/projects/blogs 입니다.
-/workspace/projects/blogs/docs/POST_STYLE_GUIDE.md 규격을 엄격히 준수하여 신규 포스트를 1개 작성해주세요.
-
-- 대상 블로그: 포켓머니 (blogs, pockemoney)
-- 세션: ${sessionName} (${dateStr})
-- 카테고리: ${category}
-- 작성 지침 (★ 구글 애드센스 고수익 승인 표준 및 AI 패턴 엄격 금지):
-  1. [주제 다양성 및 난이도 (골디락스 난이도)] 특정 계층(청년 등)이나 특정 상품에만 편중되지 않도록 하세요. 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 생활 금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(에너지포인트/근로장려금) 등 다채로운 실전 주제를 선정하세요.
-  2. [필수 분량] 반드시 전체 공백 포함 2,500자 ~ 3,500자 이상(공백 제외 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 분량이 짧은 얇은 글(Thin content)은 엄격히 금지됩니다.
-  3. [금액 띄어쓰기 규범] '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원'처럼 붙여 쓰세요.
-  4. [데이터 시각화 차트 필수 - 이번 세션 지정 유형: ${selectedChart.name}]
-${selectedChart.instruction}
-반드시 본문 중간에 해당 반응형 차트 컴포넌트를 최소 1개 이상 HTML 구조로 삽입하세요. (수치 비교를 위한 막대 바/도넛 등 시각화 그래프 요소를 반드시 1~2개 포함)
-  5. [테이블 가독성 최적화] 표 안의 글자가 뜬금없이 잘리지 않도록 셀 내용을 핵심 요약 문구 위주로 작성하고, 문장 길이와 줄바꿈을 깔끔하게 정돈하세요.
-  6. [필수 구조] 본문 내 최소 5개 이상의 깊이 있는 대주제(H2)를 구성하고, 다음 요소를 모두 포함하세요:
-     - 핵심 대상 자격 요건 정밀 분석표(Table: 대상자, 소득/재산 기준 등)
-     - 실제 수혜/납입 금액 또는 혜택 비교표(Table)
-     - 실무 비대면 신청/진행 절차 및 구비 서류
-     - 신청 전 반드시 점검해야 할 불이익 방지 및 예외 규정
-     - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
-  7. [절대 금지] 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요. 상투적인 인트로/클로징 멘트('~에 대해 알아보겠습니다', '이 글에서는 ~를 정리합니다', '~해 보시기 바랍니다', '도움이 되셨기를 바랍니다')도 전면 금지합니다.
-  8. [절대 금지] 불필요한 공백/자간(단어 앞뒤 두 칸 이상 공백)을 넣지 마세요.
-  9. [절대 금지] 문장마다 키워드에 볼드체(별표 두 개)를 남발하지 마세요. 메뉴 경로나 액수는 인라인 코드(작은따옴표 또는 백틱 감싸기)로 표기하고, 볼드는 본문 전체에서 가장 중요한 결론 1~2개에만 극도로 절제하세요.
-  10. 소제목에 '1.', '1.1', '2.' 식의 관료적 번호 매기기를 하지 말고 직관적인 텍스트 소제목을 쓰세요.
-  11. 대충 쓴 글처럼 보이지 않도록 금융 및 행정 공문서 수준의 정확한 수치와 전문적 어조를 견지하세요.
-  12. 완성된 글은 '/workspace/projects/blogs/content/posts/YYMMDDNN-[고유-영문-슬러그].md' (예: 오늘 24일의 세 번째 글이면 26092403-[슬러그].md 처럼 날짜마다 01부터 시작하는 일련번호) 파일로 저장하세요.
-  13. 글 작성이 완료되면 파일 경로와 제목, 슬러그를 명시하며 완료를 알리세요.
-`.trim();
-
-    // 5. LLM 심층글 생성 (Gemini 네이티브 단일 경로)
+    // 4. LLM 심층글 생성 (Gemini 네이티브 단일 경로)
+    //    실제 작성 지침은 runBuiltinDeepArticleGenerator 내부의 systemPrompt 에 단일 관리한다.
     const generated = await generateArticleWithFallback({
       category,
       sessionName,
       targetDateStr: dateStr,
-      prompt,
       selectedChart,
       options,
     });

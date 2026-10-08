@@ -961,6 +961,83 @@ html.dark .fact-brief-box li {
   text-underline-offset: 2px;
 }
 
+/* ===================================================
+   리치 콜아웃 박스 (Warning, Note, Checklist, Step)
+   =================================================== */
+.callout-box {
+  margin: 1.5rem 0;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+.callout-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.callout-box ul {
+  margin: 0.5rem 0 0.5rem 1.25rem !important;
+}
+
+.callout-box li {
+  margin-bottom: 0.35rem;
+  line-height: 1.65;
+}
+
+/* Warning */
+.callout-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(234, 88, 12, 0.04) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-left: 4px solid #f59e0b;
+}
+html[data-theme="dark"] .callout-warning,
+html.dark .callout-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(234, 88, 12, 0.08) 100%);
+  border-color: rgba(245, 158, 11, 0.35);
+  border-left: 4px solid #f59e0b;
+}
+
+/* Note */
+.callout-note {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-left: 4px solid #3b82f6;
+}
+html[data-theme="dark"] .callout-note,
+html.dark .callout-note {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border-color: rgba(59, 130, 246, 0.35);
+  border-left: 4px solid #3b82f6;
+}
+
+/* Checklist */
+.callout-checklist {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.07) 0%, rgba(5, 150, 105, 0.03) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-left: 4px solid #10b981;
+}
+html[data-theme="dark"] .callout-checklist,
+html.dark .callout-checklist {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.06) 100%);
+  border-color: rgba(16, 185, 129, 0.4);
+  border-left: 4px solid #10b981;
+}
+
+/* Step */
+.callout-step {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.07) 0%, rgba(139, 92, 246, 0.03) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-left: 4px solid #6366f1;
+}
+html[data-theme="dark"] .callout-step,
+html.dark .callout-step {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.06) 100%);
+  border-color: rgba(99, 102, 241, 0.4);
+  border-left: 4px solid #6366f1;
+}
+
 
 
 

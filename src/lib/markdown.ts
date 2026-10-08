@@ -253,6 +253,42 @@ export function preprocessCustomDirectives(markdown: string): string {
     }
   );
 
+  // 3. 주의사항 및 오류 방지 경고 박스 (:::warning[...])
+  processed = processed.replace(
+    /:::warning(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '신청 전 주의사항 및 불이익 방지';
+      return `<div class="callout-box callout-warning my-6 p-4 sm:p-5 rounded-2xl shadow-sm">\n<div class="callout-title font-bold text-base mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">⚠️ ${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
+  // 4. 참고 팁 및 핵심 노트 박스 (:::note[...])
+  processed = processed.replace(
+    /:::note(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '핵심 참고 사항 (Key Note)';
+      return `<div class="callout-box callout-note my-6 p-4 sm:p-5 rounded-2xl shadow-sm">\n<div class="callout-title font-bold text-base mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-400">💡 ${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
+  // 5. 점검 체크리스트 박스 (:::checklist[...])
+  processed = processed.replace(
+    /:::checklist(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '자격 요건 자가진단 체크리스트';
+      return `<div class="callout-box callout-checklist my-6 p-4 sm:p-5 rounded-2xl shadow-sm">\n<div class="callout-title font-bold text-base mb-3 flex items-center gap-2 text-emerald-700 dark:text-emerald-400">✅ ${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
+  // 6. 단계별 가이드 박스 (:::step[...])
+  processed = processed.replace(
+    /:::step(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/g,
+    (_match, title, body) => {
+      const titleText = title ? title.trim() : '신청 절차 단계별 안내';
+      return `<div class="callout-box callout-step my-6 p-4 sm:p-5 rounded-2xl shadow-sm">\n<div class="callout-title font-bold text-base mb-2 flex items-center gap-2 text-indigo-700 dark:text-indigo-400">📌 ${titleText}</div>\n\n${body.trim()}\n\n</div>`;
+    }
+  );
+
   return processed;
 }
 

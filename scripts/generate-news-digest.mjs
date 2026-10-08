@@ -1757,12 +1757,20 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
   body = body.replace(/\*?\s*본\s*다이제스트는.*?(?:발행됩니다|큐레이션되었습니다)\.?\s*\*?/g, '').trim();
   body = body.replace(/(?:\r?\n---\s*)+$/g, '').trim();
 
+  // [내부 링크 경로 정규화] 혹시라도 LLM이 /posts/[slug] 형태로 생성한 경우 /blog/[slug] 로 정규화
+  body = body.replace(/\]\(\/posts\/([^\)]+)\)/g, '](/blog/$1)');
+
   // 12) H2 헤딩 수 및 분량 무결성 검증 (엄격 가드)
   const h2Count = (body.match(/^##\s+/gm) || []).length;
   console.log(`🔍 [포스트 구조 검증] H2 헤딩 수: ${h2Count}개 (기준: 4개 이상), 본문 글자수: ${body.length}자`);
   if (h2Count < 4 || body.length < 1500) {
     throw new Error(`[포스트 무결성 검증 실패] H2 헤딩 수(${h2Count}개 < 4개) 또는 본문 분량(${body.length}자 < 1,500자)이 미달되어 발행을 중단합니다.`);
   }
+
+  // reading_time 을 본문 글자 수 기준으로 계산 (뉴스 다이제스트는 정독/속독 기준 900자/분)
+  const digestReadingTime = Math.min(8, Math.max(2, Math.round(body.length / 900)));
+  yaml = yaml.replace(/reading_time:\s*\d+/, `reading_time: ${digestReadingTime}`);
+  if (!/reading_time:\s*\d+/.test(yaml)) yaml += `\nreading_time: ${digestReadingTime}`;
 
   const finalMarkdown = `---\n${yaml.trim()}\n---\n\n${body.trim()}\n`;
   const filename = `${baseSlug}.md`;
@@ -1863,7 +1871,7 @@ export async function runNewsDigestGeneration(options = {}) {
   // Step 3: 기존 포스트 스캔 (내부 링크 추천용)
   const existingPosts = getExistingPosts();
   const existingPostsPromptText = existingPosts
-    .map((p) => `- [${p.title}](/posts/${p.slug}) (카테고리: ${p.category}) - ${p.description.slice(0, 80)}...`)
+    .map((p) => `- [${p.title}](/blog/${p.slug}) (카테고리: ${p.category}) - ${p.description.slice(0, 80)}...`)
     .join('\n');
 
   // Step 4: LLM 프롬프트 조립
@@ -1911,9 +1919,10 @@ ${recentCoveredTitlesText}
      ![헤드라인 핵심 요약 대체텍스트](대표이미지URL)
      <p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="기사원문URL" target="_blank" rel="noopener noreferrer">언론사명</a></p>
    - 대표 이미지가 없거나 '없음'인 경우, 억지로 가짜 이미지를 넣지 말고 이미지 마크다운과 사진 출처 캡션을 완전히 생략하세요.
-6. [E-E-A-T 40% 인사이트 규칙]:
+6. [E-E-A-T 40% 인사이트 & 액션 플랜]:
    - 단순 기사 요약에 그치면 구글 저품질/비독창적 콘텐츠로 분류됩니다.
    - 팩트 브리핑 박스 다음에는 반드시 '### 가계 영향 및 실전 팁' 섹션을 핵심 위주로 1~2문단(200~350자 내외)으로 명쾌하고 실용적으로 자체 서술하세요. (신청 대상, 혜택 금액, 주의사항 등).
+   - 각 뉴스마다 실전 행동 요령을 ':::checklist[내 지갑 실전 점검 체크리스트]' 블록으로 2~3개 불릿으로 명시하세요.
 7. [기존 포스트 내부 링크 매칭]:
    - 각 뉴스 카드 하단에 제공된 [블로그 기존 심층 가이드 목록] 중 가장 연관성 높은 포스트를 1개씩 선정하여 '> **관련 가이드**:' 형식으로 내부 링크를 삽입하세요.
 8. [독자 소통 / 댓글 유도 문구 영구 삭제]:
@@ -1977,8 +1986,13 @@ post_type: "digest"
 ### 가계 영향 및 실전 팁
 (이 소식이 일반 가계나 직장인, 소상공인의 지갑에 미치는 구체적 영향과 실전 팁을 40% 이상 분량으로 상세 서술)
 
+:::checklist[내 지갑 실전 점검 체크리스트]
+- 이번 주 내 서류 또는 자격 요건 확인
+- 모바일 앱 또는 공식 누리집 알림 신청
+:::
+
 > **관련 가이드**:  
-> [관련 기존 글 제목](/posts/해당글슬러그)
+> [관련 기존 글 제목](/blog/해당글슬러그)
 
 ---
 
