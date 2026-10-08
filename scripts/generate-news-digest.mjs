@@ -19,9 +19,11 @@ import { gitPublish } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { mirrorArticleImage, looksLikeThumbnail, isPlaceholderOrLogo } from './lib/image-pipeline.mjs';
 import { sendTelegramReport } from './telegram-notify.mjs';
+import { acquireBuildDeployLock, cleanDistDir } from './lib/runtime-lock.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const POSTS_DIR = path.join(BLOG_ROOT, 'content', 'posts');
+const BUILD_LOCK_FILE = path.join(BLOG_ROOT, 'data', 'build-deploy.lock');
 
 /**
  * 1. 환경 변수 로드 (/workspace/.env, /workspace/scripts/.env, /workspace/blogs/.env)
@@ -2010,45 +2012,60 @@ post_type: "digest"
   }
 
   // Step 7: Astro 프로덕션 빌드 사전 무결성 검증 (빌드 통과 시에만 D1 등록 허용)
-  console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 실행...`);
-  execSync(`npm run build`, {
-    cwd: BLOG_ROOT,
-    stdio: 'inherit',
-    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
-  });
-
-  // Step 8: Cloudflare D1 등록
-  console.log(`🗄️ [Cloudflare D1 등록] publish-post.mjs 실행...`);
-  execSync(`node scripts/publish-post.mjs "${filePath}"`, {
-    cwd: BLOG_ROOT,
-    stdio: 'inherit',
-    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
-  });
-
-  // Step 9: Git Commit & Push (Workers 배포 트리거)
-  // [P0-1] 기존 코드는 `git pull --rebase` 실패를 `catch (_) {}` 로 삼킨 뒤
-  //        "🚀 GitHub Push 완료" 를 출력해 실제 실패를 숨겼다.
-  //        공용 헬퍼로 교체해 실패를 전파하고, 상태 파일은 스테이징하지 않는다.
-  console.log(`📦 [배포 트리거] Git commit & push...`);
+  let buildLock = null;
   let deploySynced = true;
   let deployError = null;
+
   try {
-    const result = gitPublish({
-      repoRoot: BLOG_ROOT,
-      paths: [`content/posts/${filename}`],
-      message: `feat(digest): morning news digest ${slug}`,
-      log: (m) => console.log(`   ${m}`),
-    });
-    if (result.committed) {
-      console.log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
-    } else {
-      console.log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
+    buildLock = acquireBuildDeployLock(BUILD_LOCK_FILE, { label: 'news-digest' });
+    if (!buildLock.acquired) {
+      throw new Error(`다른 빌드/배포 프로세스(PID: ${buildLock.holder?.pid}, 라벨: ${buildLock.holder?.label})가 작업 중이어서 빌드 락을 획득하지 못했습니다.`);
     }
-  } catch (gitErr) {
-    deploySynced = false;
-    deployError = gitErr;
-    console.error(`❌ [GitHub 배포 실패] ${gitErr.message}`);
-    console.error(`   ⚠️ D1 등록은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
+
+    cleanDistDir(path.join(BLOG_ROOT, 'dist'));
+
+    console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 실행...`);
+    execSync(`npm run build`, {
+      cwd: BLOG_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+    });
+
+    // Step 8: Cloudflare D1 등록
+    console.log(`🗄️ [Cloudflare D1 등록] publish-post.mjs 실행...`);
+    execSync(`node scripts/publish-post.mjs "${filePath}"`, {
+      cwd: BLOG_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+    });
+
+    // Step 9: Git Commit & Push (Workers 배포 트리거)
+    // [P0-1] 기존 코드는 `git pull --rebase` 실패를 `catch (_) {}` 로 삼킨 뒤
+    //        "🚀 GitHub Push 완료" 를 출력해 실제 실패를 숨겼다.
+    //        공용 헬퍼로 교체해 실패를 전파하고, 상태 파일은 스테이징하지 않는다.
+    console.log(`📦 [배포 트리거] Git commit & push...`);
+    try {
+      const result = gitPublish({
+        repoRoot: BLOG_ROOT,
+        paths: [`content/posts/${filename}`],
+        message: `feat(digest): morning news digest ${slug}`,
+        log: (m) => console.log(`   ${m}`),
+      });
+      if (result.committed) {
+        console.log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
+      } else {
+        console.log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
+      }
+    } catch (gitErr) {
+      deploySynced = false;
+      deployError = gitErr;
+      console.error(`❌ [GitHub 배포 실패] ${gitErr.message}`);
+      console.error(`   ⚠️ D1 등록은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
+    }
+  } finally {
+    if (buildLock && buildLock.release) {
+      buildLock.release();
+    }
   }
 
   // Step 10: 텔레그램 알림 발송

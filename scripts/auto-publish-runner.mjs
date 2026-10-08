@@ -30,7 +30,7 @@ import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
-import { acquireDaemonLock } from './lib/runtime-lock.mjs';
+import { acquireDaemonLock, isLockOwner, acquireBuildDeployLock, cleanDistDir } from './lib/runtime-lock.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
@@ -60,6 +60,7 @@ if (fs.existsSync(LOCAL_BIN) && !process.env.PATH?.includes(LOCAL_BIN)) {
 
 // [P1] 데몬 단일 인스턴스 락 파일 (data/ 아래이므로 .gitignore 로 제외된다)
 const DAEMON_LOCK_FILE = path.join(BLOG_ROOT, 'data', 'auto-publish-runner.lock');
+const BUILD_LOCK_FILE = path.join(BLOG_ROOT, 'data', 'build-deploy.lock');
 
 export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
@@ -1457,77 +1458,93 @@ ${selectedChart.instruction}
     }
 
     // 6. Astro 프로덕션 빌드 무결성 사전 검증 (빌드가 100% 통과해야만 D1에 발행)
-    console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 무결성을 검증합니다...`);
-    try {
-      execSync(`npm run build`, {
-        cwd: BLOG_ROOT,
-        stdio: 'inherit',
-        env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
-      });
-      console.log(`✅ [빌드 사전 검증 통과] 프로덕션 빌드가 에러 없이 완료되었습니다.`);
-    } catch (buildErr) {
-      // 빌드 실패 시 D1 미등록 상태에서 오류 포스트 파일을 롤백 삭제하여 디스크 오염 방지
-      try {
-        if (fs.existsSync(latestPostFile)) {
-          fs.unlinkSync(latestPostFile);
-          log(`🗑️ [빌드 실패 롤백] 오류 포스트 파일을 삭제했습니다: ${path.basename(latestPostFile)}`);
-        }
-      } catch (_) {}
-      throw new Error(`Astro 프로덕션 빌드 검증 실패 (D1 미등록): ${buildErr.message}`);
-    }
-
-    // 7. D1 데이터베이스 발행 (빌드 통과 후에만 안전하게 실행)
+    let buildLock = null;
     let d1Published = false;
-    console.log(`🗄️ [D1 발행] Cloudflare D1 원격 데이터베이스에 발행합니다...`);
-    execSync(`node scripts/publish-post.mjs "${latestPostFile}"`, {
-      cwd: BLOG_ROOT,
-      stdio: 'inherit',
-    });
-    d1Published = true;
-
-    // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
-    state.category_counts[category] = (state.category_counts[category] || 0) + 1;
-    state.last_session = sessionName;
-    state.last_chart_type = selectedChart.type;
-    state.history.push({
-      date: dateStr,
-      session: sessionName,
-      time: timeStr,
-      category,
-      title: generatedTitle,
-      slug: generatedSlug,
-      chart_type: selectedChart.type,
-      engine: engineTier,
-      status: 'success',
-    });
-    saveState(state);
-
-    // 9. GitHub commit & push (Cloudflare Workers 자동 배포)
-    // [P0-1] rebase 실패를 더 이상 삼키지 않는다. 실패 시 원격 미반영 상태로 중단하고
-    //        텔레그램 경보를 보낸다. (기존: `catch (_) {}` + "🚀 Push 완료" 거짓 보고)
-    log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
     let deploySynced = true;
     let deployError = null;
+
     try {
-      const filesToStage = ['content/posts/'];
-      // 런타임 상태 파일은 .gitignore 로 제외되어 더 이상 stage 하지 않는다.
-      // (추적 상태였던 시점에 stage 되어 `git pull --rebase` 를 "unstaged changes" 로 깨뜨렸다)
-      const result = gitPublish({
-        repoRoot: BLOG_ROOT,
-        paths: filesToStage,
-        message: `feat(post): auto publish [${sessionName}] ${generatedSlug}`,
-        log: (m) => log(`   ${m}`),
-      });
-      if (result.committed) {
-        log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
-      } else {
-        log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
+      buildLock = acquireBuildDeployLock(BUILD_LOCK_FILE, { label: `auto-publish-${sessionName}` });
+      if (!buildLock.acquired) {
+        throw new Error(`다른 빌드/배포 프로세스(PID: ${buildLock.holder?.pid}, 라벨: ${buildLock.holder?.label})가 작업 중이어서 빌드 락을 획득하지 못했습니다.`);
       }
-    } catch (gitErr) {
-      deploySynced = false;
-      deployError = gitErr;
-      log(`❌ [GitHub 배포 실패] ${gitErr.message}`);
-      log(`   ⚠️ D1/R2 발행은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
+
+      // [P0] dist 디렉토리 사전 정리 (계정 권한 불일치 EACCES 및 캐시 오염 방어)
+      cleanDistDir(path.join(BLOG_ROOT, 'dist'), log);
+
+      console.log(`⚙️ [빌드 사전 검증] Astro 프로덕션 빌드 무결성을 검증합니다...`);
+      try {
+        execSync(`npm run build`, {
+          cwd: BLOG_ROOT,
+          stdio: 'inherit',
+          env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+        });
+        console.log(`✅ [빌드 사전 검증 통과] 프로덕션 빌드가 에러 없이 완료되었습니다.`);
+      } catch (buildErr) {
+        // 빌드 실패 시 D1 미등록 상태에서 오류 포스트 파일을 롤백 삭제하여 디스크 오염 방지
+        try {
+          if (fs.existsSync(latestPostFile)) {
+            fs.unlinkSync(latestPostFile);
+            log(`🗑️ [빌드 실패 롤백] 오류 포스트 파일을 삭제했습니다: ${path.basename(latestPostFile)}`);
+          }
+        } catch (_) {}
+        throw new Error(`Astro 프로덕션 빌드 검증 실패 (D1 미등록): ${buildErr.message}`);
+      }
+
+      // 7. D1 데이터베이스 발행 (빌드 통과 후에만 안전하게 실행)
+      console.log(`🗄️ [D1 발행] Cloudflare D1 원격 데이터베이스에 발행합니다...`);
+      execSync(`node scripts/publish-post.mjs "${latestPostFile}"`, {
+        cwd: BLOG_ROOT,
+        stdio: 'inherit',
+      });
+      d1Published = true;
+
+      // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
+      state.category_counts[category] = (state.category_counts[category] || 0) + 1;
+      state.last_session = sessionName;
+      state.last_chart_type = selectedChart.type;
+      state.history.push({
+        date: dateStr,
+        session: sessionName,
+        time: timeStr,
+        category,
+        title: generatedTitle,
+        slug: generatedSlug,
+        chart_type: selectedChart.type,
+        engine: engineTier,
+        status: 'success',
+      });
+      saveState(state);
+
+      // 9. GitHub commit & push (Cloudflare Workers 자동 배포)
+      // [P0-1] rebase 실패를 더 이상 삼키지 않는다. 실패 시 원격 미반영 상태로 중단하고
+      //        텔레그램 경보를 보낸다. (기존: `catch (_) {}` + "🚀 Push 완료" 거짓 보고)
+      log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
+      try {
+        const filesToStage = ['content/posts/'];
+        // 런타임 상태 파일은 .gitignore 로 제외되어 더 이상 stage 하지 않는다.
+        // (추적 상태였던 시점에 stage 되어 `git pull --rebase` 를 "unstaged changes" 로 깨뜨렸다)
+        const result = gitPublish({
+          repoRoot: BLOG_ROOT,
+          paths: filesToStage,
+          message: `feat(post): auto publish [${sessionName}] ${generatedSlug}`,
+          log: (m) => log(`   ${m}`),
+        });
+        if (result.committed) {
+          log(`🚀 [GitHub Push 완료] Workers 자동 배포가 시작되었습니다.`);
+        } else {
+          log(`ℹ️ 원격에 반영할 로컬 변경이 없어 푸시를 건너뜁니다. (${result.reason || 'no-changes'})`);
+        }
+      } catch (gitErr) {
+        deploySynced = false;
+        deployError = gitErr;
+        log(`❌ [GitHub 배포 실패] ${gitErr.message}`);
+        log(`   ⚠️ D1/R2 발행은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
+      }
+    } finally {
+      if (buildLock && buildLock.release) {
+        buildLock.release();
+      }
     }
 
     // 10. 텔레그램 성공 보고 발송
@@ -1659,6 +1676,12 @@ async function startDaemon() {
   log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
+    // [P0] 데몬 락 파일 소유권 주기적 확인 (다른 프로세스가 락을 가져갔거나 service.sh restart로 교체된 경우 자진 종료)
+    if (!isLockOwner(DAEMON_LOCK_FILE)) {
+      log(`🛑 [고스트 데몬 방지] 데몬 락(${DAEMON_LOCK_FILE})의 소유권이 상실되었거나 다른 프로세스에 이전되었습니다. 현재 프로세스(pid ${process.pid})를 안전하게 종료합니다.`);
+      process.exit(0);
+    }
+
     if (isSessionRunning) {
       await new Promise((r) => setTimeout(r, 15000));
       continue;
