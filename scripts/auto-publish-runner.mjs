@@ -30,7 +30,7 @@ import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
-import { acquireDaemonLock, isLockOwner, acquireBuildDeployLock, cleanDistDir } from './lib/runtime-lock.mjs';
+import { acquireDaemonLock, isLockOwner, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
@@ -124,27 +124,7 @@ loadEnvConfig();
  */
 function acquireSessionLock(sessionName, dateStr) {
   const lockDir = path.join(BLOG_ROOT, 'data');
-  if (!fs.existsSync(lockDir)) fs.mkdirSync(lockDir, { recursive: true });
-  const lockFile = path.join(lockDir, `session-${sessionName}-${dateStr}.lock`);
-  try {
-    const fd = fs.openSync(lockFile, 'wx');
-    const info = { pid: process.pid, session: sessionName, date: dateStr, startedAt: new Date().toISOString() };
-    fs.writeSync(fd, JSON.stringify(info, null, 2), 'utf8');
-    fs.closeSync(fd);
-    log(`🔒 [세션 락 획득] ${sessionName} 세션 락 생성 (pid: ${process.pid}, ${lockFile})`);
-    return {
-      acquired: true,
-      releaseOnFailure: () => {
-        try { fs.unlinkSync(lockFile); } catch (_) {}
-      }
-    };
-  } catch (err) {
-    if (err.code === 'EEXIST') {
-      log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 진행 중이거나 완료되었습니다 (${lockFile}).`);
-      return { acquired: false };
-    }
-    throw err;
-  }
+  return acquireSessionLockLib(lockDir, sessionName, dateStr, { log });
 }
 
 export const FACT_SHEET_2026 = `[2026년 대한민국 핵심 생활금융·세무·복지 팩트시트 (기준 연도 2026년 철저 준수)]
@@ -1631,6 +1611,9 @@ export async function runPublishPipeline(sessionName, options = {}) {
     const engineTier = generated.tier || 'Auto Engine';
 
     console.log(`📄 신규 포스트 생성 확인: "${generatedTitle}" (slug: ${generatedSlug}, 엔진: ${engineTier})`);
+
+    // [P0 하드 품질 게이트] 물리적 2차 파일 검증: 디스크의 마크다운 파일을 다시 읽어 featured_image 무결성 확인
+    verifyPostImageIntegrityOrThrow(path.join(POSTS_DIR, latestPostFile), { isDigest: false, log });
 
     // dry-run 옵션 시 DB 발행 및 Git 커밋 건너뜀
     if (options.dryRun) {

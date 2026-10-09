@@ -19,7 +19,7 @@ import { gitPublish } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { mirrorArticleImage, looksLikeThumbnail, isPlaceholderOrLogo } from './lib/image-pipeline.mjs';
 import { sendTelegramReport } from './telegram-notify.mjs';
-import { acquireBuildDeployLock, cleanDistDir } from './lib/runtime-lock.mjs';
+import { acquireBuildDeployLock, cleanDistDir, acquireSessionLock, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const POSTS_DIR = path.join(BLOG_ROOT, 'content', 'posts');
@@ -1846,8 +1846,20 @@ export async function runNewsDigestGeneration(options = {}) {
   console.log(`🛠️ 실행 모드: ${isDryRun ? 'DRY-RUN (파일 생성 검증만)' : 'PRODUCTION (D1 발행 & 텔레그램 연동)'}`);
   console.log(`======================================================`);
 
-  // Step 1: 뉴스 수집
-  const rawItems = await fetchNewsFeeds();
+  // [P0] 원자적 세션 락: 단독 스크립트 실행 및 데몬 동시 진입 원천 차단
+  let sessionLock = null;
+  if (!isDryRun && !options.force) {
+    const lockDir = path.join(BLOG_ROOT, 'data');
+    sessionLock = acquireSessionLock(lockDir, 'morning', dateInfo.dateStr);
+    if (!sessionLock.acquired) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateInfo.dateStr}) 모닝 다이제스트 세션이 이미 진행 중이거나 완료되었습니다. 파이프라인을 건너뜁니다.`);
+      return { success: true, skipped: true };
+    }
+  }
+
+  try {
+    // Step 1: 뉴스 수집
+    const rawItems = await fetchNewsFeeds();
   if (rawItems.length === 0) {
     throw new Error('수집된 뉴스 아이템이 없습니다. 파이프라인을 중단합니다.');
   }
@@ -2020,6 +2032,9 @@ post_type: "digest"
   console.log(`📝 포스트 제목: "${title}"`);
   console.log(`🔗 포스트 슬러그: "${slug}"`);
 
+  // [P0 하드 품질 게이트] 물리적 파일 검증: 디스크의 마크다운 파일을 다시 읽어 featured_image 및 본문 이미지 무결성 확인
+  verifyPostImageIntegrityOrThrow(filePath, { isDigest: true });
+
   if (isDryRun) {
     console.log(`\n🎉 [DRY-RUN 모드 완료] 파일이 성공적으로 생성되었습니다. D1 등록 및 Git 커밋은 건너뜁니다.`);
     return { title, slug, filePath, success: true };
@@ -2116,6 +2131,12 @@ ${deployLine}`;
       : `\n⚠️ 다이제스트: D1 등록은 성공했으나 GitHub 배포가 실패했습니다.`
   );
   return { title, slug, filePath, success: true, deploySynced };
+  } catch (err) {
+    if (sessionLock && !sessionLock.alreadyHeld) {
+      sessionLock.releaseOnFailure?.();
+    }
+    throw err;
+  }
 }
 
 

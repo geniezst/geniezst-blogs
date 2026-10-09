@@ -170,4 +170,128 @@ function installRelease(lockPath) {
   return release;
 }
 
+/**
+ * [P0] 일별 세션 단위 원자적 락 (다중 데몬 및 동시 수동 실행 레이스 컨디션 원천 차단)
+ * @param {string} lockDir 락 파일 저장 디렉토리 (보통 data 디렉토리)
+ * @param {string} sessionName 세션명 ('morning', 'evening', 'coffee-news' 등)
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {{ log?: (msg: string) => void }} [opts]
+ * @returns {{ acquired: boolean, alreadyHeld?: boolean, lockFile?: string, releaseOnFailure?: () => void }}
+ */
+export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
+  const log = opts.log || console.log;
+  if (!fs.existsSync(lockDir)) fs.mkdirSync(lockDir, { recursive: true });
+  const lockFile = path.join(lockDir, `session-${sessionName}-${dateStr}.lock`);
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = fs.openSync(lockFile, 'wx');
+      const info = { pid: process.pid, session: sessionName, date: dateStr, startedAt: new Date().toISOString() };
+      fs.writeSync(fd, JSON.stringify(info, null, 2), 'utf8');
+      fs.closeSync(fd);
+      log(`🔒 [세션 락 획득] ${sessionName} 세션 락 생성 (pid: ${process.pid}, ${lockFile})`);
+      return {
+        acquired: true,
+        alreadyHeld: false,
+        lockFile,
+        releaseOnFailure: () => {
+          try {
+            const holder = readLock(lockFile);
+            if (!holder || holder.pid === process.pid) {
+              fs.unlinkSync(lockFile);
+            }
+          } catch (_) {}
+        }
+      };
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+
+      const holder = readLock(lockFile);
+      // 1) 현재 동일 프로세스가 이미 상위에서 락을 획득하고 진입한 경우 (재진입 허용)
+      if (holder && holder.pid === process.pid) {
+        return {
+          acquired: true,
+          alreadyHeld: true,
+          lockFile,
+          releaseOnFailure: () => {}
+        };
+      }
+
+      // 2) 다른 프로세스가 여전히 살아있는 경우 -> 거부
+      if (holder && isAlive(holder.pid)) {
+        log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 다른 활성 프로세스(PID: ${holder.pid})에 의해 진행 중입니다 (${lockFile}).`);
+        return { acquired: false, lockFile };
+      }
+
+      // 3) 죽은 프로세스의 잔여 락이면 회수 후 1회 재시도
+      try {
+        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid})`);
+        fs.unlinkSync(lockFile);
+      } catch (_) {}
+    }
+  }
+
+  log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션 락 획득 실패 (${lockFile}).`);
+  return { acquired: false, lockFile };
+}
+
+/**
+ * 마크다운 포스트 파일 물리적 2차 무결성 검증 (출처 이미지 필수 하드 게이트)
+ * - 디스크에 실제로 저장된 파일을 다시 읽어 featured_image 및 본문 이미지 태그 존재 여부를 엄격히 확인
+ * - 이미지 0개 시 저장된 파일을 즉시 삭제하고 예외를 throw하여 빌드/D1/Git 배포를 원천 차단
+ * @param {string} filePath 검증할 마크다운 파일 절대 경로
+ * @param {{ isDigest?: boolean, log?: (msg: string) => void }} [opts]
+ * @returns {boolean}
+ */
+export function verifyPostImageIntegrityOrThrow(filePath, opts = {}) {
+  const isDigest = opts.isDigest ?? true;
+  const log = opts.log || console.log;
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`[물리적 2차 품질 게이트 탈락] 검증할 포스트 파일이 디스크에 존재하지 않습니다: ${filePath}`);
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fmMatch) {
+    try { fs.unlinkSync(filePath); } catch (_) {}
+    throw new Error(`[물리적 2차 품질 게이트 탈락] 포스트 파일의 Frontmatter 규격이 올바르지 않습니다: ${filePath}`);
+  }
+
+  const yaml = fmMatch[1];
+  const body = content.slice(fmMatch[0].length);
+
+  // 1) featured_image 추출
+  const featMatch = yaml.match(/featured_image:\s*["']?([^"'\n]*)["']?/);
+  const featuredImage = featMatch ? featMatch[1].trim() : '';
+
+  // 2) 본문 이미지 태그 검출 (![alt](url)) - none, null, undefined, 없음 배제
+  const imgTagRegex = /!\[.*?\]\((?!none|null|undefined|없음)(https?:\/\/[^\)]+|\/api\/images\/[^\)]+)\)/gi;
+  const bodyImages = [...body.matchAll(imgTagRegex)];
+
+  if (isDigest) {
+    // 다이제스트: featured_image 필수 AND 본문 카드 이미지 1개 이상 필수
+    if (!featuredImage || featuredImage === '' || bodyImages.length === 0) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      throw new Error(
+        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})에 유효한 출처 이미지가 없습니다. ` +
+        `(featured_image: "${featuredImage}", 본문 이미지 태그: ${bodyImages.length}개). ` +
+        `사진 없는 다이제스트는 발행할 수 없습니다. 불완전한 파일을 삭제하고 배포를 차단합니다.`
+      );
+    }
+  } else {
+    // 저녁 심층글: featured_image 필수 (또는 본문 이미지 1개 이상)
+    if (!featuredImage || featuredImage === '') {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      throw new Error(
+        `[물리적 2차 품질 게이트 탈락] 심층 가이드 포스트(${path.basename(filePath)})에 대표 이미지(featured_image)가 누락되었습니다. ` +
+        `불완전한 파일을 삭제하고 배포를 차단합니다.`
+      );
+    }
+  }
+
+  log(`✅ [물리적 2차 품질 게이트 통과] ${path.basename(filePath)} (featured_image: "${featuredImage}", 본문 이미지 태그: ${bodyImages.length}개)`);
+  return true;
+}
+
 export default acquireDaemonLock;
