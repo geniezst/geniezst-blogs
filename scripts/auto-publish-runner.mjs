@@ -807,10 +807,21 @@ export async function runMorningNewsDigestPipeline(options = {}) {
       throw new Error('뉴스 다이제스트 생성에 실패했습니다.');
     }
 
+    if (res.skipped) {
+      console.log(`ℹ️ 오늘 모닝 다이제스트 세션이 건너뛰어졌습니다.`);
+      return true;
+    }
+
     if (options.dryRun) {
       console.log(`ℹ️ [DRY-RUN] 아침 다이제스트 시뮬레이션 완료.`);
       return true;
     }
+
+    // [P0 하드 품질 게이트] 물리적 파일 2차 검증: 파일 존재 및 이미지 무결성 재확인
+    if (!res.filePath || !fs.existsSync(res.filePath)) {
+      throw new Error(`다이제스트 생성 파일이 디스크에 존재하지 않습니다: ${res.filePath}`);
+    }
+    verifyPostImageIntegrityOrThrow(res.filePath, { isDigest: true, log });
 
     // 상태 파일 갱신 (오전 다이제스트 전용 카테고리 'news' 고정)
     state.last_session = 'morning';
@@ -1685,7 +1696,8 @@ export async function runPublishPipeline(sessionName, options = {}) {
       //        텔레그램 경보를 보낸다. (기존: `catch (_) {}` + "🚀 Push 완료" 거짓 보고)
       log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
       try {
-        const filesToStage = ['content/posts/'];
+        const relPostPath = path.relative(BLOG_ROOT, path.join(POSTS_DIR, latestPostFile));
+        const filesToStage = [relPostPath];
         // 런타임 상태 파일은 .gitignore 로 제외되어 더 이상 stage 하지 않는다.
         // (추적 상태였던 시점에 stage 되어 `git pull --rebase` 를 "unstaged changes" 로 깨뜨렸다)
         const result = gitPublish({

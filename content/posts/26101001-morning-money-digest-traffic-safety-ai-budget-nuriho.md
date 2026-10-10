@@ -1,12 +1,15 @@
 ---
-title: "경찰, 가을 행락철 집중 단속"AI 보안 예산' 삭감 논란 해명 & 누리호 초소형군집위성 교신 성공"
+title: "경찰, 가을 행락철 집중 단속 & AI 보안 예산 삭감 논란 해명 & 누리호 초소형군집위성 교신 성공"
 slug: "26101001-morning-money-digest-traffic-safety-ai-budget-nuriho"
 description: "오늘 아침 꼭 알아야 할 주요 정책 및 생활 금융 소식 4가지를 핵심 요약합니다. 경찰 가을 행락철 단속, AI 보안 예산 해명, 누리호 성공 등."
 category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-8d3afa973aeb.webp"
+image_width: 719
+image_height: 175
+og_image: "/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-8d3afa973aeb-og.jpg"
 affiliate: false
 post_type: "digest"
 ---
@@ -21,6 +24,9 @@ post_type: "digest"
 ---
 
 ## 경찰, 가을 행락철 관광버스·화물차·고속도로 집중 단속
+
+![경찰, 가을 행락철 관광버스·화물차·고속도로 집중 단속](/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-8d3afa973aeb.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148973209" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148973209)  
 > **발행**: 2026-10-09 23:24 KST | **신뢰도**: 공식 발표
@@ -41,6 +47,9 @@ post_type: "digest"
 
 ## 'AI 보안 예산' 전액 삭감? 정부, 사실은 효율적 재편 강조
 
+!['AI 보안 예산' 전액 삭감? 정부, 사실은 효율적 재편 강조](/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-20a71d9f07e9.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148973210" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148973210)  
 > **발행**: 2026-10-09 23:24 KST | **신뢰도**: 공식 발표
 
@@ -60,6 +69,9 @@ AI 보안 예산 관련 논란은 정부 정책의 투명성과 효율성에 대
 
 ## '누리호' 초소형군집위성 2~6호기 모두 교신 성공
 
+!['누리호' 초소형군집위성 2~6호기 모두 교신 성공](/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-c6e110a2ed4f.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148973213" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/news/policyNewsView.do?newsId=148973213)  
 > **발행**: 2026-10-09 23:24 KST | **신뢰도**: 공식 발표
 
@@ -70,7 +82,7 @@ AI 보안 예산 관련 논란은 정부 정책의 투명성과 효율성에 대
 :::
 
 ### 가계 영향 및 실전 팁
-누리호 발사와 위성 교신 성공은 대한민국의 우주 기술력을 한 단계 끌어올리는 쾌거입니다. 이는 단순한 과학 기술의 발전뿐만 아니라, 장기적으로 국민 생활에도 긍정적인 영향을 미 미칠 수 있습니다. 예를 들어, 위성을 통한 정밀한 기상 관측은 농업 생산성 향상에 기여하고, 재난 감시 시스템은 국민 안전을 강화할 수 있습니다. 또한, 우주 산업의 성장은 관련 분야의 일자리 창출과 경제 활성화에도 기여할 것으로 기대됩니다. 우주 기술은 미래 산업의 핵심 동력이므로, 이러한 성공은 국가 경쟁력 강화에 중요한 발판이 됩니다.
+누리호 발사와 위성 교신 성공은 대한민국의 우주 기술력을 한 단계 끌어올리는 쾌거입니다. 이는 단순한 과학 기술의 발전뿐만 아니라, 장기적으로 국민 생활에도 긍정적인 영향을 미칠 수 있습니다. 예를 들어, 위성을 통한 정밀한 기상 관측은 농업 생산성 향상에 기여하고, 재난 감시 시스템은 국민 안전을 강화할 수 있습니다. 또한, 우주 산업의 성장은 관련 분야의 일자리 창출과 경제 활성화에도 기여할 것으로 기대됩니다. 우주 기술은 미래 산업의 핵심 동력이므로, 이러한 성공은 국가 경쟁력 강화에 중요한 발판이 됩니다.
 
 > **관련 가이드**:  
 > [2026년 청년내일저축계좌 3차 신청- 월 10만원으로 3년 만기 1,440만원 목돈 만드는 법](/posts/youth-tomorrow-savings-account-2026-third-application-guide)
@@ -78,6 +90,9 @@ AI 보안 예산 관련 논란은 정부 정책의 투명성과 효율성에 대
 ---
 
 ## 한-이집트 사회보장협정 서명 | 연금 보험료 이중납부 면제 및 가입기간 합산
+
+![한-이집트 사회보장협정 서명 | 연금 보험료 이중납부 면제 및 가입기간 합산](/api/images/2026/10/morning-money-digest-traffic-safety-ai-b-63e674a6d73e.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/briefing/pressReleaseView.do?newsId=156784727&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-10-10&amp;endDate=2026-10-10&srchWord=&amp;period=" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
 
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/briefing/pressReleaseView.do?newsId=156784727&amp;pageIndex=1&amp;repCodeType=&amp;repCode=&amp;startDate=2025-10-10&amp;endDate=2026-10-10&srchWord=&amp;period=)  
 > **발행**: 2026-10-09 23:24 KST | **신뢰도**: 공식 발표
@@ -89,7 +104,7 @@ AI 보안 예산 관련 논란은 정부 정책의 투명성과 효율성에 대
 :::
 
 ### 가계 영향 및 실전 팁
-한-이집트 사회보장협정 서명은 이집트에 파견되거나 이집트에서 근무하는 한국인 근로자들에게 직접적인 재정적 혜택을 제공합니다. 기존에는 양국에 각각 연금보험료를 납부해야 하는 이중 부담이 있었으나, 이번 협정으로 불필요한 지출을 줄일 수 있게 됩니다. 또한, 양국에서의 연금 가입 기간을 합산하여 연금을 수령할 수 있게 됨으로써, 은퇴 후 안정적인 노후 생활을 계획하는 데 큰 도움이 될 것입니다. 해외 파견 근로자나 국제 교류가 잦은 분들은 자신이 해당되는 국가와의 사회보장협정 체결 여부를 주기적으로 확인하여 혜택을 놓치지 않도록 주의해야 합니다.
+한-이집트 사회보장협정 서명은 이집트에 파견되거나 이집트에서 근무하는 한국인 근로자들에게 직접적인 재정적 혜택을 제공합니다. 기존에는 양국에 각각 연금보험료를 납부해야 하는 이중 부담이 있었으나, 이번 협정으로 불필요한 지출을 줄일 수 있게 됩니다. 또한, 양국에서의 연금 가입 기간을 합산하여 연금을 수령할 수 있게 됨으로써, 은퇴 후 안정적인 노후 생활을 계획하는 데 큰 도움이 될 것입니다. 해외 파견 근로자나 국제 교류가잦은 분들은 자신이 해당되는 국가와의 사회보장협정 체결 여부를 주기적으로 확인하여 혜택을 놓치지 않도록 주의해야 합니다.
 
 > **관련 가이드**:  
 > [못 찾아간 건강보험료 환급금 지금 확인하세요 & 전세사기 피해 보증금 최소 3분의 1 회복 보장](/posts/26100701-morning-money-digest-health-insurance-refund-jeonse-scam)

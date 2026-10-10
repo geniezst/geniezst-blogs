@@ -2033,7 +2033,14 @@ post_type: "digest"
   console.log(`🔗 포스트 슬러그: "${slug}"`);
 
   // [P0 하드 품질 게이트] 물리적 파일 검증: 디스크의 마크다운 파일을 다시 읽어 featured_image 및 본문 이미지 무결성 확인
-  verifyPostImageIntegrityOrThrow(filePath, { isDigest: true });
+  try {
+    verifyPostImageIntegrityOrThrow(filePath, { isDigest: true });
+  } catch (verifyErr) {
+    if (fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+    }
+    throw verifyErr;
+  }
 
   if (isDryRun) {
     console.log(`\n🎉 [DRY-RUN 모드 완료] 파일이 성공적으로 생성되었습니다. D1 등록 및 Git 커밋은 건너뜁니다.`);
