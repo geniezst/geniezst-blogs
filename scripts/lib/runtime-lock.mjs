@@ -26,12 +26,31 @@ export function isAlive(pid) {
   }
 }
 
-export function readLock(lockPath) {
-  try {
-    return JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-  } catch (_) {
-    return null;
+/**
+ * 락 파일 판독 (빈 파일/기록 지연 방어를 위해 최대 maxRetries회 재시도)
+ * @param {string} lockPath 락 파일 경로
+ * @param {number} [maxRetries=3] 최대 재시도 횟수
+ * @param {number} [delayMs=50] 재시도 간격(ms)
+ * @returns {object|null}
+ */
+export function readLock(lockPath, maxRetries = 3, delayMs = 50) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      if (fs.existsSync(lockPath)) {
+        const content = fs.readFileSync(lockPath, 'utf8');
+        if (content && content.trim()) {
+          const parsed = JSON.parse(content);
+          if (parsed && typeof parsed.pid === 'number') {
+            return parsed;
+          }
+        }
+      }
+    } catch (_) {}
+    if (i < maxRetries - 1) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
+    }
   }
+  return null;
 }
 
 /** 현재 프로세스가 해당 락의 정상 소유자인지 검증 */
@@ -41,18 +60,89 @@ export function isLockOwner(lockPath) {
 }
 
 /**
- * 데몬 단일 인스턴스 락 획득
+ * /proc 을 스캔하여 동일 프로젝트 데몬을 실행 중인 프로세스 PID 목록 반환
+ * @param {string} [scriptPattern] 예: 'auto-publish-runner.mjs daemon' 또는 'coffee-news-daemon.mjs daemon'
+ * @param {string} [targetDir] 예: '/workspace/projects/blogs'
+ * @returns {number[]}
+ */
+export function getSiblingDaemonPids(scriptPattern, targetDir) {
+  const pids = [];
+  try {
+    const entries = fs.readdirSync('/proc');
+    for (const entry of entries) {
+      if (!/^\d+$/.test(entry)) continue;
+      const pid = parseInt(entry, 10);
+      try {
+        let cmdline = '';
+        try {
+          const raw = fs.readFileSync(`/proc/${pid}/cmdline`);
+          cmdline = raw.toString('utf8').replace(/\0/g, ' ');
+        } catch (_) {
+          continue;
+        }
+
+        // eval/테스트 프로세스 제외
+        if (cmdline.includes(' -e ') || cmdline.includes('eval')) continue;
+
+        if (scriptPattern && !cmdline.includes(scriptPattern)) {
+          continue;
+        }
+
+        let cwd = '';
+        try {
+          cwd = fs.readlinkSync(`/proc/${pid}/cwd`);
+        } catch (_) {}
+
+        if (targetDir) {
+          const normalizedTarget = path.resolve(targetDir);
+          const isTargetBlog = normalizedTarget.endsWith('/blog');
+          if (isTargetBlog) {
+            // blog 인 경우 blogs 제외
+            if (cwd.includes('/blogs') || cmdline.includes('/blogs')) {
+              continue;
+            }
+            if (!cwd.startsWith(normalizedTarget) && !cmdline.includes(normalizedTarget)) {
+              continue;
+            }
+          } else {
+            if (!cwd.startsWith(normalizedTarget) && !cmdline.includes(normalizedTarget)) {
+              continue;
+            }
+          }
+        }
+
+        pids.push(pid);
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return pids;
+}
+
+/**
+ * 데몬 단일 인스턴스 락 획득 (Two-Factor Process Lock)
  * @param {string} lockPath 락 파일 경로
- * @param {{ label?: string }} [opts]
+ * @param {{ label?: string, scriptPattern?: string, projectDir?: string }} [opts]
  * @returns {{ acquired: true, release: () => void, pid: number } | { acquired: false, holder: object }}
  */
 export function acquireDaemonLock(lockPath, opts = {}) {
   const label = opts.label || path.basename(lockPath);
+  const scriptPattern = opts.scriptPattern;
+  const projectDir = opts.projectDir;
   const dir = path.dirname(lockPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
+  // [Two-Factor Step 1] 프로세스 테이블 사전 점검: 동일 프로젝트 데몬이 이미 살아있는지 확인
+  if (scriptPattern && projectDir) {
+    const siblings = getSiblingDaemonPids(scriptPattern, projectDir);
+    const existingAlive = siblings.filter((pid) => pid !== process.pid && isAlive(pid));
+    if (existingAlive.length > 0) {
+      return { acquired: false, holder: { pid: existingAlive[0], reason: 'sibling_process_alive' } };
+    }
+  }
+
   const payload = { pid: process.pid, label, startedAt: new Date().toISOString() };
 
+  // [Two-Factor Step 2] 원자적 락 파일 생성
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const fd = fs.openSync(lockPath, 'wx');
@@ -62,19 +152,37 @@ export function acquireDaemonLock(lockPath, opts = {}) {
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
 
-      const holder = readLock(lockPath);
+      // EEXIST 발생 시 readLock 최대 3회 재시도 (50ms 대기)
+      const holder = readLock(lockPath, 3, 50);
+
+      // 이미 다른 살아있는 프로세스가 소유 중이면 절대로 unlinkSync하지 않고 즉시 거부
       if (holder && isAlive(holder.pid) && holder.pid !== process.pid) {
         return { acquired: false, holder };
       }
 
-      // 죽은 데몬 락 회수 (또는 판독 불가한 손상 락)
+      // 죽은 프로세스임이 확실할 때만 unlinkSync 후 재시도
+      if (holder && !isAlive(holder.pid)) {
+        try {
+          fs.unlinkSync(lockPath);
+        } catch (_) {}
+        continue;
+      }
+
+      // 만약 3회 시도 후에도 holder가 null인데(파일이 비어있거나 손상됨),
+      // 파일이 여전히 존재하고 mtime이 최근(5초 이내)이면 다른 프로세스가 막 생성 중일 수 있으므로
+      // 함부로 unlink하지 않고 거부
       try {
+        const stat = fs.statSync(lockPath);
+        if (Date.now() - stat.mtimeMs < 5000) {
+          return { acquired: false, holder: { pid: null, reason: 'lock_file_recently_created' } };
+        }
+        // 오래된 손상 락만 삭제
         fs.unlinkSync(lockPath);
       } catch (_) {}
     }
   }
 
-  return { acquired: false, holder: readLock(lockPath) };
+  return { acquired: false, holder: readLock(lockPath, 3, 50) };
 }
 
 /**

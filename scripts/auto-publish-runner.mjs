@@ -30,7 +30,7 @@ import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
-import { acquireDaemonLock, isLockOwner, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
+import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
@@ -1819,7 +1819,11 @@ _llm 도retry ${QUALITY_GATE.MAX_LLM_RETRY}회로 분량/구조를 충족하지 
 async function startDaemon() {
   // [P1] 데몬 단일 인스턴스 보장
   //   이전엔 락을 쓰지 않아 중복 기동 시 같은 시각에 발행이 두 번 돌 수 있었다.
-  const lock = acquireDaemonLock(DAEMON_LOCK_FILE, { label: 'auto-publish-runner' });
+  const lock = acquireDaemonLock(DAEMON_LOCK_FILE, {
+    label: 'auto-publish-runner',
+    scriptPattern: 'auto-publish-runner.mjs daemon',
+    projectDir: BLOG_ROOT,
+  });
   if (!lock.acquired) {
     log(`❌ 다른 auto-publish-runner 데몬이 이미 실행 중입니다 (pid ${lock.holder?.pid ?? '?'}). 중복 기동을 거부합니다.`);
     process.exit(1);
@@ -1857,10 +1861,20 @@ async function startDaemon() {
   log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
-    // [P0] 데몬 락 파일 소유권 주기적 확인 (다른 프로세스가 락을 가져갔거나 service.sh restart로 교체된 경우 자진 종료)
+    // [P0-1] 데몬 락 파일 소유권 주기적 확인 (다른 프로세스가 락을 가져갔거나 service.sh restart로 교체된 경우 자진 종료)
     if (!isLockOwner(DAEMON_LOCK_FILE)) {
       log(`🛑 [고스트 데몬 방지] 데몬 락(${DAEMON_LOCK_FILE})의 소유권이 상실되었거나 다른 프로세스에 이전되었습니다. 현재 프로세스(pid ${process.pid})를 안전하게 종료합니다.`);
       process.exit(0);
+    }
+
+    // [P0-2] 동일 프로젝트 중복 데몬 상시 감시 및 자폭 (Self-Pruning / Suicide)
+    const siblings = getSiblingDaemonPids('auto-publish-runner.mjs daemon', BLOG_ROOT);
+    if (siblings.length > 1) {
+      const holder = readLock(DAEMON_LOCK_FILE);
+      if (!holder || holder.pid !== process.pid) {
+        log(`🛑 [유령 데몬 자폭] 복수 데몬(${siblings.join(', ')}) 감지. 정당한 소유자(PID: ${holder?.pid})가 아니므로 현재 프로세스(PID: ${process.pid})를 즉시 자진 종료합니다.`);
+        process.exit(0);
+      }
     }
 
     if (isSessionRunning) {
