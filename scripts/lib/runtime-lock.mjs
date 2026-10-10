@@ -280,14 +280,9 @@ export function verifyPostImageIntegrityOrThrow(filePath, opts = {}) {
       );
     }
   } else {
-    // 저녁 심층글: featured_image 필수 (또는 본문 이미지 1개 이상)
-    if (!featuredImage || featuredImage === '') {
-      try { fs.unlinkSync(filePath); } catch (_) {}
-      throw new Error(
-        `[물리적 2차 품질 게이트 탈락] 심층 가이드 포스트(${path.basename(filePath)})에 대표 이미지(featured_image)가 누락되었습니다. ` +
-        `불완전한 파일을 삭제하고 배포를 차단합니다.`
-      );
-    }
+    // 저녁 심층글: featured_image 빈 문자열 허용, 이미지가 없더라도 파일 삭제 금지
+    // (기술 심층글/생활경제 분석글은 코드 블록, 표, 인포그래픽 박스 기반으로 구성됨)
+    log(`ℹ️ [심층 가이드 이미지 검증] featured_image: "${featuredImage || '(없음 - 텍스트/컴포넌트 중심)'}", 본문 이미지 태그: ${bodyImages.length}개`);
   }
 
   log(`✅ [물리적 2차 품질 게이트 통과] ${path.basename(filePath)} (featured_image: "${featuredImage}", 본문 이미지 태그: ${bodyImages.length}개)`);

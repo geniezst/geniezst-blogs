@@ -1605,6 +1605,11 @@ export async function runPublishPipeline(sessionName, options = {}) {
   const selectedChart = availableCharts[Math.floor(Math.random() * availableCharts.length)] || CHART_PRESETS[0];
   console.log(`📊 이번 세션 선정 차트 스타일: "${selectedChart.name}" (유형: ${selectedChart.type})`);
 
+  let d1Published = false;
+  let buildLock = null;
+  let deploySynced = true;
+  let deployError = null;
+
   try {
     // 4. LLM 심층글 생성 (Gemini 네이티브 단일 경로)
     //    실제 작성 지침은 runBuiltinDeepArticleGenerator 내부의 systemPrompt 에 단일 관리한다.
@@ -1633,10 +1638,10 @@ export async function runPublishPipeline(sessionName, options = {}) {
     }
 
     // 6. Astro 프로덕션 빌드 무결성 사전 검증 (빌드가 100% 통과해야만 D1에 발행)
-    let buildLock = null;
-    let d1Published = false;
-    let deploySynced = true;
-    let deployError = null;
+    buildLock = null;
+    d1Published = false;
+    deploySynced = true;
+    deployError = null;
 
     try {
       buildLock = acquireBuildDeployLock(BUILD_LOCK_FILE, { label: `auto-publish-${sessionName}` });
