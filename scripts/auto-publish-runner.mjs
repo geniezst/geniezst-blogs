@@ -32,6 +32,11 @@ import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
+// [P0] 런타임 파일 권한 개방 (EACCES 방어)
+try {
+  process.umask(0);
+} catch (_) {}
+
 // 프로세스 무중단 방어 핸들러 (예기치 못한 예외 발생 시 크래시 방지)
 process.on('uncaughtException', (err) => {
   const time = new Date().toISOString();
