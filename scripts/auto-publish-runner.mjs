@@ -381,6 +381,54 @@ function isDigestPost(filePath) {
   }
 }
 
+/**
+ * 오늘 일자(YYMMDD)의 모닝 다이제스트 포스트가 디스크에 존재하는지 검사한다.
+ */
+function checkMorningDigestExists(postsDir, dateStr) {
+  if (!fs.existsSync(postsDir)) return null;
+  const yy = dateStr.slice(2, 4);
+  const mm = dateStr.slice(5, 7);
+  const dd = dateStr.slice(8, 10);
+  const prefix = `${yy}${mm}${dd}`;
+  const files = fs.readdirSync(postsDir).filter((f) =>
+    f.startsWith(prefix) &&
+    (f.endsWith('.md') || f.endsWith('.mdx')) &&
+    f !== 'template.md' &&
+    isDigestPost(path.join(postsDir, f))
+  );
+  return files.length > 0 ? files[0] : null;
+}
+
+/**
+ * 디스크 상에 모닝 다이제스트가 존재하지만 state.history에 누락된 경우 상태 동기화
+ */
+function syncMorningStateFromDisk(state, dateStr, postsDir) {
+  const existingFile = checkMorningDigestExists(postsDir, dateStr);
+  if (!existingFile) return;
+  const filePath = path.join(postsDir, existingFile);
+  const slug = path.basename(existingFile, path.extname(existingFile));
+  let title = slug;
+  try {
+    const head = readFrontmatterHead(filePath);
+    const titleMatch = head.match(/title:\s*["']?([^"'\n]+)["']?/);
+    if (titleMatch) title = titleMatch[1].trim();
+  } catch (_) {}
+
+  state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
+  state.last_session = 'morning';
+  state.history.push({
+    date: dateStr,
+    session: 'morning',
+    time: '08:20',
+    category: 'news',
+    title,
+    slug,
+    post_type: 'digest',
+    status: 'success',
+  });
+  saveState(state);
+}
+
 
 /**
  * 카테고리 균등 배분 알고리즘
@@ -767,6 +815,7 @@ export async function runMorningNewsDigestPipeline(options = {}) {
 
   // 1. 중복 실행 검사
   let sessionLock = null;
+  let d1Published = false;
   if (!options.force && !options.dryRun) {
     const isDone = state.history.some(
       (h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success'
@@ -777,20 +826,9 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     }
 
     // 파일시스템 기반 실제 포스트 존재 여부 2차 검증 (YYMMDD 형태 중복 방지)
-    const yy = dateStr.slice(2, 4);
-    const mm = dateStr.slice(5, 7);
-    const dd = dateStr.slice(8, 10);
-    const prefix = `${yy}${mm}${dd}`;
-    const existingPosts = fs.existsSync(POSTS_DIR)
-      ? fs.readdirSync(POSTS_DIR).filter(f =>
-          f.startsWith(prefix) &&
-          (f.endsWith('.md') || f.endsWith('.mdx')) &&
-          f !== 'template.md' &&
-          isDigestPost(path.join(POSTS_DIR, f))
-        )
-      : [];
-    if (existingPosts.length > 0) {
-      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 모닝 다이제스트 포스트(${existingPosts.join(', ')})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
+    const existingMorningFile = checkMorningDigestExists(POSTS_DIR, dateStr);
+    if (existingMorningFile) {
+      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 모닝 다이제스트 포스트(${existingMorningFile})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
       return true;
     }
 
@@ -810,6 +848,10 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     if (res.skipped) {
       console.log(`ℹ️ 오늘 모닝 다이제스트 세션이 건너뛰어졌습니다.`);
       return true;
+    }
+
+    if (res.d1Published) {
+      d1Published = true;
     }
 
     if (options.dryRun) {
@@ -842,8 +884,10 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     return true;
   } catch (err) {
     console.error(`❌ [아침 다이제스트 파이프라인 실패]`, err.message);
-    if (sessionLock?.releaseOnFailure) {
+    if (!d1Published && sessionLock?.releaseOnFailure) {
       sessionLock.releaseOnFailure();
+    } else if (d1Published) {
+      log(`🔒 [세션 락 보존] D1 DB에 이미 포스트가 등록되었으므로 세션 락을 유지합니다.`);
     }
 
     state.history.push({
@@ -1912,7 +1956,20 @@ async function startDaemon() {
     const state = loadState();
 
     // 1. 오전 다이제스트 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 오전 12시 이전)
-    const morningDone = isSessionAlreadyDone(state, 'morning', dateStr) || isSessionAlreadyDone(state, 'lunch', dateStr);
+    const morningDoneState = isSessionAlreadyDone(state, 'morning', dateStr) || isSessionAlreadyDone(state, 'lunch', dateStr);
+    const morningDoneDisk = Boolean(checkMorningDigestExists(POSTS_DIR, dateStr));
+
+    // 디스크에는 있는데 상태 파일에 누락된 경우 상태 복구
+    if (morningDoneDisk && !morningDoneState) {
+      log(`⚠️ [상태 복구] 오늘(${dateStr}) 모닝 다이제스트가 디스크에 존재하나 상태 파일에 누락되었습니다. 상태를 동기화합니다.`);
+      syncMorningStateFromDisk(state, dateStr, POSTS_DIR);
+    }
+
+    const morningDone = morningDoneState || morningDoneDisk;
+    if (morningDone && !morningExecutedToday) {
+      morningExecutedToday = true;
+    }
+
     if (!morningDone && !morningExecutedToday && currentTotal >= morningTargetTotal && currentTotal < 12 * 60) {
       log(`🌅 [오전 세션 트리거] 목표 시각(${formatTarget(currentMorningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
       morningExecutedToday = true;

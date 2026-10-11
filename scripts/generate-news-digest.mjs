@@ -1432,9 +1432,27 @@ async function callLLM(messages, env) {
 }
 
 /**
+ * 포스트가 모닝 다이제스트(뉴스) 포스트인지 정밀 판별한다.
+ */
+function isDigestPost(filePath) {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(4096);
+    const bytesRead = fs.readSync(fd, buf, 0, 4096, 0);
+    fs.closeSync(fd);
+    const head = buf.toString('utf8', 0, bytesRead);
+    if (/post_type:\s*["']?digest["']?/i.test(head)) return true;
+    if (/category:\s*["']?news["']?/i.test(head)) return true;
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * 10. 마크다운 생성 결과 정제 및 검증
  */
-async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
+async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], options = {}) {
   let cleaned = rawContent.trim();
 
   // ```markdown 코드 블록 제거 (앞뒤 유연하게)
@@ -1483,11 +1501,21 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = []) {
     yaml += '\ntags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]';
   }
 
-  // 4) 오늘자 일련번호 및 파일명/슬러그 계산
-  const existingFiles = fs.existsSync(POSTS_DIR)
-    ? fs.readdirSync(POSTS_DIR).filter((f) => f.startsWith(dateInfo.yymmdd))
-    : [];
-  const seqNumber = String(existingFiles.length + 1).padStart(2, '0');
+  // 4) 오늘자 일련번호 및 파일명/슬러그 계산 (순번 항상 '01' 고정)
+  const seqNumber = '01';
+
+  // 당일 기존 다이제스트 파일 존재 여부 검사 (순번 02 등 임의 증가 및 변형 슬러그 중복 원천 차단)
+  if (fs.existsSync(POSTS_DIR)) {
+    const existingMatching = fs.readdirSync(POSTS_DIR).filter((f) =>
+      f.startsWith(dateInfo.yymmdd) &&
+      (f.endsWith('.md') || f.endsWith('.mdx')) &&
+      f !== 'template.md' &&
+      isDigestPost(path.join(POSTS_DIR, f))
+    );
+    if (existingMatching.length > 0 && !options?.force) {
+      throw new Error(`[중복 차단] 오늘(${dateInfo.yymmdd}) 모닝 다이제스트 파일(${existingMatching.join(', ')})이 이미 존재합니다. 임의의 변형 슬러그 생성을 중단합니다.`);
+    }
+  }
 
   // Slug 추출 및 정규화
   const slugMatch = yaml.match(/slug:\s*["']?([^"'\n]+)["']?/);
@@ -1846,6 +1874,31 @@ export async function runNewsDigestGeneration(options = {}) {
   console.log(`🛠️ 실행 모드: ${isDryRun ? 'DRY-RUN (파일 생성 검증만)' : 'PRODUCTION (D1 발행 & 텔레그램 연동)'}`);
   console.log(`======================================================`);
 
+  // [Step 0] 사전 가드: 디스크에 당일 다이제스트 파일이 이미 존재하는지 검사 (중복 생성 조기 방어)
+  let existingDigestFile = null;
+  if (fs.existsSync(POSTS_DIR)) {
+    const matching = fs.readdirSync(POSTS_DIR).filter((f) =>
+      f.startsWith(dateInfo.yymmdd) &&
+      (f.endsWith('.md') || f.endsWith('.mdx')) &&
+      f !== 'template.md' &&
+      isDigestPost(path.join(POSTS_DIR, f))
+    );
+    if (matching.length > 0) {
+      existingDigestFile = matching[0];
+    }
+  }
+
+  if (existingDigestFile && !options.force) {
+    console.log(`ℹ️ [중복 방지] 오늘(${dateInfo.dateStr}) 모닝 다이제스트 포스트(${existingDigestFile})가 디스크에 이미 존재합니다. 생성을 건너뜁니다.`);
+    return {
+      success: true,
+      skipped: true,
+      d1Published: false,
+      reason: 'already_exists_on_disk',
+      filePath: path.join(POSTS_DIR, existingDigestFile),
+    };
+  }
+
   // [P0] 원자적 세션 락: 단독 스크립트 실행 및 데몬 동시 진입 원천 차단
   let sessionLock = null;
   if (!isDryRun && !options.force) {
@@ -1853,9 +1906,11 @@ export async function runNewsDigestGeneration(options = {}) {
     sessionLock = acquireSessionLock(lockDir, 'morning', dateInfo.dateStr);
     if (!sessionLock.acquired) {
       console.log(`ℹ️ [중복 방지] 오늘(${dateInfo.dateStr}) 모닝 다이제스트 세션이 이미 진행 중이거나 완료되었습니다. 파이프라인을 건너뜁니다.`);
-      return { success: true, skipped: true };
+      return { success: true, skipped: true, d1Published: false };
     }
   }
+
+  let d1Published = false;
 
   try {
     // Step 1: 뉴스 수집
@@ -2026,7 +2081,7 @@ post_type: "digest"
     fs.mkdirSync(POSTS_DIR, { recursive: true });
   }
 
-  const { title, slug, filename, filePath, content } = await cleanAndValidateMarkdown(rawLlmOutput, dateInfo, rankedItems);
+  const { title, slug, filename, filePath, content } = await cleanAndValidateMarkdown(rawLlmOutput, dateInfo, rankedItems, options);
   fs.writeFileSync(filePath, content, 'utf8');
   console.log(`💾 [파일 저장 완료] ${filePath}`);
   console.log(`📝 포스트 제목: "${title}"`);
@@ -2044,7 +2099,7 @@ post_type: "digest"
 
   if (isDryRun) {
     console.log(`\n🎉 [DRY-RUN 모드 완료] 파일이 성공적으로 생성되었습니다. D1 등록 및 Git 커밋은 건너뜁니다.`);
-    return { title, slug, filePath, success: true };
+    return { title, slug, filePath, success: true, d1Published: false };
   }
 
   // Step 7: Astro 프로덕션 빌드 사전 무결성 검증 (빌드 통과 시에만 D1 등록 허용)
@@ -2074,6 +2129,8 @@ post_type: "digest"
       stdio: 'inherit',
       env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
     });
+    d1Published = true;
+    console.log('✅ D1 데이터베이스 발행 완료');
 
     // Step 9: Git Commit & Push (Workers 배포 트리거)
     // [P0-1] 기존 코드는 `git pull --rebase` 실패를 `catch (_) {}` 로 삼킨 뒤
@@ -2137,10 +2194,12 @@ ${deployLine}`;
       ? `\n✅ 아침 뉴스 다이제스트 파이프라인이 성공적으로 종료되었습니다!`
       : `\n⚠️ 다이제스트: D1 등록은 성공했으나 GitHub 배포가 실패했습니다.`
   );
-  return { title, slug, filePath, success: true, deploySynced };
+  return { title, slug, filePath, success: true, deploySynced, d1Published };
   } catch (err) {
-    if (sessionLock && !sessionLock.alreadyHeld) {
+    if (!d1Published && sessionLock && !sessionLock.alreadyHeld) {
       sessionLock.releaseOnFailure?.();
+    } else if (d1Published) {
+      console.log(`🔒 [세션 락 보존] D1 DB 등록 완료 후 예외 발생. 당일 세션 락을 영구 보존합니다.`);
     }
     throw err;
   }
@@ -2149,7 +2208,10 @@ ${deployLine}`;
 
 // CLI 직접 실행 처리
 if (process.argv[1] && process.argv[1].endsWith('generate-news-digest.mjs')) {
-  runNewsDigestGeneration()
+  const args = process.argv.slice(2);
+  const dryRun = args.includes('--dry-run');
+  const force = args.includes('--force');
+  runNewsDigestGeneration({ dryRun, force })
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(`❌ [다이제스트 생성 실패]`, err.message);
