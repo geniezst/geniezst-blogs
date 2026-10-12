@@ -42,6 +42,8 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import sharp from 'sharp';
 
+process.env.WRANGLER_LOG_PATH = process.env.WRANGLER_LOG_PATH || '/tmp/wrangler.log';
+
 const NODE22_BIN = '/workspace/.node22/bin';
 if (fs.existsSync(NODE22_BIN) && !process.env.PATH?.includes(NODE22_BIN)) {
   process.env.PATH = `${NODE22_BIN}:${process.env.PATH || ''}`;
@@ -52,7 +54,7 @@ const UA =
 
 /** 정규화 정책 (FR-2.4) */
 export const IMAGE_POLICY = {
-  MIN_WIDTH: 250, // 본문 하한. 250px 이상 프레스/언론사 보도사진 허용 (아이콘/프로필 기각)
+  MIN_WIDTH: 500, // 본문 하한 (FR-1.5 규격: 500px 미만 기각)
   TARGET_WIDTH: 1200, // 정규화 기준 폭
   MAX_WIDTH: 1600, // 이 값을 넘으면 축소
   WEBP_QUALITY: 82,
@@ -126,37 +128,29 @@ export function isPlaceholderOrLogo(url) {
   if (!url) return true;
   const lower = url.toLowerCase();
 
-  // 1. 명백한 로고 / 심볼 / 브랜드 패턴
-  const logoPatterns = [
-    'logo', 'ci_', '_ci', 'bi_', '_bi', 'symbol', 'emblem', 'brand',
-    'korea_logo', 'header_logo', 'footer_logo', 'top_logo', 'site_logo',
-    'common_logo', 'press_logo', 'media_logo', 'company_logo', 'logo_'
-  ];
-  if (logoPatterns.some((p) => lower.includes(p))) return true;
+  // 1. 단어 경계를 엄격히 검사하는 로고/CI/BI/기본 패턴 (보도사진 내 'citizen', 'pacific', 'combination' 오탐 원천 차단)
+  // [사양 준수] /(?:^|[^a-z0-9])(?:ci|bi|logo|default)(?:[^a-z0-9]|$)/i
+  const strictBoundary = /(?:^|[^a-z0-9])(?:ci|bi|logo|default|symbol|emblem|brand)(?:[^a-z0-9]|$)/i;
+  if (strictBoundary.test(lower)) return true;
 
-  // 2. 기본/대체/플레이스홀더 이미지
-  const placeholderPatterns = [
-    'default', 'no_image', 'noimage', 'placeholder', 'empty', 'dummy',
+  // 2. 명시적 합성 로고/플레이스홀더 패턴
+  const specificPatterns = [
+    'korea_logo', 'header_logo', 'footer_logo', 'top_logo', 'site_logo',
+    'common_logo', 'press_logo', 'media_logo', 'company_logo',
+    'no_image', 'noimage', 'placeholder', 'empty', 'dummy',
     'blank', 'spacer', 'transparent', 'not_found', 'error_img',
     'opengraph_default', 'common_og', 'main_og', 'share_default',
     'korea_default', 'og_default', 'sns_default'
   ];
-  if (placeholderPatterns.some((p) => lower.includes(p))) return true;
+  if (specificPatterns.some((p) => lower.includes(p))) return true;
 
-  // 3. UI 컴포넌트, 아이콘, 배너
-  const uiPatterns = [
-    'favicon', 'icon_', '_icon', 'btn_', '_btn', 'button',
-    'banner_', '_banner', 'event_banner', 'ad_banner', 'popup_',
-    'gnb_', 'snb_', 'footer_', 'header_'
-  ];
-  if (uiPatterns.some((p) => lower.includes(p))) return true;
+  // 3. UI 컴포넌트, 아이콘, 배너 (단어 경계)
+  const uiRegex = /(?:^|[^a-z0-9])(?:favicon|icon|btn|button|banner|event_banner|ad_banner|popup|gnb|snb|footer|header)(?:[^a-z0-9]|$)/i;
+  if (uiRegex.test(lower)) return true;
 
   // 4. 기자 프로필 / 증명사진 (기사 내용과 무관한 기자 얼굴)
-  const reporterPatterns = [
-    'reporter', 'journalist', 'author_img', 'writer_img', 'profile_photo',
-    'profile_img', 'member_photo', 'staff_photo'
-  ];
-  if (reporterPatterns.some((p) => lower.includes(p))) return true;
+  const reporterRegex = /(?:^|[^a-z0-9])(?:reporter|journalist|author_img|writer_img|profile_photo|profile_img|member_photo|staff_photo)(?:[^a-z0-9]|$)/i;
+  if (reporterRegex.test(lower)) return true;
 
   // 5. 뉴스 애그리게이터 래퍼 페이지 자산 (출처 기사 이미지가 절대로 아님)
   //    [P0] 2026-09-29 실제 오발생. Google News RSS 링크(news.google.com/rss/articles/CBMi...)
@@ -476,6 +470,7 @@ function getCloudflareEnv(blogRoot) {
   const NODE22_BIN = '/workspace/.node22/bin';
   const LOCAL_BIN = path.join(blogRoot, 'node_modules', '.bin');
   env.PATH = `${NODE22_BIN}:${LOCAL_BIN}:${env.PATH || ''}`;
+  env.WRANGLER_LOG_PATH = process.env.WRANGLER_LOG_PATH || '/tmp/wrangler.log';
   return env;
 }
 

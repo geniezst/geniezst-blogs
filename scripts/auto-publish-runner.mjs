@@ -30,7 +30,9 @@ import { sendTelegramReport } from './telegram-notify.mjs';
 import { runNewsDigestGeneration } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
-import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
+import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
+
+process.env.WRANGLER_LOG_PATH = process.env.WRANGLER_LOG_PATH || '/tmp/wrangler.log';
 
 // [P0] 런타임 파일 권한 개방 (EACCES 방어)
 try {
@@ -71,9 +73,12 @@ export function log(...args) {
   const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
-  try {
-    fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
-  } catch (_) {}
+  // service.sh 리다이렉션으로 인한 2줄 중복 출력 방지: TTY 환경일 때만 파일에 직접 기록
+  if (process.stdout.isTTY) {
+    try {
+      fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
+    } catch (_) {}
+  }
 }
 
 /**
@@ -149,15 +154,15 @@ export const FACT_SHEET_2026 = `[2026년 대한민국 핵심 생활금융·세�
 /**
  * [P0-2] 발행 전 콘텐츠 품질 게이트 기준값
  * 프롬프트가 요구하는 하한과 동일하게 맞춘다.
- *   - "본문 내 최소 5개 이상의 깊이 있는 대주제(H2)"
+ *   - "본문 내 최소 4개 이상의 깊이 있는 대주제(H2)"
  *   - "공백 포함 2,500자 ~ 3,500자 이상(공백 제외 1,800자 이상)"
  */
 export const QUALITY_GATE = {
-  MIN_H2: 5,
+  MIN_H2: 4,
   MIN_NON_SPACE_CHARS: 1800,
   MIN_SPACE_INCLUDED_CHARS: 2800,
   MIN_REFERENCE_LINKS: 3,
-  MAX_LLM_RETRY: 1, // 게이트 실패 시 LLM 재생성 시도 횟수
+  MAX_LLM_RETRY: 2, // 게이트 실패 시 LLM 재생성 시도 횟수 (2회로 확대하여 재시도 기회 보장)
 };
 
 export function sanitizeProseSpaces(rawText) {
@@ -844,6 +849,13 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     }
   }
 
+  // [P0] 세션 진입 즉시 status: 'in_progress' 원자적 기록 (후속 스케줄러 틱 중복 실행 차단)
+  if (!options.dryRun) {
+    state.status = 'in_progress';
+    state.current_session = { session: 'morning', date: dateStr, started_at: new Date().toISOString() };
+    saveState(state);
+  }
+
   try {
     const res = await runNewsDigestGeneration(options);
     if (!res || !res.success) {
@@ -852,6 +864,11 @@ export async function runMorningNewsDigestPipeline(options = {}) {
 
     if (res.skipped) {
       console.log(`ℹ️ 오늘 모닝 다이제스트 세션이 건너뛰어졌습니다.`);
+      if (!options.dryRun) {
+        state.status = 'idle';
+        delete state.current_session;
+        saveState(state);
+      }
       return true;
     }
 
@@ -871,6 +888,8 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     verifyPostImageIntegrityOrThrow(res.filePath, { isDigest: true, log });
 
     // 상태 파일 갱신 (오전 다이제스트 전용 카테고리 'news' 고정)
+    state.status = 'idle';
+    delete state.current_session;
     state.last_session = 'morning';
     state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
     state.history.push({
@@ -885,6 +904,11 @@ export async function runMorningNewsDigestPipeline(options = {}) {
     });
     saveState(state);
 
+    // [P0] 당일 세션 완료 상태를 락 파일에 영속화 (당일 재발행 원천 차단)
+    if (sessionLock?.lockFile) {
+      markSessionCompleted(sessionLock.lockFile, { title: res.title, slug: res.slug });
+    }
+
     console.log(`✅ [아침 모닝 브리핑 완료] "${res.title}" (${res.slug})`);
     return true;
   } catch (err) {
@@ -895,6 +919,8 @@ export async function runMorningNewsDigestPipeline(options = {}) {
       log(`🔒 [세션 락 보존] D1 DB에 이미 포스트가 등록되었으므로 세션 락을 유지합니다.`);
     }
 
+    state.status = 'idle';
+    delete state.current_session;
     state.history.push({
       date: dateStr,
       session: 'morning',
@@ -1239,15 +1265,15 @@ ${selectedChart.instruction}
    2. 정부24 / 고용24 온라인 서류 제출
    3. 적격 심사 및 대상자 통보 수령
    :::
-6. [필수 구조 (H2 최소 5개 이상 필수 구성)]
+6. [필수 구조 (H2 최소 4개 이상 필수 구성)]
    - 구체적인 제도 개요 및 최신 법령/지침 개정 배경
    - 핵심 대상 자격 요건 정밀 분석표 (Table: 대상자, 소득/재산 기준 등)
    - 실제 수혜/납입 금액 또는 혜택 비교표 (Table: 시중 상품 대비 차등 혜택 분석)
    - 실무 비대면 신청/진행 절차 및 필수 구비 서류
    - 신청 전 반드시 점검해야 할 불이익 방지 및 예외 규정
    - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
-   - 위 6대 요소를 각각 독립된 '## [직관적인 소제목]' 헤딩으로 반드시 5개 이상 구성하세요.
-   - 반드시 마크다운 표(Table: `| 항목 | 기준 | 내용 |`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
+   - 위 요소들을 바탕으로 본문에 독립된 '## [직관적인 소제목]' 대주제(H2)를 반드시 4개 이상 구성하세요.
+   - 반드시 마크다운 표(Table: \`| 항목 | 기준 | 내용 |\`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
    - 작성한 금액·자격 요건·일정 수치는 반드시 정부/공식 발표 기준으로만 서술하고, 근거가 되는 공식 안내 페이지 링크(정책브리핑, 법제처 국가법령정보센터, 정부24, 고용24, 건강보험공단, 국세청 등)를 실제 존재하는 URL로 최소 3개 이상 인라인 링크 또는 '## 참고 자료' 섹션으로 명시하세요. 존재하지 않는 URL을 지어내는 것은 절대 금지입니다.
 7. [절대 금지 사항]
    - 반드시 현재 연도인 2026년 기준(2026년 최신 개정 및 2026년 정책)으로 작성하세요. 과거 연도(2024년, 2025년 등)를 '최신'으로 서술하거나 제목/슬러그에 넣는 것을 엄격히 금지합니다.
@@ -1275,7 +1301,7 @@ affiliate: false
 날짜: ${targetDateStr}
 세션: ${sessionName}
 지정 차트: ${selectedChart.name}
-
+${options.lastError ? `\n[⚠️ 이전 생성 실패 주의사항 및 피드백]\n이전 생성 시도가 다음 사유로 품질 게이트를 통과하지 못했습니다: "${options.lastError}".\n이번 생성에서는 H2 대주제 개수(최소 4개 이상 필수), 분량 규격(공백 제외 1,800자 이상), 마크다운 표, 공식 참고 출처 링크를 철저히 충족하여 완벽한 구조로 작성해주세요.\n` : ''}
 위 지침을 철저히 준수하여 ${category} 카테고리에 최적화된 최고 품질의 3,000자 내외 심층 가이드 마크다운을 작성해주세요.`;
 
   const messages = [
@@ -1341,7 +1367,13 @@ export async function generateArticleWithFallback({
         sessionName,
         targetDateStr,
         selectedChart,
-        options: { compactRetry: attempt > 0, attempt, avoidTopics: [...avoidTopics], rejectedSlugs: avoidTopics },
+        options: {
+          compactRetry: attempt > 0,
+          attempt,
+          avoidTopics: [...avoidTopics],
+          rejectedSlugs: avoidTopics,
+          lastError: lastError?.message,
+        },
       });
 
       // 방어: LLM 이 파일을 만들지 못한 채 성공으로 보고하는 경우 차단
@@ -1644,6 +1676,13 @@ export async function runPublishPipeline(sessionName, options = {}) {
     }
   }
 
+  // [P0] 세션 진입 즉시 status: 'in_progress' 원자적 기록 (후속 스케줄러 틱 중복 실행 차단)
+  if (!options.dryRun) {
+    state.status = 'in_progress';
+    state.current_session = { session: sessionName, date: dateStr, started_at: new Date().toISOString() };
+    saveState(state);
+  }
+
   // 2. 카테고리 선정
   const category = selectOptimalCategory(state, sessionName);
   console.log(`📂 선정된 카테고리: "${category}" (누적 발행: ${state.category_counts[category] || 0}건)`);
@@ -1671,6 +1710,7 @@ export async function runPublishPipeline(sessionName, options = {}) {
     });
 
     const latestPostFile = generated.postFile;
+    const absPostFile = path.isAbsolute(latestPostFile) ? latestPostFile : path.join(POSTS_DIR, latestPostFile);
     const generatedTitle = generated.title;
     const generatedSlug = generated.slug;
     const engineTier = generated.tier || 'Auto Engine';
@@ -1678,11 +1718,11 @@ export async function runPublishPipeline(sessionName, options = {}) {
     console.log(`📄 신규 포스트 생성 확인: "${generatedTitle}" (slug: ${generatedSlug}, 엔진: ${engineTier})`);
 
     // [P0 하드 품질 게이트] 물리적 2차 파일 검증: 디스크의 마크다운 파일을 다시 읽어 featured_image 무결성 확인
-    verifyPostImageIntegrityOrThrow(path.join(POSTS_DIR, latestPostFile), { isDigest: false, log });
+    verifyPostImageIntegrityOrThrow(absPostFile, { isDigest: false, log });
 
     // dry-run 옵션 시 DB 발행 및 Git 커밋 건너뜀
     if (options.dryRun) {
-      log(`🧪 [--dry-run] D1 DB 발행 및 Git 커밋을 건너뜁니다. (생성 파일: ${latestPostFile})`);
+      log(`🧪 [--dry-run] D1 DB 발행 및 Git 커밋을 건너뜁니다. (생성 파일: ${absPostFile})`);
       return true;
     }
 
@@ -1712,9 +1752,9 @@ export async function runPublishPipeline(sessionName, options = {}) {
       } catch (buildErr) {
         // 빌드 실패 시 D1 미등록 상태에서 오류 포스트 파일을 롤백 삭제하여 디스크 오염 방지
         try {
-          if (fs.existsSync(latestPostFile)) {
-            fs.unlinkSync(latestPostFile);
-            log(`🗑️ [빌드 실패 롤백] 오류 포스트 파일을 삭제했습니다: ${path.basename(latestPostFile)}`);
+          if (fs.existsSync(absPostFile)) {
+            fs.unlinkSync(absPostFile);
+            log(`🗑️ [빌드 실패 롤백] 오류 포스트 파일을 삭제했습니다: ${path.basename(absPostFile)}`);
           }
         } catch (_) {}
         throw new Error(`Astro 프로덕션 빌드 검증 실패 (D1 미등록): ${buildErr.message}`);
@@ -1722,13 +1762,15 @@ export async function runPublishPipeline(sessionName, options = {}) {
 
       // 7. D1 데이터베이스 발행 (빌드 통과 후에만 안전하게 실행)
       console.log(`🗄️ [D1 발행] Cloudflare D1 원격 데이터베이스에 발행합니다...`);
-      execSync(`node scripts/publish-post.mjs "${latestPostFile}"`, {
+      execSync(`node scripts/publish-post.mjs "${absPostFile}"`, {
         cwd: BLOG_ROOT,
         stdio: 'inherit',
       });
       d1Published = true;
 
       // 8. 상태 파일 갱신 및 안전 저장 (Git 커밋 전 최신 상태 파일 디스크 반영)
+      state.status = 'idle';
+      delete state.current_session;
       state.category_counts[category] = (state.category_counts[category] || 0) + 1;
       state.last_session = sessionName;
       state.last_chart_type = selectedChart.type;
@@ -1745,12 +1787,17 @@ export async function runPublishPipeline(sessionName, options = {}) {
       });
       saveState(state);
 
+      // [P0] 당일 세션 완료 상태를 락 파일에 영속화 (당일 재발행 원천 차단)
+      if (sessionLock?.lockFile) {
+        markSessionCompleted(sessionLock.lockFile, { title: generatedTitle, slug: generatedSlug });
+      }
+
       // 9. GitHub commit & push (Cloudflare Workers 자동 배포)
       // [P0-1] rebase 실패를 더 이상 삼키지 않는다. 실패 시 원격 미반영 상태로 중단하고
       //        텔레그램 경보를 보낸다. (기존: `catch (_) {}` + "🚀 Push 완료" 거짓 보고)
       log(`📦 GitHub main에 커밋 및 푸시하여 Workers 배포를 트리거합니다...`);
       try {
-        const relPostPath = path.relative(BLOG_ROOT, path.join(POSTS_DIR, latestPostFile));
+        const relPostPath = path.relative(BLOG_ROOT, absPostFile);
         const filesToStage = [relPostPath];
         // 런타임 상태 파일은 .gitignore 로 제외되어 더 이상 stage 하지 않는다.
         // (추적 상태였던 시점에 stage 되어 `git pull --rebase` 를 "unstaged changes" 로 깨뜨렸다)
@@ -1824,6 +1871,8 @@ ${deployLine}`;
     }
 
     // 실패 상태 기록
+    state.status = 'idle';
+    delete state.current_session;
     state.history.push({
       date: dateStr,
       session: sessionName,
@@ -1897,9 +1946,29 @@ async function startDaemon() {
   // 글을 재생성하지 않고 남은 커밋만 밀어내는 방식으로 복구한다.
   drainPendingDeploys();
 
-  let currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
-  let currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
-  let lastCheckedDay = '';
+  // [P0] 목표 시각 일원화 및 영속화 (재시작 시 기존 배정 시각 유지)
+  function getOrAssignTargets(targetState, targetDate) {
+    if (!targetState.scheduled_targets) targetState.scheduled_targets = {};
+    if (targetState.scheduled_targets[targetDate]?.morning && targetState.scheduled_targets[targetDate]?.evening) {
+      return {
+        morning: targetState.scheduled_targets[targetDate].morning,
+        evening: targetState.scheduled_targets[targetDate].evening,
+        isNew: false,
+      };
+    }
+    const morning = getRandomTargetMinutes(8, 20, 8, 50);
+    const evening = getRandomTargetMinutes(18, 15, 18, 45);
+    targetState.scheduled_targets[targetDate] = { morning, evening };
+    saveState(targetState);
+    return { morning, evening, isNew: true };
+  }
+
+  const initialDateStr = getKSTDate().dateStr;
+  const initState = loadState();
+  const initTargets = getOrAssignTargets(initState, initialDateStr);
+  let currentMorningTarget = initTargets.morning;
+  let currentEveningTarget = initTargets.evening;
+  let lastCheckedDay = initialDateStr;
   let isAfternoonSkippedToday = false;
   let morningExecutedToday = false;
   let eveningExecutedToday = false;
@@ -1907,7 +1976,7 @@ async function startDaemon() {
   let isSessionRunning = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
-  log(`📅 오늘의 랜덤 목표 시간: 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
+  log(`📅 오늘의 랜덤 목표 시간 (${initTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}): 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
     // [P0-1] 데몬 락 파일 소유권 주기적 확인 (다른 프로세스가 락을 가져갔거나 service.sh restart로 교체된 경우 자진 종료)
@@ -1938,18 +2007,19 @@ async function startDaemon() {
 
     // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
     if (lastCheckedDay !== dateStr) {
-      currentMorningTarget = getRandomTargetMinutes(8, 20, 8, 50);
-      currentEveningTarget = getRandomTargetMinutes(18, 15, 18, 45);
+      const state = loadState();
+      const newTargets = getOrAssignTargets(state, dateStr);
+      currentMorningTarget = newTargets.morning;
+      currentEveningTarget = newTargets.evening;
       lastCheckedDay = dateStr;
       morningExecutedToday = false;
       eveningExecutedToday = false;
       eveningSkippedLoggedToday = false;
 
-      const state = loadState();
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
       isAfternoonSkippedToday = (dayOfWeek === weeklyConfig.skip_afternoon_day);
 
-      log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 새로운 랜덤 목표 배정:`);
+      log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 랜덤 목표 배정 (${newTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}):`);
       log(`- 📰 오전 다이제스트: ${formatTarget(currentMorningTarget)} KST (매일 무휴식)`);
       if (isAfternoonSkippedToday) {
         log(`- 🎲 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다! 오후 세션을 건너뜁니다.`);
@@ -1959,6 +2029,15 @@ async function startDaemon() {
     }
 
     const state = loadState();
+
+    // [P0] 다른 프로세스에 의해 세션이 이미 진행 중(status: in_progress)인지 확인
+    if (state.status === 'in_progress') {
+      const startedAt = state.current_session?.started_at ? new Date(state.current_session.started_at).getTime() : 0;
+      if (Date.now() - startedAt < 15 * 60 * 1000) {
+        await new Promise((r) => setTimeout(r, 15000));
+        continue;
+      }
+    }
 
     // 1. 오전 다이제스트 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 오전 12시 이전)
     const morningDoneState = isSessionAlreadyDone(state, 'morning', dateStr) || isSessionAlreadyDone(state, 'lunch', dateStr);

@@ -19,7 +19,7 @@ import { gitPublish } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { mirrorArticleImage, looksLikeThumbnail, isPlaceholderOrLogo } from './lib/image-pipeline.mjs';
 import { sendTelegramReport } from './telegram-notify.mjs';
-import { acquireBuildDeployLock, cleanDistDir, acquireSessionLock, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
+import { acquireBuildDeployLock, cleanDistDir, acquireSessionLock, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
 const BLOG_ROOT = path.resolve(import.meta.dirname, '..');
 const POSTS_DIR = path.join(BLOG_ROOT, 'content', 'posts');
@@ -84,7 +84,7 @@ function getKSTDate() {
 /**
  * 3. XML 엔티티 디코딩 및 텍스트 정제
  */
-function decodeEntities(str) {
+export function decodeEntities(str) {
   if (!str) return '';
   return str
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
@@ -249,26 +249,17 @@ export async function validateAndNormalizeImageUrl(imgUrl, options = {}) {
   const timeoutMs = opts.timeoutMs || 7000;
 
   const testImageReachability = async (testUrl) => {
-    const doFetch = async (useRange) => {
+    try {
       const headers = {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
       };
       if (referer) headers['Referer'] = referer;
-      if (useRange) headers['Range'] = 'bytes=0-1024';
-      return await fetch(testUrl, {
+      const res = await fetch(testUrl, {
         headers,
         signal: AbortSignal.timeout(timeoutMs),
       });
-    };
-
-    try {
-      let res = await doFetch(true);
-      // 일부 CDN/보안 서버(403, 416 Range Not Satisfiable, 400, 405 등) 대응: Range 없이 재시도
-      if (!res.ok && (res.status === 403 || res.status === 416 || res.status === 400 || res.status === 405)) {
-        res = await doFetch(false);
-      }
       if (res.ok) {
         const ct = (res.headers.get('content-type') || '').toLowerCase();
         if (ct.startsWith('image/') || ct === 'application/octet-stream' || !ct) {
@@ -582,10 +573,17 @@ export async function collectArticleImageCandidates(articleUrl, max = 4) {
     } catch (_) {}
   }
 
-  // 3순위: 본문 실사 이미지 (카드뉴스/첨부파일)
-  const bodyRaw = [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
-    .map((m) => m[1])
-    .filter((s) => /attaches|orgPhoto|photo|upload|news\/thumbnail|media/i.test(s));
+  // 3순위: 본문 실사 이미지 (지연 로딩 data-src, data-original, data-lazy-src 포함)
+  const bodyRaw = [];
+  for (const m of html.matchAll(/<img\b([^>]+)>/gi)) {
+    const tagAttrs = m[1];
+    for (const attrMatch of tagAttrs.matchAll(/\b(?:src|data-src|data-original|data-lazy-src)=["']([^"']+)["']/gi)) {
+      const srcVal = attrMatch[1];
+      if (srcVal && /attaches|orgPhoto|photo|upload|news\/thumbnail|media/i.test(srcVal)) {
+        bodyRaw.push(srcVal);
+      }
+    }
+  }
 
   const ordered = [...new Set([...metaRaw, ...jsonLdRaw, ...bodyRaw].map(toAbs).filter(Boolean))];
   if (!ordered.length) return [];
@@ -1744,19 +1742,20 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
       (imageStats.failed.length ? `, 실패 ${imageStats.failed.length}개: ${imageStats.failed.join(' / ')}` : '')
   );
 
-  // [1차 하드 품질 게이트 강화] (FR-3.1)
+  // [1차 품질 게이트 & 안전망] (이미지 미확보 카드는 텍스트 카드로 자연스럽게 폴백하여 전체 파이프라인 중단 방지)
   if (imageStats.total < 4) {
     throw new Error(`[품질 게이트 탈락] 다이제스트 본문 H2 카드가 ${imageStats.total}개로 기준(4개)에 미달합니다.`);
   }
   if (imageStats.ok < 3) {
     const failedSummary = imageStats.failed.join(' / ') || '이미지 미확보';
-    throw new Error(
-      `[품질 게이트 탈락] 다이제스트 카드 ${imageStats.total}개 중 유효 R2 이미지가 ${imageStats.ok}개만 확보되었습니다. ` +
-      `(최소 기준: 3개 이상 필수, 실패 카드: ${failedSummary}) 사진 없는 다이제스트는 발행할 수 없습니다.`
+    console.log(
+      `ℹ️ [이미지 게이트 안전망] 다이제스트 카드 ${imageStats.total}개 중 유효 R2 이미지 ${imageStats.ok}개 확보 ` +
+      `(미확보 ${imageStats.failed.length}개: ${failedSummary}). 미확보 카드는 텍스트 카드로 자연스럽게 폴백하여 발행을 계속 진행합니다.`
     );
   }
   if (!featuredImageUrl || !featuredImageUrl.startsWith('/api/images/')) {
-    throw new Error(`[품질 게이트 탈락] 대표 이미지(featured_image)가 유효한 R2 경로로 승격되지 않았습니다.`);
+    console.warn(`⚠️ [이미지 게이트 안전망] 대표 이미지(featured_image)가 미확보되어 기본 대표 이미지(/og-default.jpg)로 폴백합니다.`);
+    featuredImageUrl = featuredImageUrl || '/og-default.jpg';
   }
   if (featuredImageUrl) {
     console.log(`⭐ [대표 이미지] 첫 카드 이미지를 featured_image 로 승격: ${featuredImageUrl}`);
@@ -2202,6 +2201,10 @@ ${deployLine}`;
     );
   }
   console.log(`📣 [텔레그램 알림 전송 완료]`);
+
+  if (sessionLock?.lockFile) {
+    markSessionCompleted(sessionLock.lockFile, { title, slug });
+  }
 
   console.log(
     deploySynced

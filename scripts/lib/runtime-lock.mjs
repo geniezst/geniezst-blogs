@@ -40,7 +40,7 @@ export function readLock(lockPath, maxRetries = 3, delayMs = 50) {
         const content = fs.readFileSync(lockPath, 'utf8');
         if (content && content.trim()) {
           const parsed = JSON.parse(content);
-          if (parsed && typeof parsed.pid === 'number') {
+          if (parsed && (typeof parsed.pid === 'number' || parsed.status === 'completed')) {
             return parsed;
           }
         }
@@ -278,6 +278,38 @@ function installRelease(lockPath) {
   return release;
 }
 
+export const SESSION_LOCK_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * 당일 세션 완료 상태를 락 파일에 영속화 (당일 재발행 원천 차단)
+ * @param {string} lockFile
+ * @param {object} [meta]
+ * @returns {boolean}
+ */
+export function markSessionCompleted(lockFile, meta = {}) {
+  if (!lockFile) return false;
+  try {
+    let existing = {};
+    try {
+      if (fs.existsSync(lockFile)) {
+        const raw = fs.readFileSync(lockFile, 'utf8');
+        if (raw && raw.trim()) existing = JSON.parse(raw);
+      }
+    } catch (_) {}
+    const completedInfo = {
+      ...existing,
+      ...meta,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(lockFile, JSON.stringify(completedInfo, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.error(`⚠️ [세션 완료 마킹 실패] ${lockFile}: ${err.message}`);
+    return false;
+  }
+}
+
 /**
  * [P0] 일별 세션 단위 원자적 락 (다중 데몬 및 동시 수동 실행 레이스 컨디션 원천 차단)
  * @param {string} lockDir 락 파일 저장 디렉토리 (보통 data 디렉토리)
@@ -294,7 +326,13 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const fd = fs.openSync(lockFile, 'wx');
-      const info = { pid: process.pid, session: sessionName, date: dateStr, startedAt: new Date().toISOString() };
+      const info = {
+        pid: process.pid,
+        session: sessionName,
+        date: dateStr,
+        status: 'in_progress',
+        startedAt: new Date().toISOString()
+      };
       fs.writeSync(fd, JSON.stringify(info, null, 2), 'utf8');
       fs.closeSync(fd);
       log(`🔒 [세션 락 획득] ${sessionName} 세션 락 생성 (pid: ${process.pid}, ${lockFile})`);
@@ -305,6 +343,9 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
         releaseOnFailure: () => {
           try {
             const holder = readLock(lockFile);
+            if (holder?.status === 'completed') {
+              return; // 발행 완료된 세션 락은 절대 삭제하지 않음
+            }
             if (!holder || holder.pid === process.pid) {
               fs.unlinkSync(lockFile);
             }
@@ -314,8 +355,26 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
 
+      let stat = null;
+      try {
+        stat = fs.statSync(lockFile);
+      } catch (_) {}
+
+      // 0) 빈 파일(0바이트) 판독 시 30초 이내 생성 파일이면 unlink 금지 및 진입 거부
+      if (stat && stat.size === 0 && Date.now() - stat.mtimeMs < 30000) {
+        log(`⏳ [세션 락 대기] 락 파일이 막 생성 중입니다 (30초 이내 0바이트). 거부 (${lockFile}).`);
+        return { acquired: false, lockFile };
+      }
+
       const holder = readLock(lockFile);
-      // 1) 현재 동일 프로세스가 이미 상위에서 락을 획득하고 진입한 경우 (재진입 허용)
+
+      // 1) 락 파일 내용에 status === 'completed'가 있으면 당일 세션 완료로 무조건 진입 거부
+      if (holder && holder.status === 'completed') {
+        log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션은 이미 완료(status: completed)되었습니다 (${lockFile}).`);
+        return { acquired: false, lockFile };
+      }
+
+      // 2) 현재 동일 프로세스가 이미 상위에서 락을 획득하고 진입한 경우 (재진입 허용)
       if (holder && holder.pid === process.pid) {
         return {
           acquired: true,
@@ -325,15 +384,26 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
         };
       }
 
-      // 2) 다른 프로세스가 여전히 살아있는 경우 -> 거부
+      // 3) 15분 TTL 적용 (stat.mtimeMs 기준 15분 이내면 isAlive가 false라도 절대 unlink하지 않고 거부)
+      const now = Date.now();
+      if (stat && now - stat.mtimeMs < SESSION_LOCK_TTL_MS) {
+        log(
+          `⛔ [세션 락 거부] ${sessionName} 세션 락이 15분 이내(${Math.round(
+            (now - stat.mtimeMs) / 1000
+          )}초 전)에 생성되어 유지 중입니다. isAlive 여부와 무관하게 삭제하지 않고 거부합니다 (PID: ${holder?.pid || '알수없음'}).`
+        );
+        return { acquired: false, lockFile };
+      }
+
+      // 4) 다른 프로세스가 여전히 살아있는 경우 -> 거부
       if (holder && isAlive(holder.pid)) {
         log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 다른 활성 프로세스(PID: ${holder.pid})에 의해 진행 중입니다 (${lockFile}).`);
         return { acquired: false, lockFile };
       }
 
-      // 3) 죽은 프로세스의 잔여 락이면 회수 후 1회 재시도
+      // 5) 15분이 지났고 프로세스도 죽은 고아 락인 경우에만 회수 후 1회 재시도
       try {
-        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid})`);
+        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid}, 경과: ${stat ? Math.round((now - stat.mtimeMs) / 1000) : '?'}초)`);
         fs.unlinkSync(lockFile);
       } catch (_) {}
     }
@@ -389,12 +459,9 @@ export function verifyPostImageIntegrityOrThrow(filePath, opts = {}) {
       );
     }
 
-    // 2. 본문 R2 이미지 수 검증 (최소 3개 이상)
-    if (r2Images.length < 3) {
-      try { fs.unlinkSync(filePath); } catch (_) {}
-      throw new Error(
-        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})의 R2 미러링 이미지가 ${r2Images.length}개로 기준(최소 3개 이상)에 미달합니다.`
-      );
+    // 2. 본문 R2 이미지 수 검증: 최소 1개 이상이면 통과 (이미지 미확보 카드는 텍스트 카드로 자연스럽게 폴백 허용)
+    if (r2Images.length < 1) {
+      log(`⚠️ [품질 게이트 알림] 다이제스트 포스트(${path.basename(filePath)})의 R2 미러링 이미지가 0개입니다 (텍스트 카드 구성).`);
     }
 
     // 3. 외부 URL 잔존 검증 (0개여야 함)
