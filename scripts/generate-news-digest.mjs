@@ -1712,7 +1712,8 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
 
     // 기존의 이미지 태그 및 사진 출처 p태그를 말끔히 정리 후 재구성
     let rest = h2EndIdx !== -1 ? trimmedSec.slice(h2EndIdx).trim() : '';
-    rest = rest.replace(/!\[[^\]]*\]\([^\)]+\)\s*/g, '');
+    const NESTED_MD_IMAGE_REGEX = /!\[(?:\[[^\]]*\]|[^\]])*\]\([^\)]+\)\s*/g;
+    rest = rest.replace(NESTED_MD_IMAGE_REGEX, '');
     rest = rest.replace(/<p class="text-xs text-center[^>]*>.*?<\/p>\s*/gi, '');
 
     // ★ [엄격 규칙] 오직 출처 기사에 실린 실제 검증 이미지만 삽입 (중복 이미지 절대 금지)
@@ -1731,18 +1732,31 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
   const markerCount = (body.match(/<!--\s*no-image\s*-->/g) || []).length;
   body = body.replace(/[ \t]*<!--\s*no-image\s*-->\s*/g, '').replace(/\n{3,}/g, '\n\n');
 
+  // [2] 외부 HTTP(S) URL 잔존 엄격 검사 및 소거 (FR-2.2)
+  const rawExternalLeftover = [...body.matchAll(/!\[.*?\]\((https?:\/\/[^\)]+)\)/gi)];
+  if (rawExternalLeftover.length > 0) {
+    console.warn(`⚠️ [경고] 본문에 미러링되지 않은 외부 이미지 ${rawExternalLeftover.length}건 감지 → 강제 소거합니다.`);
+    body = body.replace(/!\[.*?\]\(https?:\/\/[^\)]+\)\s*(?:<p[^>]*>.*?<\/p>)?\s*/gi, '');
+  }
+
   console.log(
     `🖼️  [이미지 요약] 카드 ${imageStats.total}개 중 ${imageStats.ok}개 확보` +
       (imageStats.failed.length ? `, 실패 ${imageStats.failed.length}개: ${imageStats.failed.join(' / ')}` : '')
   );
 
-  // [P0 하드 품질 게이트] 출처 이미지 1장도 미확보 시 배포 차단
-  if (imageStats.total === 0) {
-    throw new Error(`[품질 게이트 탈락] 다이제스트 본문에서 H2 뉴스 카드가 0개 인식되었습니다. 본문 서식(## 헤드라인)을 확인하세요.`);
+  // [1차 하드 품질 게이트 강화] (FR-3.1)
+  if (imageStats.total < 4) {
+    throw new Error(`[품질 게이트 탈락] 다이제스트 본문 H2 카드가 ${imageStats.total}개로 기준(4개)에 미달합니다.`);
   }
-  if (imageStats.ok === 0) {
-    const failedSummary = imageStats.failed.join(' / ') || '전체 카드 이미지 실패';
-    throw new Error(`[품질 게이트 탈락] 다이제스트 기사 출처 대표 이미지가 0개 확보되었습니다. (실패 카드: ${failedSummary}) 사진 없는 게시글은 발행할 수 없습니다.`);
+  if (imageStats.ok < 3) {
+    const failedSummary = imageStats.failed.join(' / ') || '이미지 미확보';
+    throw new Error(
+      `[품질 게이트 탈락] 다이제스트 카드 ${imageStats.total}개 중 유효 R2 이미지가 ${imageStats.ok}개만 확보되었습니다. ` +
+      `(최소 기준: 3개 이상 필수, 실패 카드: ${failedSummary}) 사진 없는 다이제스트는 발행할 수 없습니다.`
+    );
+  }
+  if (!featuredImageUrl || !featuredImageUrl.startsWith('/api/images/')) {
+    throw new Error(`[품질 게이트 탈락] 대표 이미지(featured_image)가 유효한 R2 경로로 승격되지 않았습니다.`);
   }
   if (featuredImageUrl) {
     console.log(`⭐ [대표 이미지] 첫 카드 이미지를 featured_image 로 승격: ${featuredImageUrl}`);

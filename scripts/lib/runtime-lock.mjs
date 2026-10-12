@@ -373,27 +373,44 @@ export function verifyPostImageIntegrityOrThrow(filePath, opts = {}) {
   const featMatch = yaml.match(/featured_image:\s*["']?([^"'\n]*)["']?/);
   const featuredImage = featMatch ? featMatch[1].trim() : '';
 
-  // 2) 본문 이미지 태그 검출 (![alt](url)) - none, null, undefined, 없음 배제
-  const imgTagRegex = /!\[.*?\]\((?!none|null|undefined|없음)(https?:\/\/[^\)]+|\/api\/images\/[^\)]+)\)/gi;
-  const bodyImages = [...body.matchAll(imgTagRegex)];
+  // R2 미러링 이미지와 외부 이미지 구분 검출
+  const r2ImageRegex = /!\[.*?\]\((\/api\/images\/[^\)]+)\)/gi;
+  const externalImageRegex = /!\[.*?\]\((?!none|null|undefined|없음)(https?:\/\/[^\)]+)\)/gi;
+
+  const r2Images = [...body.matchAll(r2ImageRegex)];
+  const externalImages = [...body.matchAll(externalImageRegex)];
 
   if (isDigest) {
-    // 다이제스트: featured_image 필수 AND 본문 카드 이미지 1개 이상 필수
-    if (!featuredImage || featuredImage === '' || bodyImages.length === 0) {
+    // 1. featured_image 엄격 검증
+    if (!featuredImage || !featuredImage.startsWith('/api/images/')) {
       try { fs.unlinkSync(filePath); } catch (_) {}
       throw new Error(
-        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})에 유효한 출처 이미지가 없습니다. ` +
-        `(featured_image: "${featuredImage}", 본문 이미지 태그: ${bodyImages.length}개). ` +
-        `사진 없는 다이제스트는 발행할 수 없습니다. 불완전한 파일을 삭제하고 배포를 차단합니다.`
+        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})에 유효한 대표 이미지(featured_image)가 없습니다. (값: "${featuredImage}")`
+      );
+    }
+
+    // 2. 본문 R2 이미지 수 검증 (최소 3개 이상)
+    if (r2Images.length < 3) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      throw new Error(
+        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})의 R2 미러링 이미지가 ${r2Images.length}개로 기준(최소 3개 이상)에 미달합니다.`
+      );
+    }
+
+    // 3. 외부 URL 잔존 검증 (0개여야 함)
+    if (externalImages.length > 0) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      throw new Error(
+        `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})에 미러링되지 않은 외부 원본 이미지 태그가 ${externalImages.length}개 존재합니다.`
       );
     }
   } else {
     // 저녁 심층글: featured_image 빈 문자열 허용, 이미지가 없더라도 파일 삭제 금지
     // (기술 심층글/생활경제 분석글은 코드 블록, 표, 인포그래픽 박스 기반으로 구성됨)
-    log(`ℹ️ [심층 가이드 이미지 검증] featured_image: "${featuredImage || '(없음 - 텍스트/컴포넌트 중심)'}", 본문 이미지 태그: ${bodyImages.length}개`);
+    log(`ℹ️ [심층 가이드 이미지 검증] featured_image: "${featuredImage || '(없음 - 텍스트/컴포넌트 중심)'}", 본문 이미지 태그: ${r2Images.length + externalImages.length}개`);
   }
 
-  log(`✅ [물리적 2차 품질 게이트 통과] ${path.basename(filePath)} (featured_image: "${featuredImage}", 본문 이미지 태그: ${bodyImages.length}개)`);
+  log(`✅ [물리적 2차 품질 게이트 통과] ${path.basename(filePath)} (featured_image: "${featuredImage}", R2 이미지: ${r2Images.length}개)`);
   return true;
 }
 

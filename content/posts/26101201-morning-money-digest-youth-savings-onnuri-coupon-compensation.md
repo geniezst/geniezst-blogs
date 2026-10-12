@@ -6,7 +6,10 @@ category: "news"
 tags: ["새소식", "모닝브리핑", "생활금융", "정부지원금", "환급금"]
 author: "포켓머니"
 reading_time: 4
-featured_image: ""
+featured_image: "/api/images/2026/10/morning-money-digest-youth-savings-onnur-8a91f9708d7c.webp"
+image_width: 500
+image_height: 281
+og_image: "/api/images/2026/10/morning-money-digest-youth-savings-onnur-8a91f9708d7c-og.jpg"
 affiliate: false
 post_type: "digest"
 ---
@@ -22,6 +25,9 @@ post_type: "digest"
 
 ## 청년미래적금, 출생연도 무관 16일까지 신청 가능
 
+![청년미래적금, 출생연도 무관 16일까지 신청 가능](/api/images/2026/10/morning-money-digest-youth-savings-onnur-8a91f9708d7c.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.yonhapnewstv.co.kr/news/AKR20261011161158USK" target="_blank" rel="noopener noreferrer">연합뉴스TV</a></p>
+
 > **출처**: [연합뉴스TV](https://www.yonhapnewstv.co.kr/news/AKR20261011161158USK)  
 > **발행**: 2026-10-11 07:12 KST | **신뢰도**: 보도자료
 
@@ -35,11 +41,14 @@ post_type: "digest"
 청년미래적금은 정부가 청년들의 자산 형성을 돕기 위해 출시한 정책 금융 상품으로, 높은 금리 혜택이 특징입니다. 특히 이번 2차 신청부터 출생연도 제한이 풀리면서 더 많은 청년들이 가입 기회를 얻게 되었습니다. 만 19세 이상 34세 이하의 청년 중 일정 소득 기준을 충족하는 미혼 청년이라면 누구나 신청할 수 있습니다. 짧은 신청 기간(16일까지)을 놓치지 않도록 서둘러 신청 요건을 확인하고 가까운 은행을 방문하거나 온라인으로 가입 절차를 진행하는 것이 중요합니다. 고금리 시대에 청년들이 목돈을 마련할 수 있는 좋은 기회이므로 적극적인 관심이 필요합니다.
 
 > **관련 가이드**:  
-> [2026년 청년내일저축계좌 3차 신청- 월 10만원으로 3년 만기 1,440만원 목돈 만드는 법](/posts/youth-tomorrow-savings-account-2026-third-application-guide)
+> [2026년 청년내일저축계좌 3차 신청- 월 10만원으로 3년 만기 1,440만원 목돈 만드는 법](/blog/youth-tomorrow-savings-account-2026-third-application-guide)
 
 ---
 
 ## 이형일 부총리, 온누리상품권 환급 및 민생물가 논의
+
+![이형일 부총리, 온누리상품권 환급 및 민생물가 논의](/api/images/2026/10/morning-money-digest-youth-savings-onnur-049c15aa7be3.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.newsis.com/view/NISX20261011_0003821177" target="_blank" rel="noopener noreferrer">뉴시스</a></p>
 
 > **출처**: [뉴시스](https://www.newsis.com/view/NISX20261011_0003821177)  
 > **발행**: 2026-10-11 14:45 KST | **신뢰도**: 보도자료
@@ -54,11 +63,14 @@ post_type: "digest"
 온누리상품권 환급은 고물가로 어려움을 겪는 가계에 직접적인 도움을 주고, 동시에 침체된 전통시장과 소상공인 경제에 활력을 불어넣을 수 있는 정책입니다. 환급 제도가 시행되면 소비자는 온누리상품권 구매 시 일정 비율을 현금 또는 추가 상품권으로 돌려받아 실질적인 구매력 증가 효과를 누릴 수 있습니다. 정부는 민생물가 안정을 위해 다양한 대책을 강구하고 있으므로, 관련 발표를 주시하여 온누리상품권 구매 및 활용 계획을 세우는 것이 현명합니다. 전통시장 이용 시 환급 혜택을 적극 활용하여 가계 지출을 절감하는 기회가 될 수 있습니다.
 
 > **관련 가이드**:  
-> [가습기살균제 피해 배상 8일부터 신청 & 소득 하위 45% 노인 기초연금 인상분 소급 지급](/posts/26100801-morning-money-digest-victim-compensation-pension-increase)
+> [가습기살균제 피해 배상 8일부터 신청 & 소득 하위 45% 노인 기초연금 인상분 소급 지급](/blog/26100801-morning-money-digest-victim-compensation-pension-increase)
 
 ---
 
 ## 소상공인 5개 단체, 쿠팡이츠 장애에 손실 산정 및 피해 보상 요구
+
+![소상공인 5개 단체, 쿠팡이츠 장애에 손실 산정 및 피해 보상 요구](/api/images/2026/10/morning-money-digest-youth-savings-onnur-07fe80edfb40.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://biz.sbs.co.kr/article/20000339209" target="_blank" rel="noopener noreferrer">SBS Biz</a></p>
 
 > **출처**: [SBS Biz](https://biz.sbs.co.kr/article/20000339209)  
 > **발행**: 2026-10-11 07:33 KST | **신뢰도**: 경제전문지 보도
@@ -73,13 +85,15 @@ post_type: "digest"
 배달 플랫폼 장애는 소상공인에게는 매출 감소로 직결되는 심각한 문제입니다. 특히 배달 서비스 의존도가 높은 외식업 자영업자들에게는 치명적인 손실을 야기할 수 있습니다. 이번 소상공인 단체의 요구는 플랫폼 기업의 사회적 책임과 피해 보상 기준 마련의 중요성을 강조합니다. 소상공인들은 유사시를 대비하여 여러 배달 플랫폼을 동시에 활용하거나, 자체 배달 시스템을 구축하는 등 위험 분산 전략을 고려해볼 필요가 있습니다. 또한, 플랫폼 이용 약관을 꼼꼼히 확인하고 피해 발생 시 적극적으로 보상을 요구하는 자세가 중요합니다.
 
 > **관련 가이드**:  
-> [은행 주담대 RWA 인상 검토 & 소상공인 2138억 채무 조정](/posts/26100901-morning-money-digest-loan-debt-relief-rural-tourism-special-zone)
+> [은행 주담대 RWA 인상 검토 & 소상공인 2138억 채무 조정](/blog/26100901-morning-money-digest-loan-debt-relief-rural-tourism-special-zone)
 
 ---
 
 ## 대한민국 정책브리핑 "2026 여행가는 가을" 이벤트
 
-![[이벤트] 2026 여행가는 가을](https://www.korea.kr/newsWeb/resources/attaches/2026.10/11/70e166b8f2a622e4029a3a410bc9529f.jpg)
+![대한민국 정책브리핑 "2026 여행가는 가을" 이벤트](/api/images/2026/10/morning-money-digest-youth-savings-onnur-96cf4b0bdab4.webp)
+<p class="text-xs text-center text-neutral-500 dark:text-neutral-400 my-1">사진 출처: <a href="https://www.korea.kr/multi/visualNewsView.do?newsId=148973274" target="_blank" rel="noopener noreferrer">대한민국 정책브리핑</a></p>
+
 > **출처**: [대한민국 정책브리핑](https://www.korea.kr/multi/visualNewsView.do?newsId=148973274)  
 > **발행**: 2026-10-11 23:38 KST | **신뢰도**: 공식 발표
 
@@ -93,4 +107,4 @@ post_type: "digest"
 "2026 여행가는 가을" 이벤트는 가을철 국내 여행을 계획하는 가계에 좋은 기회가 될 수 있습니다. 정부나 지자체 주관으로 진행되는 여행 이벤트는 보통 숙박, 교통, 관광지 입장료 할인 또는 지역 특산물 증정 등 다양한 형태로 가계의 여행 경비 부담을 줄여줍니다. 여행 계획이 있다면 정책브리핑 웹사이트를 방문하여 이벤트 상세 내용을 확인하고, 제공되는 할인 쿠폰이나 프로모션을 적극 활용하여 알뜰한 가을 여행을 즐길 수 있습니다. 이를 통해 국내 관광 활성화에도 기여하고 가계 지출 절감 효과도 얻을 수 있습니다.
 
 > **관련 가이드**:  
-> [경찰, 가을 행락철 집중 단속 & AI 보안 예산 삭감 논란 해명 & 누리호 초소형군집위성 교신 성공](/posts/26101001-morning-money-digest-traffic-safety-ai-budget-nuriho)
+> [경찰, 가을 행락철 집중 단속 & AI 보안 예산 삭감 논란 해명 & 누리호 초소형군집위성 교신 성공](/blog/26101001-morning-money-digest-traffic-safety-ai-budget-nuriho)

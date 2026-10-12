@@ -218,6 +218,14 @@ async function main() {
     console.log(`[2/3] R2 이미지 업로드 단계 건너뜀 (외부 URL 또는 이미지 없음)`);
   }
 
+  // 3차 D1 배포 사전 게이트 (FR-3.3)
+  const postType = metadata.post_type || '';
+  if (postType === 'digest' || categorySlug === 'news') {
+    if (!featuredImage || featuredImage.trim() === '' || !featuredImage.startsWith('/api/images/')) {
+      throw new Error(`[3차 D1 배포 게이트 탈락] 다이제스트 포스트는 유효한 featured_image(/api/images/...)가 필수입니다. (현재: "${featuredImage}")`);
+    }
+  }
+
   // D1에 포스트 및 태그 등록
   console.log(`[3/3] Cloudflare D1(${TARGET_D1})에 등록 중...`);
 
