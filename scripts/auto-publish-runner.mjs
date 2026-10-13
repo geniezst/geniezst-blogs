@@ -415,6 +415,15 @@ function checkMorningDigestExists(postsDir, dateStr) {
 function syncMorningStateFromDisk(state, dateStr, postsDir) {
   const existingFile = checkMorningDigestExists(postsDir, dateStr);
   if (!existingFile) return;
+
+  // 당일 이미 실패한 기록이 있고 성공한 적이 없는 경우, 디스크의 파일은 실패 잔여물이므로 success로 오인 복구하지 않는다.
+  const hasFailureToday = (state.history || []).some((h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'failed');
+  const hasSuccessToday = (state.history || []).some((h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success');
+  if (hasFailureToday && !hasSuccessToday) {
+    console.log(`⚠️ [상태 복구 차단] 오늘(${dateStr}) 모닝 다이제스트는 실패 이력이 존재하므로 디스크 파일 기반의 자동 성공 복구를 건너뜁니다.`);
+    return;
+  }
+
   const filePath = path.join(postsDir, existingFile);
   const slug = path.basename(existingFile, path.extname(existingFile));
   let title = slug;

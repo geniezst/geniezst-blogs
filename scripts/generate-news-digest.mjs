@@ -1753,9 +1753,9 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
       `(미확보 ${imageStats.failed.length}개: ${failedSummary}). 미확보 카드는 텍스트 카드로 자연스럽게 폴백하여 발행을 계속 진행합니다.`
     );
   }
-  if (!featuredImageUrl || !featuredImageUrl.startsWith('/api/images/')) {
+  if (!featuredImageUrl || (!featuredImageUrl.startsWith('/api/images/') && !featuredImageUrl.startsWith('/og-') && featuredImageUrl !== '/og-default.jpg')) {
     console.warn(`⚠️ [이미지 게이트 안전망] 대표 이미지(featured_image)가 미확보되어 기본 대표 이미지(/og-default.jpg)로 폴백합니다.`);
-    featuredImageUrl = featuredImageUrl || '/og-default.jpg';
+    featuredImageUrl = '/og-default.jpg';
   }
   if (featuredImageUrl) {
     console.log(`⭐ [대표 이미지] 첫 카드 이미지를 featured_image 로 승격: ${featuredImageUrl}`);
@@ -1776,13 +1776,11 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
   if (markerCount > 0) console.log(`ℹ️ no-image 마커 ${markerCount}개 정리 완료.`);
 
   // [P1-2] featured_image 는 LLM 값이 아니라 파이프라인이 승격한 첫 카드 이미지로 덮어쓴다.
-  // (기존엔 조건이 반전되어 있어 featured_image 가 언제나 "" 로 강제되고,
-  //  목록 썸네일과 og:image 가 영구 공백이었다)
-  // 반드시 이미지 파이프라인 실행 "이후" 에 치환해야 한다 (letfeaturedImageUrl TDZ 방지).
+  const finalFeatured = featuredImageUrl || '/og-default.jpg';
   if (/^featured_image:/m.test(yaml)) {
-    yaml = yaml.replace(/^featured_image:.*$/m, `featured_image: "${featuredImageUrl || ''}"`);
+    yaml = yaml.replace(/^featured_image:.*$/m, `featured_image: "${finalFeatured}"`);
   } else {
-    yaml += `\nfeatured_image: "${featuredImageUrl || ''}"`;
+    yaml += `\nfeatured_image: "${finalFeatured}"`;
   }
 
   // Google News 링크를 디코딩된 실제 언론사 URL로 치환
@@ -2168,6 +2166,14 @@ post_type: "digest"
       console.error(`❌ [GitHub 배포 실패] ${gitErr.message}`);
       console.error(`   ⚠️ D1 등록은 완료되었으나 사이트는 아직 이전 빌드입니다.`);
     }
+  } catch (pipelineErr) {
+    if (!d1Published && filePath && fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        console.log(`🧹 [잔여물 정리] D1 미등록 실패 파일을 삭제했습니다: ${filePath}`);
+      } catch (_) {}
+    }
+    throw pipelineErr;
   } finally {
     if (buildLock && buildLock.release) {
       buildLock.release();

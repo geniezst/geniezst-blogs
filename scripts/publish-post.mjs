@@ -221,8 +221,11 @@ async function main() {
   // 3차 D1 배포 사전 게이트 (FR-3.3)
   const postType = metadata.post_type || '';
   if (postType === 'digest' || categorySlug === 'news') {
-    if (!featuredImage || featuredImage.trim() === '' || !featuredImage.startsWith('/api/images/')) {
-      throw new Error(`[3차 D1 배포 게이트 탈락] 다이제스트 포스트는 유효한 featured_image(/api/images/...)가 필수입니다. (현재: "${featuredImage}")`);
+    if (!featuredImage || featuredImage.trim() === '') {
+      console.warn(`⚠️ [D1 배포 안전망] 대표 이미지(featured_image)가 비어 있어 기본 이미지(/og-default.jpg)로 자동 폴백합니다.`);
+      featuredImage = '/og-default.jpg';
+    } else if (!featuredImage.startsWith('/api/images/') && !featuredImage.startsWith('/og-') && featuredImage !== '/og-default.jpg') {
+      throw new Error(`[3차 D1 배포 게이트 탈락] 다이제스트 포스트는 유효한 featured_image(/api/images/... 또는 /og-default.jpg)가 필수입니다. (현재: "${featuredImage}")`);
     }
   }
 

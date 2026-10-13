@@ -72,7 +72,7 @@ ok('isWorkTreeDirty 실행 (불리언 값 반환)', typeof mod.isWorkTreeDirty(P
 
 console.log('\n[4] 실패 분류: 토큰 없음 vs 원격 접근 불가');
 const noTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-notoken-'));
-const noToken = mod.publishPreflight(noTokenDir, () => {});
+const noToken = mod.publishPreflight(noTokenDir, () => {}, { overrideToken: null });
 ok('토큰 없음 -> ok=false', noToken.ok === false);
 ok('토큰 없음 -> GITHUB_TOKEN 을 특정함', /GITHUB_TOKEN/.test(noToken.error || ''), `-> ${noToken.error || ''}`);
 ok('토큰 없음 -> 조치 힌트 제공', typeof noToken.hint === 'string' && noToken.hint.length > 0);

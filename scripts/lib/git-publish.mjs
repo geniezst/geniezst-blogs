@@ -187,8 +187,9 @@ function isAuthFailure(err) {
  *
  * @returns {{ ok: true } | { ok: false, error: string, hint: string }}
  */
-export function publishPreflight(repoRoot, log = () => {}) {
-  if (!resolveGithubToken(repoRoot)) {
+export function publishPreflight(repoRoot, log = () => {}, opts = {}) {
+  const token = opts.overrideToken !== undefined ? opts.overrideToken : resolveGithubToken(repoRoot);
+  if (!token) {
     return {
       ok: false,
       error: 'GITHUB_TOKEN 을 찾을 수 없습니다',

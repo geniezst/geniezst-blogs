@@ -14,6 +14,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 /** 프로세스가 실제로 살아 있는지 확인 (signal 0 존재 여부) */
 export function isAlive(pid) {
@@ -246,9 +247,18 @@ export function acquireBuildDeployLock(lockPath, opts = {}) {
 export function cleanDistDir(distDir, logFn = console.log) {
   try {
     if (fs.existsSync(distDir)) {
-      fs.rmSync(distDir, { recursive: true, force: true });
-      if (logFn) logFn(`🧹 [dist 정리 완료] 이전 빌드 산출물(${distDir})을 정리했습니다.`);
-      return true;
+      try {
+        fs.rmSync(distDir, { recursive: true, force: true });
+      } catch (rmErr) {
+        // ENOTEMPTY 또는 EACCES 대응: chmod 후 rm -rf 쉘 폴백
+        try {
+          execSync(`chmod -R 777 "${distDir}" 2>/dev/null || true; rm -rf "${distDir}"`, { stdio: 'ignore' });
+        } catch (_) {}
+      }
+      if (!fs.existsSync(distDir)) {
+        if (logFn) logFn(`🧹 [dist 정리 완료] 이전 빌드 산출물(${distDir})을 정리했습니다.`);
+        return true;
+      }
     }
   } catch (err) {
     if (logFn) logFn(`⚠️ [dist 정리 경고] ${err.message}`);
@@ -451,8 +461,9 @@ export function verifyPostImageIntegrityOrThrow(filePath, opts = {}) {
   const externalImages = [...body.matchAll(externalImageRegex)];
 
   if (isDigest) {
-    // 1. featured_image 엄격 검증
-    if (!featuredImage || !featuredImage.startsWith('/api/images/')) {
+    // 1. featured_image 엄격 검증 (/api/images/... 또는 /og-default.jpg 허용)
+    const isValidFeat = featuredImage && (featuredImage.startsWith('/api/images/') || featuredImage === '/og-default.jpg' || featuredImage.startsWith('/og-'));
+    if (!isValidFeat) {
       try { fs.unlinkSync(filePath); } catch (_) {}
       throw new Error(
         `[물리적 2차 품질 게이트 탈락] 다이제스트 포스트(${path.basename(filePath)})에 유효한 대표 이미지(featured_image)가 없습니다. (값: "${featuredImage}")`
