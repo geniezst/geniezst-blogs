@@ -1949,6 +1949,25 @@ async function startDaemon() {
   log(`- 오전 범위: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식)`);
   log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
 
+  // [P1] 고스트 자폭 하트비트: 메인 루프가 장시간 세션 처리(수 분)로 블록되어도
+  //   락 소유권 상실/중복 데몬을 5초 내 감지해 즉시 자진 종료한다(중복 발행 원천 차단).
+  setInterval(() => {
+    try {
+      if (!isLockOwner(DAEMON_LOCK_FILE)) {
+        log(`🛑 [고스트 데몬 방지/하트비트] 데몬 락(${DAEMON_LOCK_FILE}) 소유권 상실. 현재 프로세스(pid ${process.pid})를 종료합니다.`);
+        cleanup();
+        process.exit(0);
+      }
+      const sibs = getSiblingDaemonPids('auto-publish-runner.mjs daemon', BLOG_ROOT);
+      const holder = readLock(DAEMON_LOCK_FILE);
+      if (sibs.length > 1 && (!holder || holder.pid !== process.pid)) {
+        log(`🛑 [유령 데몬 자폭/하트비트] 복수 데몬(${sibs.join(', ')}) 감지. 정당 소유자 아님 → 현재 프로세스(pid ${process.pid}) 자진 종료.`);
+        cleanup();
+        process.exit(0);
+      }
+    } catch (_) {}
+  }, 5000);
+
   // [자가 복구] 이전 실행에서 push 에 실패해 원격에 반영되지 못한 커밋이
   // 남아 있을 수 있다. 2026-09-29 저녁 1건이 정확히 그 상태였고,
   // 상태 파일은 이미 success 로 기록돼 있어 어떤 자동 재시도도 걸리지 않았다.
