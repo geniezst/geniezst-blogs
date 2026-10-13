@@ -35,7 +35,7 @@ try {
   const lockReentry = acquireSessionLock(tmpDir, 'morning', dateStr);
   ok('동일 프로세스 재진입 허용', lockReentry.acquired === true && lockReentry.alreadyHeld === true);
 
-  console.log('\n[3] 15분 TTL (SESSION_LOCK_TTL_MS) 오판 방어 검증');
+  console.log('\n[3] 죽은 프로세스 락 조기 회수 검증 (TTL 무관)');
   // 다른 PID(존재하지 않는 999999)가 소유한 락 생성 (생성시각: 5분 전 = TTL 이내)
   const deadPidLockFile = path.join(tmpDir, `session-evening-${dateStr}.lock`);
   fs.writeFileSync(deadPidLockFile, JSON.stringify({
@@ -44,13 +44,34 @@ try {
     date: dateStr,
     startedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   }));
-  // mtime을 5분 전으로 설정
+  // mtime을 5분 전으로 설정 (TTL 15분 이내)
   const fiveMinAgo = (Date.now() - 5 * 60 * 1000) / 1000;
   fs.utimesSync(deadPidLockFile, fiveMinAgo, fiveMinAgo);
 
-  const lockTtlReject = acquireSessionLock(tmpDir, 'evening', dateStr);
-  ok('15분 이내 죽은 프로세스 락이라도 unlinkSync하지 않고 거부', lockTtlReject.acquired === false);
-  ok('락 파일 보존됨', fs.existsSync(deadPidLockFile));
+  const lockReclaim = acquireSessionLock(tmpDir, 'evening', dateStr);
+  ok('15분 TTL 이내라도 죽은 프로세스 락은 즉시 회수 후 획득', lockReclaim.acquired === true && lockReclaim.alreadyHeld === false);
+  ok('회수된 락 소유자가 현재 프로세스로 갱신됨', readLock(deadPidLockFile)?.pid === process.pid);
+
+  console.log('\n[3b] 살아있는 다른 프로세스의 락은 TTL 이내 회수 금지 검증');
+  const { spawn } = await import('node:child_process');
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' });
+  await new Promise((r) => setTimeout(r, 300));
+  try {
+    const liveLockFile = path.join(tmpDir, `session-live-${dateStr}.lock`);
+    fs.writeFileSync(liveLockFile, JSON.stringify({
+      pid: child.pid,
+      session: 'live',
+      date: dateStr,
+      startedAt: new Date().toISOString(),
+    }));
+    const liveFiveMinAgo = (Date.now() - 5 * 60 * 1000) / 1000;
+    fs.utimesSync(liveLockFile, liveFiveMinAgo, liveFiveMinAgo);
+    const lockLiveReject = acquireSessionLock(tmpDir, 'live', dateStr);
+    ok('살아있는 다른 프로세스의 락은 거부됨', lockLiveReject.acquired === false);
+    ok('살아있는 프로세스 락 파일 보존됨', fs.existsSync(liveLockFile));
+  } finally {
+    child.kill('SIGKILL');
+  }
 
   console.log('\n[4] 빈 파일(0바이트) 30초 이내 생성 방어 검증');
   const zeroByteFile = path.join(tmpDir, `session-zerobyte-${dateStr}.lock`);

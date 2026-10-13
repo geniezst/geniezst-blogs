@@ -140,6 +140,16 @@ export function cleanDigestTitle(rawTitle) {
 }
 
 /**
+ * YAML 큰따옴표 스칼라 안전 직렬화
+ * - 제목에 LLM이 넣은 `"` 나 `\` 가 그대로 심기면 Frontmatter가 깨져 Astro 파싱 실패로 이어진다.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function yamlEscapedScalar(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
  * Google News CBMi... URL을 실제 언론사 원문 URL로 디코딩 (순수 Node 구현)
  *
  * [왜 바꿨가 — 2026-09-29]
@@ -1485,7 +1495,7 @@ async function cleanAndValidateMarkdown(rawContent, dateInfo, candidates = [], o
   const titleMatch = yaml.match(/title:\s*["']?([^"'\n]+)["']?/);
   let title = titleMatch ? cleanDigestTitle(titleMatch[1]) : '놓치면 손해 보는 생활금융 핫이슈 핵심 요약';
   title = cleanDigestTitle(title);
-  yaml = yaml.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title}"`);
+  yaml = yaml.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${yamlEscapedScalar(title)}"`);
 
   // 2) 카테고리 'news' ('새소식')로 100% 고정
   if (/category:\s*["']?[^"'\n]+["']?/.test(yaml)) {

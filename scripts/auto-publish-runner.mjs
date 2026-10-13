@@ -27,7 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
-import { runNewsDigestGeneration } from './generate-news-digest.mjs';
+import { runNewsDigestGeneration, yamlEscapedScalar } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
@@ -1046,7 +1046,7 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
   const titleMatch = yamlBlock.match(/title:\s*["']?([^"'\n]+)["']?/);
   let title = titleMatch ? titleMatch[1].trim() : '생활금융 및 복지 혜택 가이드';
   title = title.replace(/:/g, ' -').replace(/\s{2,}/g, ' ').trim();
-  yamlBlock = yamlBlock.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${title.replace(/"/g, '\\"')}"`);
+  yamlBlock = yamlBlock.replace(/title:\s*["']?[^"'\n]+["']?/, `title: "${yamlEscapedScalar(title)}"`);
 
   // 2) Slug 정제 (영문 소문자 하이픈 형식 보장)
   const slugMatch = yamlBlock.match(/slug:\s*["']?([^"'\n]+)["']?/);

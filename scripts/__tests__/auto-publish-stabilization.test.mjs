@@ -30,7 +30,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blogs-stabilization-test-'
 try {
   const dateStr = '2026-10-12';
 
-  // 1-1. 15분 TTL 이내인 경우 isAlive 가 false 라도 회수하지 않고 거부
+  // 1-1. 죽은 프로세스(PID 미생존)가 잡은 락은 15분 TTL 이내라도 즉시 회수 후 획득
   const ttlLockFile = path.join(tmpDir, `session-morning-${dateStr}.lock`);
   fs.writeFileSync(ttlLockFile, JSON.stringify({
     pid: 987654,
@@ -42,8 +42,8 @@ try {
   fs.utimesSync(ttlLockFile, fiveMinAgo, fiveMinAgo);
 
   const ttlResult = acquireSessionLock(tmpDir, 'morning', dateStr);
-  ok('15분 TTL 이내 락은 미생존 PID라도 unlink 금지 및 거부', ttlResult.acquired === false);
-  ok('락 파일 유지됨', fs.existsSync(ttlLockFile));
+  ok('15분 TTL 이내라도 미생존 PID 락은 즉시 회수 후 획득', ttlResult.acquired === true && ttlResult.alreadyHeld === false);
+  ok('회수된 락 소유자가 현재 프로세스로 갱신됨', readLock(ttlLockFile)?.pid === process.pid);
 
   // 1-2. 0바이트 락 파일 30초 이내 생성 방어
   const zeroLockFile = path.join(tmpDir, `session-zerobyte-${dateStr}.lock`);

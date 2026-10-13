@@ -394,26 +394,17 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
         };
       }
 
-      // 3) 15분 TTL 적용 (stat.mtimeMs 기준 15분 이내면 isAlive가 false라도 절대 unlink하지 않고 거부)
+      // 3) 다른 프로세스가 여전히 살아있는 경우 -> 거부 (TTL 이내여도 활성 프로세스는 절대 회수하지 않음)
       const now = Date.now();
-      if (stat && now - stat.mtimeMs < SESSION_LOCK_TTL_MS) {
-        log(
-          `⛔ [세션 락 거부] ${sessionName} 세션 락이 15분 이내(${Math.round(
-            (now - stat.mtimeMs) / 1000
-          )}초 전)에 생성되어 유지 중입니다. isAlive 여부와 무관하게 삭제하지 않고 거부합니다 (PID: ${holder?.pid || '알수없음'}).`
-        );
-        return { acquired: false, lockFile };
-      }
-
-      // 4) 다른 프로세스가 여전히 살아있는 경우 -> 거부
       if (holder && isAlive(holder.pid)) {
         log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 다른 활성 프로세스(PID: ${holder.pid})에 의해 진행 중입니다 (${lockFile}).`);
         return { acquired: false, lockFile };
       }
 
-      // 5) 15분이 지났고 프로세스도 죽은 고아 락인 경우에만 회수 후 1회 재시도
+      // 4) 점유자 프로세스가 죽어 있으면 TTL(15분)과 무관하게 즉시 고아 락으로 회수 후 1회 재시도
+      //    (기존에는 15분 TTL 동안 죽은 락을 회수하지 못해 재시도가 전부 무효화되는 버그가 있었다)
       try {
-        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid}, 경과: ${stat ? Math.round((now - stat.mtimeMs) / 1000) : '?'}초)`);
+        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid ?? '알수없음'}, 경과: ${stat ? Math.round((now - stat.mtimeMs) / 1000) : '?'}초, isAlive=false)`);
         fs.unlinkSync(lockFile);
       } catch (_) {}
     }
