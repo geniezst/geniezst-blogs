@@ -45,8 +45,9 @@
    * 표 셀(`<td>`) 내 `약 542만원 (세후 15.4% 과세)` 형태의 부연 설명을 `<br><span class="table-subtext">...</span>`로 자동 분리하여 정보 위계 및 가독성 극대화 (링크, 인라인 코드, 셀 선두 괄호 엣지 케이스 완벽 보호).
    * 내용이 넘칠 때만 나타나는 5px 슬림 미니멀 가로 스크롤바(Firefox/WebKit/모바일 터치) 적용.
 4. **자연스러운 주 1회 랜덤 휴식 시뮬레이션 데몬**
-   * 일일 2회(점심 11:15~11:45, 저녁 18:15~18:45) KST 랜덤 시간에 자동 포스팅.
-   * 주 1회 랜덤 요일에는 점심 세션을 쉬고 저녁 1회만 발행하는 주간 변칙 알고리즘 상시 구동.
+   * 일일 2회(오전 모닝 다이제스트 08:20~08:50, 오후 심층 가이드 18:15~18:45) KST 랜덤 시간에 자동 포스팅.
+   * 오전 모닝 다이제스트는 주 7일 무휴식, 오후 심층글은 주 1회 랜덤 요일에 쉬는 주간 변칙 알고리즘 상시 구동.
+   * 휴식일 판정은 데몬 매 틱 재계산 + `runPublishPipeline()` 진입 시점에 이중 검증되어, 데몬이 당일 재시작되어도 휴식일을 놓치지 않습니다.
 
 ---
 
@@ -67,8 +68,8 @@ npm run d1:migrate
 # 4. 신규 마크다운 포스트 D1 원격 DB 수동 등록
 node scripts/publish-post.mjs content/posts/YYMMDDNN-<post-slug>.md
 
-# 5. 자동 발행 스케줄러 수동 즉시 실행 (점심/저녁)
-node scripts/auto-publish-runner.mjs lunch
+# 5. 자동 발행 스케줄러 수동 즉시 실행 (오전/오후)
+node scripts/auto-publish-runner.mjs morning
 node scripts/auto-publish-runner.mjs evening
 
 # 6. 스케줄러 데몬 무중단 백그라운드 가동
