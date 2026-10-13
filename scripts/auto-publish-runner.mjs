@@ -1653,6 +1653,19 @@ export async function runPublishPipeline(sessionName, options = {}) {
 
   const state = loadState();
 
+  // [P0 · 2026-10-13 휴식일 가드] 주 1회 오후 심층글 휴식일에는 데몬 재시작·
+  // 직접 CLI 호출 등 어떤 경로로든 발행을 차단한다 (--force로만 우회 가능).
+  // 데몬 루프의 isAfternoonSkippedToday 는 "날짜 변경 시점"에만 갱신되어
+  // 오후에 재시작되면 휴식일을 놓치던 문제를 발행 직전 재검증으로 원천 차단한다.
+  if (sessionName === 'evening' && !options.force && !options.dryRun) {
+    const { dayOfWeek } = getKSTDate();
+    const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
+    if (dayOfWeek === weeklyConfig.skip_afternoon_day) {
+      console.log(`💤 [휴식일 가드] 오늘(${dateStr})은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다. 발행을 건너뜁니다.`);
+      return true;
+    }
+  }
+
   // 1. 중복 실행 검사 (--force 옵션 지원)
   let sessionLock = null;
   if (!options.force && !options.dryRun) {
@@ -1998,6 +2011,14 @@ async function startDaemon() {
   let currentEveningTarget = initTargets.evening;
   let lastCheckedDay = initialDateStr;
   let isAfternoonSkippedToday = false;
+  // [P0 · 2026-10-13] 데몬이 낮/오후에 재시작되어도 휴식일을 놓치지 않도록
+  // 기동 즉시 휴식 요일을 계산해 초기화한다 (loop 내에서도 매 틱 재계산).
+  {
+    const initSkipState = loadState();
+    const initWeekly = checkOrUpdateWeeklySkip(initSkipState, initialDateStr);
+    const { dayOfWeek: initDayOfWeek } = getKSTDate();
+    isAfternoonSkippedToday = initDayOfWeek === initWeekly.skip_afternoon_day;
+  }
   let morningExecutedToday = false;
   let eveningExecutedToday = false;
   let eveningSkippedLoggedToday = false;
@@ -2032,6 +2053,16 @@ async function startDaemon() {
     const currentTotal = hours * 60 + minutes;
     const morningTargetTotal = currentMorningTarget.hour * 60 + currentMorningTarget.minute;
     const eveningTargetTotal = currentEveningTarget.hour * 60 + currentEveningTarget.minute;
+
+    // [P0 · 2026-10-13] 휴식일 여부를 매 루프마다 재계산한다.
+    // 아래의 "날짜 변경" 블록은 lastCheckedDay !== dateStr 일 때만 실행되므로,
+    // 데몬이 오늘 날짜(예: 화요일)에 늦게 재시작되면 휴식일 판단 자체가 스킵되는
+    // 문제가 있었다. 여기서 매 틱 덮어써 해당 병목을 제거한다.
+    {
+      const skipState = loadState();
+      const weeklyConfig = checkOrUpdateWeeklySkip(skipState, dateStr);
+      isAfternoonSkippedToday = dayOfWeek === weeklyConfig.skip_afternoon_day;
+    }
 
     // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
     if (lastCheckedDay !== dateStr) {
