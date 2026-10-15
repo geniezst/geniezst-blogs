@@ -133,6 +133,15 @@ export function getSiblingDaemonPids(scriptPattern, targetDir) {
         // eval/테스트 프로세스 제외
         if (cmdline.includes(' -e ') || cmdline.includes('eval')) continue;
 
+        // [버그수정 2026-10-15] flock/setsid/셸 래퍼 제외.
+        //   launch_daemon 은 `flock -n <guard> node <script> daemon` 형태로 기동하므로
+        //   래퍼(flock)의 cmdline 에도 '<script> daemon' 문자열이 포함되어, 데몬이 자기
+        //   래퍼를 "다른 살아있는 데몬"으로 오인해 기동을 거부했다. 데몬은 항상 node
+        //   프로세스이므로 comm 이 래퍼인 항목은 건너뛴다.
+        let comm = '';
+        try { comm = fs.readFileSync(`/proc/${pid}/comm`, 'utf8').trim(); } catch (_) {}
+        if (comm === 'flock' || comm === 'setsid' || comm === 'timeout' || comm === 'bash' || comm === 'sh' || comm === 'dash') continue;
+
         if (scriptPattern && !cmdline.includes(scriptPattern)) {
           continue;
         }
