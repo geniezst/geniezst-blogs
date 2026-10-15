@@ -14,6 +14,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execSync } from 'node:child_process';
 
 /** 프로세스가 실제로 살아 있는지 확인 (signal 0 존재 여부) */
@@ -58,6 +59,53 @@ export function readLock(lockPath, maxRetries = 3, delayMs = 50) {
 export function isLockOwner(lockPath) {
   const holder = readLock(lockPath);
   return Boolean(holder && holder.pid === process.pid);
+}
+
+/**
+ * 이 프로세스가 속한 컨테이너/호스트 식별자 (Docker 기본값 = 컨테이너 ID).
+ * /workspace 를 공유하는 서로 다른 컨테이너는 서로 다른 hostname 을 가진다.
+ */
+const LOCAL_HOST = (() => {
+  try { return os.hostname(); } catch (_) { return 'unknown-host'; }
+})();
+
+/**
+ * [P0] 교차 컨테이너/네임스페이스 리스(lease) 유예 시간.
+ * PID 생존 검사(isAlive)는 동일 PID 네임스페이스에서만 유효하다. /workspace 를 공유하는
+ * 다른 컨테이너가 잡은 락의 PID 는 이 네임스페이스에 존재하지 않아 "죽음"으로 오판되므로,
+ * 호스트가 다르거나 미상인 락은 하트비트(heartbeatAt/mtime)가 이 시간 이내로 유지되는 동안
+ * 절대 회수하지 않는다.
+ */
+export const LEASE_STALE_MS = 3 * 60 * 1000;
+
+/** 락 파일의 리스 경과 시간(ms). heartbeatAt 우선, 없으면 mtime 사용 */
+function leaseAgeMs(lockFile, holder) {
+  if (holder && holder.heartbeatAt) {
+    const t = Date.parse(holder.heartbeatAt);
+    if (!Number.isNaN(t)) return Date.now() - t;
+  }
+  try { return Date.now() - fs.statSync(lockFile).mtimeMs; } catch (_) { return Infinity; }
+}
+
+/** 우리가 소유한 활성 락의 하트비트(setInterval). PID 네임스페이스와 무관하게 생존을 알린다. */
+const activeLeases = new Map();
+function startLeaseHeartbeat(lockFile) {
+  if (!lockFile || activeLeases.has(lockFile)) return;
+  const id = setInterval(() => {
+    try {
+      const holder = readLock(lockFile, 1, 0);
+      if (holder && holder.pid === process.pid && holder.status !== 'completed') {
+        holder.heartbeatAt = new Date().toISOString();
+        fs.writeFileSync(lockFile, JSON.stringify(holder, null, 2), 'utf8');
+      }
+    } catch (_) {}
+  }, 20000);
+  if (typeof id.unref === 'function') id.unref();
+  activeLeases.set(lockFile, id);
+}
+function stopLeaseHeartbeat(lockFile) {
+  const id = activeLeases.get(lockFile);
+  if (id) { clearInterval(id); activeLeases.delete(lockFile); }
 }
 
 /**
@@ -141,7 +189,7 @@ export function acquireDaemonLock(lockPath, opts = {}) {
     }
   }
 
-  const payload = { pid: process.pid, label, startedAt: new Date().toISOString() };
+  const payload = { pid: process.pid, label, startedAt: new Date().toISOString(), host: LOCAL_HOST, heartbeatAt: new Date().toISOString() };
 
   // [Two-Factor Step 2] 원자적 락 파일 생성
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -149,6 +197,7 @@ export function acquireDaemonLock(lockPath, opts = {}) {
       const fd = fs.openSync(lockPath, 'wx');
       fs.writeSync(fd, JSON.stringify(payload, null, 2));
       fs.closeSync(fd);
+      startLeaseHeartbeat(lockPath);
       return { acquired: true, pid: process.pid, release: installRelease(lockPath) };
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
@@ -156,17 +205,27 @@ export function acquireDaemonLock(lockPath, opts = {}) {
       // EEXIST 발생 시 readLock 최대 3회 재시도 (50ms 대기)
       const holder = readLock(lockPath, 3, 50);
 
-      // 이미 다른 살아있는 프로세스가 소유 중이면 절대로 unlinkSync하지 않고 즉시 거부
+      // 이미 다른 살아있는 프로세스(동일 네임스페이스)가 소유 중이면 절대로 unlinkSync하지 않고 즉시 거부
       if (holder && isAlive(holder.pid) && holder.pid !== process.pid) {
         return { acquired: false, holder };
       }
 
-      // 죽은 프로세스임이 확실할 때만 unlinkSync 후 재시도
-      if (holder && !isAlive(holder.pid)) {
-        try {
-          fs.unlinkSync(lockPath);
-        } catch (_) {}
-        continue;
+      if (holder && holder.pid !== process.pid) {
+        const sameHost = holder.host === LOCAL_HOST;
+
+        // 교차 컨테이너/네임스페이스 방어: 상대 PID 는 로컬에 없어 isAlive=false 로 오판된다.
+        // 호스트가 다르거나 미상이면 리스가 신선한 동안(=다른 컨테이너에서 상주 중) 회수하지 않는다.
+        if (!sameHost && leaseAgeMs(lockPath, holder) < LEASE_STALE_MS) {
+          return { acquired: false, holder: { ...holder, reason: 'foreign_lease_active' } };
+        }
+
+        // 동일 호스트의 죽은 프로세스이거나 리스가 만료된 고아 락만 회수 후 재시도
+        if (!isAlive(holder.pid)) {
+          try {
+            fs.unlinkSync(lockPath);
+          } catch (_) {}
+          continue;
+        }
       }
 
       // 만약 3회 시도 후에도 holder가 null인데(파일이 비어있거나 손상됨),
@@ -197,7 +256,7 @@ export function acquireBuildDeployLock(lockPath, opts = {}) {
   const dir = path.dirname(lockPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  const payload = { pid: process.pid, label, startedAt: new Date().toISOString() };
+  const payload = { pid: process.pid, label, startedAt: new Date().toISOString(), host: LOCAL_HOST, heartbeatAt: new Date().toISOString() };
   const staleTimeoutMs = opts.staleTimeoutMs || 10 * 60 * 1000;
   const waitTimeoutMs = opts.waitTimeoutMs ?? 60000;
   const startTime = Date.now();
@@ -207,11 +266,13 @@ export function acquireBuildDeployLock(lockPath, opts = {}) {
       const fd = fs.openSync(lockPath, 'wx');
       fs.writeSync(fd, JSON.stringify(payload, null, 2));
       fs.closeSync(fd);
+      startLeaseHeartbeat(lockPath);
       return {
         acquired: true,
         pid: process.pid,
         release: () => {
           try {
+            stopLeaseHeartbeat(lockPath);
             const holder = readLock(lockPath);
             if (!holder || holder.pid === process.pid) {
               fs.unlinkSync(lockPath);
@@ -224,9 +285,18 @@ export function acquireBuildDeployLock(lockPath, opts = {}) {
 
       const holder = readLock(lockPath);
       const isExpired = holder?.startedAt && (Date.now() - new Date(holder.startedAt).getTime() > staleTimeoutMs);
-      if (holder && (!isAlive(holder.pid) || isExpired)) {
-        try { fs.unlinkSync(lockPath); } catch (_) {}
-        continue;
+      if (holder) {
+        // 동일 호스트: PID 사망 또는 startedAt 만료 시 회수
+        // 교차 컨테이너: PID 판정 신뢰 불가 → 리스(heartbeat/mtime) 만료 시에만 회수
+        const sameHost = holder.host === LOCAL_HOST;
+        const reclaimable = sameHost
+          ? (!isAlive(holder.pid) || isExpired)
+          : (leaseAgeMs(lockPath, holder) >= LEASE_STALE_MS);
+        if (reclaimable) {
+          stopLeaseHeartbeat(lockPath);
+          try { fs.unlinkSync(lockPath); } catch (_) {}
+          continue;
+        }
       }
 
       if (Date.now() - startTime >= waitTimeoutMs) {
@@ -271,6 +341,7 @@ function installRelease(lockPath) {
   const release = () => {
     if (released) return;
     released = true;
+    stopLeaseHeartbeat(lockPath);
     const holder = readLock(lockPath);
     if (!holder || holder.pid === process.pid) {
       try {
@@ -298,6 +369,7 @@ export const SESSION_LOCK_TTL_MS = 15 * 60 * 1000;
  */
 export function markSessionCompleted(lockFile, meta = {}) {
   if (!lockFile) return false;
+  stopLeaseHeartbeat(lockFile);
   try {
     let existing = {};
     try {
@@ -341,10 +413,13 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
         session: sessionName,
         date: dateStr,
         status: 'in_progress',
-        startedAt: new Date().toISOString()
+        startedAt: new Date().toISOString(),
+        host: LOCAL_HOST,
+        heartbeatAt: new Date().toISOString()
       };
       fs.writeSync(fd, JSON.stringify(info, null, 2), 'utf8');
       fs.closeSync(fd);
+      startLeaseHeartbeat(lockFile);
       log(`🔒 [세션 락 획득] ${sessionName} 세션 락 생성 (pid: ${process.pid}, ${lockFile})`);
       return {
         acquired: true,
@@ -352,6 +427,7 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
         lockFile,
         releaseOnFailure: () => {
           try {
+            stopLeaseHeartbeat(lockFile);
             const holder = readLock(lockFile);
             if (holder?.status === 'completed') {
               return; // 발행 완료된 세션 락은 절대 삭제하지 않음
@@ -386,6 +462,7 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
 
       // 2) 현재 동일 프로세스가 이미 상위에서 락을 획득하고 진입한 경우 (재진입 허용)
       if (holder && holder.pid === process.pid) {
+        startLeaseHeartbeat(lockFile);
         return {
           acquired: true,
           alreadyHeld: true,
@@ -395,16 +472,22 @@ export function acquireSessionLock(lockDir, sessionName, dateStr, opts = {}) {
       }
 
       // 3) 다른 프로세스가 여전히 살아있는 경우 -> 거부 (TTL 이내여도 활성 프로세스는 절대 회수하지 않음)
-      const now = Date.now();
       if (holder && isAlive(holder.pid)) {
         log(`⛔ [세션 락 거부] 오늘(${dateStr}) ${sessionName} 세션이 이미 다른 활성 프로세스(PID: ${holder.pid})에 의해 진행 중입니다 (${lockFile}).`);
+        return { acquired: false, lockFile };
+      }
+
+      // 3-1) 교차 컨테이너/네임스페이스 방어: 상대 PID 는 이 네임스페이스에 없어 isAlive=false 로 오판된다.
+      //      호스트가 다르거나 미상이고 리스(heartbeat/mtime)가 신선하면 = 다른 컨테이너에서 진행 중 → 회수 금지.
+      if (holder && holder.host !== LOCAL_HOST && leaseAgeMs(lockFile, holder) < LEASE_STALE_MS) {
+        log(`⏳ [세션 락 대기] 다른 호스트/컨테이너(host=${holder.host || '미상'})에서 ${sessionName} 세션이 진행 중입니다. 회수하지 않고 거부 (${lockFile}).`);
         return { acquired: false, lockFile };
       }
 
       // 4) 점유자 프로세스가 죽어 있으면 TTL(15분)과 무관하게 즉시 고아 락으로 회수 후 1회 재시도
       //    (기존에는 15분 TTL 동안 죽은 락을 회수하지 못해 재시도가 전부 무효화되는 버그가 있었다)
       try {
-        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid ?? '알수없음'}, 경과: ${stat ? Math.round((now - stat.mtimeMs) / 1000) : '?'}초, isAlive=false)`);
+        log(`🧹 고아 세션 락 회수 (PID: ${holder?.pid ?? '알수없음'}, 경과: ${Math.round(leaseAgeMs(lockFile, holder) / 1000)}초, isAlive=false)`);
         fs.unlinkSync(lockFile);
       } catch (_) {}
     }
