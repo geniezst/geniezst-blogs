@@ -7,6 +7,7 @@ tags: [청년 전세, 전세보증금 반환보증, 전세사기 예방, 주거 
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 청년 전세보증금 반환보증 보험료 지원사업 개요 및 최신 개정 사항

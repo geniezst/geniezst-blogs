@@ -7,6 +7,7 @@ tags: [월세자금대출, 주거안정, 주거비지원, 버팀목전세, 청�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 주거안정 월세자금대출- 무주택 서민의 주거비 부담 경감 방안

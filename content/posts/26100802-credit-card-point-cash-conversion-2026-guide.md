@@ -7,6 +7,7 @@ tags: [신용카드, 포인트, 현금 전환, 카드사 혜택, 재테크, 금�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 신용카드 포인트 현금 전환 | 잠자는 돈 깨우는 최신 가이드

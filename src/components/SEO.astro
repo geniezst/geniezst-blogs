@@ -18,7 +18,8 @@ interface Props {
 const {
   title,
   description,
-  canonicalUrl = Astro.url.href,
+  // 프로토콜(http)·호스트·쿼리스트링과 무관하게 항상 https://pockemoney.com 기준 canonical 을 사용한다.
+  canonicalUrl = new URL(Astro.url.pathname, 'https://pockemoney.com').href,
   image = '/favicon.svg',
   ogImage = null,
   type = 'website',

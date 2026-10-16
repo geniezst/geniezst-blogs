@@ -27,12 +27,15 @@ export async function getCategories(db: D1Database): Promise<Category[]> {
   try {
     const { results } = await db
       .prepare(
-        `SELECT c.*, (
-          SELECT COUNT(*) FROM blog_posts p 
-          WHERE p.category_id = c.id AND p.status = 'published'
-        ) as post_count
-        FROM blog_categories c 
-        ORDER BY c.order_index ASC`
+        `SELECT * FROM (
+          SELECT c.*, (
+            SELECT COUNT(*) FROM blog_posts p 
+            WHERE p.category_id = c.id AND p.status = 'published'
+          ) as post_count
+          FROM blog_categories c
+        )
+        WHERE post_count > 0
+        ORDER BY order_index ASC`
       )
       .all<Category>();
     return results ?? [];

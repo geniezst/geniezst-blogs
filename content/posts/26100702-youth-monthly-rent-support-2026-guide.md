@@ -7,6 +7,7 @@ tags: ["청년월세특별지원", "청년지원금", "월세지원", "주거비
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 청년월세 특별지원 제도 개요 및 최신 개정 배경

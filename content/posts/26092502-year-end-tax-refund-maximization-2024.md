@@ -7,6 +7,7 @@ tags: [연말정산, 세액공제, 환급금, 연말정산 꿀팁, 2024년 연�
 author: "스마트 머니"
 reading_time: 12
 affiliate: false
+status: "draft"
 ---
 
 ## 2024년 연말정산, 세금폭탄 피하고 환급금 받는 최신 전략

@@ -2,9 +2,8 @@
 /**
  * blogs 자동 포스팅 오케스트레이터 및 스케줄러 (Auto Publish Runner & Daemon)
  * - 대상 블로그: 포켓머니 (blogs, /workspace/blogs)
- * - Two-Track 스케줄:
- *   1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
- *   2) 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
+ * - 단일 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
+ *   ※ 아침 뉴스 다이제스트 세션은 2026-10-16 운영 정책 변경으로 완전히 제거되었다.
  * 
  * [LLM 호출 경로 (2026-09-27 정리)]
  * - Gemini 네이티브 단일 경로 (thinkingBudget: 0, maxOutputTokens 16384, finishReason 검사)
@@ -13,8 +12,6 @@
  * 
  * 사용법:
  *   1) 수동 세션 즉시 실행:
- *      node scripts/auto-publish-runner.mjs morning                 # 아침 뉴스 다이제스트
- *      node scripts/auto-publish-runner.mjs lunch                   # 아침 뉴스 다이제스트 (호환성)
  *      node scripts/auto-publish-runner.mjs evening                 # 저녁 심층 가이드
  *      node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행
  *      node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성
@@ -27,7 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
-import { runNewsDigestGeneration, yamlEscapedScalar } from './generate-news-digest.mjs';
+import { yamlEscapedScalar } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
 import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
@@ -392,64 +389,6 @@ function isDigestPost(filePath) {
 }
 
 /**
- * 오늘 일자(YYMMDD)의 모닝 다이제스트 포스트가 디스크에 존재하는지 검사한다.
- */
-function checkMorningDigestExists(postsDir, dateStr) {
-  if (!fs.existsSync(postsDir)) return null;
-  const yy = dateStr.slice(2, 4);
-  const mm = dateStr.slice(5, 7);
-  const dd = dateStr.slice(8, 10);
-  const prefix = `${yy}${mm}${dd}`;
-  const files = fs.readdirSync(postsDir).filter((f) =>
-    f.startsWith(prefix) &&
-    (f.endsWith('.md') || f.endsWith('.mdx')) &&
-    f !== 'template.md' &&
-    isDigestPost(path.join(postsDir, f))
-  );
-  return files.length > 0 ? files[0] : null;
-}
-
-/**
- * 디스크 상에 모닝 다이제스트가 존재하지만 state.history에 누락된 경우 상태 동기화
- */
-function syncMorningStateFromDisk(state, dateStr, postsDir) {
-  const existingFile = checkMorningDigestExists(postsDir, dateStr);
-  if (!existingFile) return;
-
-  // 당일 이미 실패한 기록이 있고 성공한 적이 없는 경우, 디스크의 파일은 실패 잔여물이므로 success로 오인 복구하지 않는다.
-  const hasFailureToday = (state.history || []).some((h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'failed');
-  const hasSuccessToday = (state.history || []).some((h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success');
-  if (hasFailureToday && !hasSuccessToday) {
-    console.log(`⚠️ [상태 복구 차단] 오늘(${dateStr}) 모닝 다이제스트는 실패 이력이 존재하므로 디스크 파일 기반의 자동 성공 복구를 건너뜁니다.`);
-    return;
-  }
-
-  const filePath = path.join(postsDir, existingFile);
-  const slug = path.basename(existingFile, path.extname(existingFile));
-  let title = slug;
-  try {
-    const head = readFrontmatterHead(filePath);
-    const titleMatch = head.match(/title:\s*["']?([^"'\n]+)["']?/);
-    if (titleMatch) title = titleMatch[1].trim();
-  } catch (_) {}
-
-  state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
-  state.last_session = 'morning';
-  state.history.push({
-    date: dateStr,
-    session: 'morning',
-    time: '08:20',
-    category: 'news',
-    title,
-    slug,
-    post_type: 'digest',
-    status: 'success',
-  });
-  saveState(state);
-}
-
-
-/**
  * 카테고리 균등 배분 알고리즘
  * - 누적 발행 수가 가장 적은 카테고리 우선 선택
  * - 직전 세션 카테고리 중복 방지
@@ -511,7 +450,6 @@ function getYearWeek(dateStr) {
 
 /**
  * 주 1회 오후 심층글 스킵 요일 선정 및 유지 (자연스러운 휴식일 시뮬레이션)
- * - 오전 뉴스 다이제스트는 매일(주 7일) 무휴식 구동
  * - 오후 심층글은 주 1회 랜덤 휴식
  */
 function checkOrUpdateWeeklySkip(state, dateStr) {
@@ -762,11 +700,6 @@ HTML 구조 규격:
 ];
 
 /**
- * 🌅 아침 뉴스 다이제스트 전용 파이프라인 (Morning News Digest)
- * - 매일(주 7일) 무휴식 구동
- * - 다채널 뉴스 피드 수집 + LLM(Groq/Gemini) 큐레이션 + D1 발행 + 텔레그램 연동
- */
-/**
  * [자가 복구] 원격에 반영되지 못한 로컬 커밋이 남아 있으면 밀어낸다.
  *
  * 왜 필요한가
@@ -808,141 +741,6 @@ function drainPendingDeploys() {
     // 자가 복구 실패는 조용히 넘기지 않는다 — 운영자가 알아야 한다
     log(`❌ [자가 복구 실패] ${pending}건 커밋을 원격에 반영하지 못했습니다: ${err.message}`);
     log(`   ⚠️ 사이트가 이전 빌드를 서빙 중입니다. 수동 확인이 필요합니다.`);
-  }
-}
-
-export async function runMorningNewsDigestPipeline(options = {}) {
-  const { dateStr, timeStr } = getKSTDate();
-  console.log(`\n========================================`);
-  console.log(`🌅 [포켓머니 아침 모닝 브리핑 시작] ${dateStr} (morning) 실행 시각: ${timeStr} KST`);
-  console.log(`========================================`);
-
-  // [P0 · 2026-09-29] 발행 착수 전 GitHub 인증 사전 점검.
-  // push 권한이 없으면 D1 등록까지 끝난 뒤 사이트가 이전 빌드를 서빙하는
-  // 최악의 상태가 되므로, 아무것도 쓰기 전에 먼저 차단한다.
-  if (!options.dryRun) {
-    const pre = publishPreflight(BLOG_ROOT, (m) => console.log(m));
-    if (!pre.ok) {
-      console.error(`❌ [사전 점검 실패] ${pre.error}`);
-      console.error(`   ${pre.hint}`);
-      console.error(`   발행 착수를 중단합니다. (D1/R2 미등록, 로컬 변경 없음)`);
-      throw new Error(`GitHub 사전 점검 실패로 발행 중단: ${pre.error}`);
-    }
-  }
-
-  const state = loadState();
-
-  // 1. 중복 실행 검사
-  let sessionLock = null;
-  let d1Published = false;
-  if (!options.force && !options.dryRun) {
-    const isDone = state.history.some(
-      (h) => h.date === dateStr && (h.session === 'morning' || h.session === 'lunch') && h.status === 'success'
-    );
-    if (isDone) {
-      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 아침 다이제스트 세션은 이미 성공적으로 완료되었습니다. 건너뜁니다.`);
-      return true;
-    }
-
-    // 파일시스템 기반 실제 포스트 존재 여부 2차 검증 (YYMMDD 형태 중복 방지)
-    const existingMorningFile = checkMorningDigestExists(POSTS_DIR, dateStr);
-    if (existingMorningFile) {
-      console.log(`ℹ️ [중복 방지] 오늘(${dateStr}) 생성된 모닝 다이제스트 포스트(${existingMorningFile})가 이미 파일시스템에 존재합니다. 건너뜁니다.`);
-      return true;
-    }
-
-    // 원자적 세션 락 획득 시도 (동시 구동 레이스 컨디션 차단)
-    sessionLock = acquireSessionLock('morning', dateStr);
-    if (!sessionLock.acquired) {
-      return true;
-    }
-  }
-
-  // [P0] 세션 진입 즉시 status: 'in_progress' 원자적 기록 (후속 스케줄러 틱 중복 실행 차단)
-  if (!options.dryRun) {
-    state.status = 'in_progress';
-    state.current_session = { session: 'morning', date: dateStr, started_at: new Date().toISOString() };
-    saveState(state);
-  }
-
-  try {
-    const res = await runNewsDigestGeneration(options);
-    if (!res || !res.success) {
-      throw new Error('뉴스 다이제스트 생성에 실패했습니다.');
-    }
-
-    if (res.skipped) {
-      console.log(`ℹ️ 오늘 모닝 다이제스트 세션이 건너뛰어졌습니다.`);
-      if (!options.dryRun) {
-        state.status = 'idle';
-        delete state.current_session;
-        saveState(state);
-      }
-      return true;
-    }
-
-    if (res.d1Published) {
-      d1Published = true;
-    }
-
-    if (options.dryRun) {
-      console.log(`ℹ️ [DRY-RUN] 아침 다이제스트 시뮬레이션 완료.`);
-      return true;
-    }
-
-    // [P0 하드 품질 게이트] 물리적 파일 2차 검증: 파일 존재 및 이미지 무결성 재확인
-    if (!res.filePath || !fs.existsSync(res.filePath)) {
-      throw new Error(`다이제스트 생성 파일이 디스크에 존재하지 않습니다: ${res.filePath}`);
-    }
-    verifyPostImageIntegrityOrThrow(res.filePath, { isDigest: true, log });
-
-    // 상태 파일 갱신 (오전 다이제스트 전용 카테고리 'news' 고정)
-    state.status = 'idle';
-    delete state.current_session;
-    state.last_session = 'morning';
-    state.category_counts['news'] = (state.category_counts['news'] || 0) + 1;
-    state.history.push({
-      date: dateStr,
-      session: 'morning',
-      time: timeStr,
-      category: 'news',
-      title: res.title,
-      slug: res.slug,
-      post_type: 'digest',
-      status: 'success',
-    });
-    saveState(state);
-
-    // [P0] 당일 세션 완료 상태를 락 파일에 영속화 (당일 재발행 원천 차단)
-    if (sessionLock?.lockFile) {
-      markSessionCompleted(sessionLock.lockFile, { title: res.title, slug: res.slug });
-    }
-
-    console.log(`✅ [아침 모닝 브리핑 완료] "${res.title}" (${res.slug})`);
-    return true;
-  } catch (err) {
-    console.error(`❌ [아침 다이제스트 파이프라인 실패]`, err.message);
-    if (!d1Published && sessionLock?.releaseOnFailure) {
-      sessionLock.releaseOnFailure();
-    } else if (d1Published) {
-      log(`🔒 [세션 락 보존] D1 DB에 이미 포스트가 등록되었으므로 세션 락을 유지합니다.`);
-    }
-
-    state.status = 'idle';
-    delete state.current_session;
-    state.history.push({
-      date: dateStr,
-      session: 'morning',
-      time: timeStr,
-      category: 'news',
-      status: 'failed',
-      error: err.message,
-    });
-    saveState(state);
-
-    const failMsg = `⚠️ *[blogs 아침 뉴스 다이제스트 실패]*\n\n⏰ *시간:* ${timeStr} KST\n❌ *오류:* ${err.message}`;
-    await sendTelegramReport(failMsg);
-    return false;
   }
 }
 
@@ -1150,8 +948,6 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
   // [P0-2] 발행 전 하드 게이트
   // 기존에는 위 통계가 로그로만 출력되고 언제나 return 되어, 규칙 미달 글도 그대로 발행되었다.
   // (실제 사례: 총 글자 수 310자 / 2,020자, H2 0~3개 글이 "심층 가이드"로 D1 등록됨)
-  // 오전 다이제스트 경로(generate-news-digest.mjs)에는 이미 동일한 하드 게이트가 있으므로
-  // 저녁 경로도 동일한 기준을 적용해 비대칭을 제거한다.
   const violations = [];
   if (h2Count < QUALITY_GATE.MIN_H2) violations.push(`H2 대주제 ${h2Count}개 (최소 ${QUALITY_GATE.MIN_H2}개 필요)`);
   if (nonSpaceChars < QUALITY_GATE.MIN_NON_SPACE_CHARS)
@@ -1932,9 +1728,8 @@ _llm 도retry ${QUALITY_GATE.MAX_LLM_RETRY}회로 분량/구조를 충족하지 
 }
 
 /**
- * 데몬 스케줄러 메인 루프 (Two-Track 스케줄러)
- * - 1) 오전 세션: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식 구동)
- * - 2) 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)
+ * 데몬 스케줄러 메인 루프 (단일 오후 세션)
+ * - 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)
  */
 async function startDaemon() {
   // [P1] 데몬 단일 인스턴스 보장
@@ -1958,8 +1753,7 @@ async function startDaemon() {
   process.on('SIGINT', () => { cleanup(); process.exit(0); });
   process.on('SIGTERM', () => { cleanup(); process.exit(0); });
 
-  log(`🤖 [blogs 포켓머니 2-Track 자동화 스케줄러 데몬 가동]`);
-  log(`- 오전 범위: 08:20 ~ 08:50 KST (모닝 머니 다이제스트, ★ 주 7일 매일 무휴식)`);
+  log(`🤖 [blogs 포켓머니 자동화 스케줄러 데몬 가동]`);
   log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
 
   // [P1] 고스트 자폭 하트비트: 메인 루프가 장시간 세션 처리(수 분)로 블록되어도
@@ -1990,24 +1784,21 @@ async function startDaemon() {
   // [P0] 목표 시각 일원화 및 영속화 (재시작 시 기존 배정 시각 유지)
   function getOrAssignTargets(targetState, targetDate) {
     if (!targetState.scheduled_targets) targetState.scheduled_targets = {};
-    if (targetState.scheduled_targets[targetDate]?.morning && targetState.scheduled_targets[targetDate]?.evening) {
+    if (targetState.scheduled_targets[targetDate]?.evening) {
       return {
-        morning: targetState.scheduled_targets[targetDate].morning,
         evening: targetState.scheduled_targets[targetDate].evening,
         isNew: false,
       };
     }
-    const morning = getRandomTargetMinutes(8, 20, 8, 50);
     const evening = getRandomTargetMinutes(18, 15, 18, 45);
-    targetState.scheduled_targets[targetDate] = { morning, evening };
+    targetState.scheduled_targets[targetDate] = { evening };
     saveState(targetState);
-    return { morning, evening, isNew: true };
+    return { evening, isNew: true };
   }
 
   const initialDateStr = getKSTDate().dateStr;
   const initState = loadState();
   const initTargets = getOrAssignTargets(initState, initialDateStr);
-  let currentMorningTarget = initTargets.morning;
   let currentEveningTarget = initTargets.evening;
   let lastCheckedDay = initialDateStr;
   let isAfternoonSkippedToday = false;
@@ -2019,13 +1810,12 @@ async function startDaemon() {
     const { dayOfWeek: initDayOfWeek } = getKSTDate();
     isAfternoonSkippedToday = initDayOfWeek === initWeekly.skip_afternoon_day;
   }
-  let morningExecutedToday = false;
   let eveningExecutedToday = false;
   let eveningSkippedLoggedToday = false;
   let isSessionRunning = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
-  log(`📅 오늘의 랜덤 목표 시간 (${initTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}): 오전 ${formatTarget(currentMorningTarget)}, 오후 ${formatTarget(currentEveningTarget)}`);
+  log(`📅 오늘의 랜덤 목표 시간 (${initTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}): 오후 ${formatTarget(currentEveningTarget)}`);
 
   while (true) {
     // [P0-1] 데몬 락 파일 소유권 주기적 확인 (다른 프로세스가 락을 가져갔거나 service.sh restart로 교체된 경우 자진 종료)
@@ -2051,7 +1841,6 @@ async function startDaemon() {
 
     const { dateStr, hours, minutes, dayOfWeek } = getKSTDate();
     const currentTotal = hours * 60 + minutes;
-    const morningTargetTotal = currentMorningTarget.hour * 60 + currentMorningTarget.minute;
     const eveningTargetTotal = currentEveningTarget.hour * 60 + currentEveningTarget.minute;
 
     // [P0 · 2026-10-13] 휴식일 여부를 매 루프마다 재계산한다.
@@ -2068,10 +1857,8 @@ async function startDaemon() {
     if (lastCheckedDay !== dateStr) {
       const state = loadState();
       const newTargets = getOrAssignTargets(state, dateStr);
-      currentMorningTarget = newTargets.morning;
       currentEveningTarget = newTargets.evening;
       lastCheckedDay = dateStr;
-      morningExecutedToday = false;
       eveningExecutedToday = false;
       eveningSkippedLoggedToday = false;
 
@@ -2079,7 +1866,6 @@ async function startDaemon() {
       isAfternoonSkippedToday = (dayOfWeek === weeklyConfig.skip_afternoon_day);
 
       log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 랜덤 목표 배정 (${newTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}):`);
-      log(`- 📰 오전 다이제스트: ${formatTarget(currentMorningTarget)} KST (매일 무휴식)`);
       if (isAfternoonSkippedToday) {
         log(`- 🎲 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다! 오후 세션을 건너뜁니다.`);
       } else {
@@ -2098,36 +1884,7 @@ async function startDaemon() {
       }
     }
 
-    // 1. 오전 다이제스트 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 오전 12시 이전)
-    const morningDoneState = isSessionAlreadyDone(state, 'morning', dateStr) || isSessionAlreadyDone(state, 'lunch', dateStr);
-    const morningDoneDisk = Boolean(checkMorningDigestExists(POSTS_DIR, dateStr));
-
-    // 디스크에는 있는데 상태 파일에 누락된 경우 상태 복구
-    if (morningDoneDisk && !morningDoneState) {
-      log(`⚠️ [상태 복구] 오늘(${dateStr}) 모닝 다이제스트가 디스크에 존재하나 상태 파일에 누락되었습니다. 상태를 동기화합니다.`);
-      syncMorningStateFromDisk(state, dateStr, POSTS_DIR);
-    }
-
-    const morningDone = morningDoneState || morningDoneDisk;
-    if (morningDone && !morningExecutedToday) {
-      morningExecutedToday = true;
-    }
-
-    if (!morningDone && !morningExecutedToday && currentTotal >= morningTargetTotal && currentTotal < 12 * 60) {
-      log(`🌅 [오전 세션 트리거] 목표 시각(${formatTarget(currentMorningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
-      morningExecutedToday = true;
-      isSessionRunning = true;
-      try {
-        await runMorningNewsDigestPipeline();
-      } catch (e) {
-        log(`❌ [오전 세션 오류 방어] ${e.message}`);
-      } finally {
-        isSessionRunning = false;
-      }
-      await new Promise((r) => setTimeout(r, 65000)); // 중복 분 실행 방지
-    }
-
-    // 2. 오후 심층글 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 24시 이전)
+    // 오후 심층글 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 24시 이전)
     const eveningDone = isSessionAlreadyDone(state, 'evening', dateStr);
     if (!eveningDone && !eveningExecutedToday && currentTotal >= eveningTargetTotal && currentTotal < 24 * 60) {
       if (isAfternoonSkippedToday) {
@@ -2137,7 +1894,7 @@ async function startDaemon() {
           eveningSkippedLoggedToday = true;
           try {
             await sendTelegramReport(
-              `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오전 뉴스 다이제스트는 매일 무휴식 발행되며, 오후 심층글은 내일부터 다시 정상 발행됩니다.`
+              `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오후 심층글은 내일부터 다시 정상 발행됩니다.`
             );
           } catch (_) {}
         }
@@ -2167,19 +1924,15 @@ if (process.argv[1] && process.argv[1].endsWith('auto-publish-runner.mjs')) {
   const force = process.argv.includes('--force');
   const dryRun = process.argv.includes('--dry-run');
 
-  if (arg === 'morning' || arg === 'lunch') {
-    runMorningNewsDigestPipeline({ force, dryRun }).then((success) => process.exit(success ? 0 : 1));
-  } else if (arg === 'evening') {
+  if (arg === 'evening') {
     runPublishPipeline(arg, { force, dryRun }).then((success) => process.exit(success ? 0 : 1));
   } else if (arg === 'daemon') {
     startDaemon();
   } else {
     console.log('사용법:');
-    console.log('  node scripts/auto-publish-runner.mjs morning                 # 오전 뉴스 다이제스트 수동 실행');
-    console.log('  node scripts/auto-publish-runner.mjs lunch                   # 오전 뉴스 다이제스트 수동 실행 (호환용)');
     console.log('  node scripts/auto-publish-runner.mjs evening                 # 오후 심층 가이드 수동 실행');
     console.log('  node scripts/auto-publish-runner.mjs evening --force         # 오늘 이미 완료되었어도 강제 실행');
     console.log('  node scripts/auto-publish-runner.mjs evening --dry-run       # D1/Git 건너뛰고 파일만 생성');
-    console.log('  node scripts/auto-publish-runner.mjs daemon                  # 상시 Two-Track 스케줄러 데몬 가동');
+    console.log('  node scripts/auto-publish-runner.mjs daemon                  # 상시 오후 스케줄러 데몬 가동');
   }
 }

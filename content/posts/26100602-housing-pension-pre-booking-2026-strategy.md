@@ -7,6 +7,7 @@ tags: [주택연금, 사전예약, 노후준비, 주택금융공사, 역모기�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 주택연금 사전예약 제도 개요 및 최신 개정 배경

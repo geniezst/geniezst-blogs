@@ -7,6 +7,7 @@ tags: [청년창업, 창업지원금, 정부지원, 무이자대출, 사업화�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 청년창업지원금 - 혁신 창업가를 위한 정부의 전폭적 지원

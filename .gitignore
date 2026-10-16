@@ -51,3 +51,6 @@ scripts/*_backup*/
 blog-509810-*.json
 gsc-*.json
 data/*.out
+
+# AdSense 대응 작업 백업 (2026-10-16)
+data/backup-*/

@@ -11,6 +11,9 @@ export const siteConfig = {
   author: '포켓머니',
   lang: 'ko',
   adsenseClientId: 'ca-pub-9338927727391440', // 구글 애드센스 클라이언트 ID (예: ca-pub-XXXXXXXXXXXXXXXX)
+  // 애드센스 승인 완료 후 true 로 전환하면 AdSlot 광고 슬롯이 노출됩니다.
+  // 승인 전에는 false 로 두어 'Sponsored' 플레이스홀더/광고 영역이 렌더링되지 않습니다.
+  adsenseEnabled: false,
 
   // 2. 프로필 카드 정보 (사이드바에 노출)
   profile: {
@@ -19,7 +22,7 @@ export const siteConfig = {
     avatarText: 'P',
     avatarImage: '/assets/images/avatar-shirone.webp',
     github: 'https://github.com/geniezst',
-    email: '',
+    email: 'geniezst@gmail.com',
   },
 
   // 3. 상단 내비게이션 바 메뉴

@@ -7,6 +7,7 @@ tags: [청년희망적금, 청년도약계좌, 재투자, ISA, 연금저축, 비
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 청년희망적금 만기, 2026년 목돈 재투자의 골든타임

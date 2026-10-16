@@ -183,6 +183,8 @@ async function main() {
   const author = metadata.author || '포켓머니';
   const readingTime = Number(metadata.reading_time || 5);
   const affiliate = metadata.affiliate === 'true' || metadata.affiliate === true ? 1 : 0;
+  // frontmatter status: draft 인 글(중복 통합 등)은 비공개로 등록한다. 기본값은 published.
+  const postStatus = metadata.status === 'draft' ? 'draft' : 'published';
   let featuredImage = metadata.featured_image || null;
   // [P1-2] 정규화 후 실제 픽셀 크기 (generate-news-digest 가 frontmatter 에 기록)
   //   CLS 방지용 <img width/height> 와 OG 크롭 근거로 사용한다.
@@ -247,7 +249,7 @@ VALUES (
   '${esc(description)}',
   '${esc(content)}',
   (SELECT id FROM blog_categories WHERE slug = '${esc(categorySlug)}' LIMIT 1),
-  'published',
+  '${postStatus}',
   '${esc(author)}',
   ${featuredImage ? `'${esc(featuredImage)}'` : 'NULL'},
   ${imageWidth || 'NULL'},

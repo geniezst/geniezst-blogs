@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Sidebar from '../../components/Sidebar.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import AffiliateNotice from '../../components/AffiliateNotice.astro';
+import OfficialSources from '../../components/OfficialSources.astro';
 import { getDb, getPostBySlug, incrementPostViews, getCategories, getTotalPublishedPosts } from '../../lib/db';
 import { renderMarkdown } from '../../lib/markdown';
 import type { Category } from '../../types/blog';
@@ -216,6 +217,9 @@ const badgeStyle = (post.category_slug && categoryBadgeStyles[post.category_slug
         class="mt-8 article-content"
         set:html={contentHtml}
       />
+
+      <!-- [YMYL] 공식 확인처 및 면책 고지 -->
+      <OfficialSources title={post.title} categorySlug={post.category_slug} />
 
       <!-- 본문 하단 광고 -->
       <AdSlot format="rectangle" />

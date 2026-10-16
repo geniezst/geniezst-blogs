@@ -7,6 +7,7 @@ tags: [신용카드, 자동차 구매, 캐시백, 무이자 할부, 카드사 �
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 신용카드 자동차 구매- 고액 결제 혜택의 모든 것

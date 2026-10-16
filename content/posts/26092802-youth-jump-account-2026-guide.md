@@ -7,6 +7,7 @@ tags: [청년도약계좌, 청년정책, 목돈마련, 정부지원금, 비과�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 청년도약계좌- 5년 만기 시 최대 5,000만원 목돈 마련 전략

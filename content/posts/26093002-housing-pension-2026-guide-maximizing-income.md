@@ -7,6 +7,7 @@ tags: [주택연금, 2026년 주택연금, 주택연금 가입 조건, 주택연
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 주택연금 2026년 최신 개요 및 제도 개편 방향

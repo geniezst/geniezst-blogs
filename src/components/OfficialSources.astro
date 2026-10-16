@@ -1,0 +1,100 @@
+---
+/**
+ * [YMYL] 글 하단 공식 확인처 + 면책 고지
+ *   - 글 제목 키워드로 해당 제도의 운영 기관을 우선 매칭하고, 없으면 카테고리 기본 확인처를 사용한다.
+ *   - 지원 조건·금리·기간은 수시로 바뀌므로 신청 전 공식 공고 확인을 안내한다.
+ */
+interface Props {
+  title: string;
+  categorySlug?: string | null;
+}
+
+interface Source {
+  name: string;
+  url: string;
+}
+
+const { title, categorySlug } = Astro.props;
+
+const SOURCES: Record<string, Source> = {
+  kinfa: { name: '서민금융진흥원', url: 'https://www.kinfa.or.kr' },
+  bokjiro: { name: '복지로', url: 'https://www.bokjiro.go.kr' },
+  gov24: { name: '정부24', url: 'https://www.gov.kr' },
+  hometax: { name: '국세청 홈택스', url: 'https://www.hometax.go.kr' },
+  work24: { name: '고용24', url: 'https://www.work24.go.kr' },
+  hf: { name: '한국주택금융공사', url: 'https://www.hf.go.kr' },
+  nhuf: { name: '주택도시기금', url: 'https://nhuf.molit.go.kr' },
+  myhome: { name: '마이홈포털', url: 'https://www.myhome.go.kr' },
+  hug: { name: '주택도시보증공사(HUG)', url: 'https://www.khug.or.kr' },
+  applyhome: { name: '청약홈', url: 'https://www.applyhome.co.kr' },
+  semas: { name: '소상공인시장진흥공단', url: 'https://www.semas.or.kr' },
+  nhis: { name: '국민건강보험공단', url: 'https://www.nhis.or.kr' },
+  fine: { name: '금융감독원 파인', url: 'https://fine.fss.or.kr' },
+  finlife: { name: '금융상품통합비교공시', url: 'https://finlife.fss.or.kr' },
+  payinfo: { name: '금융결제원 어카운트인포', url: 'https://www.payinfo.or.kr' },
+  kstartup: { name: 'K-Startup', url: 'https://www.k-startup.go.kr' },
+};
+
+// 제목 키워드 → 운영 기관 (앞쪽 규칙 우선)
+const KEYWORD_RULES: [RegExp, string[]][] = [
+  [/청년도약계좌|청년희망적금/, ['kinfa']],
+  [/청년내일저축|희망저축|청년저축플러스/, ['bokjiro']],
+  [/국민취업지원|구직촉진수당/, ['work24']],
+  [/근로장려금|자녀장려금/, ['hometax']],
+  [/주택연금/, ['hf']],
+  [/반환보증/, ['hug']],
+  [/주거급여/, ['bokjiro', 'myhome']],
+  [/전세자금|주택 ?구입자금|월세자금|디딤돌/, ['nhuf']],
+  [/월세/, ['bokjiro', 'myhome']],
+  [/청약/, ['applyhome']],
+  [/소상공인/, ['semas']],
+  [/건강보험/, ['nhis']],
+  [/창업/, ['kstartup']],
+  [/카드 ?포인트/, ['payinfo']],
+  [/연말정산|소득공제|세액공제|절세|비과세/, ['hometax']],
+  [/ISA|연금계좌/, ['fine']],
+  [/예탁금|예적금|적금|예금/, ['finlife']],
+];
+
+const CATEGORY_DEFAULTS: Record<string, string[]> = {
+  welfare: ['bokjiro', 'gov24'],
+  tax: ['hometax'],
+  finance: ['fine', 'finlife'],
+  saving: ['finlife'],
+  subsidy: ['gov24'],
+  'life-tips': ['gov24'],
+};
+
+const keys: string[] = [];
+for (const [pattern, sourceKeys] of KEYWORD_RULES) {
+  if (pattern.test(title)) keys.push(...sourceKeys);
+}
+keys.push(...(CATEGORY_DEFAULTS[categorySlug ?? ''] ?? ['gov24']));
+
+const sources = [...new Set(keys)].slice(0, 3).map((k) => SOURCES[k]);
+---
+
+<aside class="mt-10 rounded-2xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-5">
+  <h2 class="text-base font-bold text-gray-900 dark:text-white mb-2">공식 확인처</h2>
+  <p class="text-sm text-gray-600 dark:text-neutral-300 mb-3">
+    지원 대상·금액·금리·신청 기간은 정책 변경에 따라 달라질 수 있습니다. 신청 전 아래 공식 사이트에서 최신 공고를 확인하세요.
+  </p>
+  <ul class="flex flex-wrap gap-2 mb-4">
+    {sources.map((s) => (
+      <li>
+        <a
+          href={s.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-emerald-200 dark:border-emerald-900/60 text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline"
+        >
+          {s.name} ↗
+        </a>
+      </li>
+    ))}
+  </ul>
+  <p class="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
+    본 글은 일반적인 정보 제공을 목적으로 하며, 특정 금융상품의 가입·투자를 권유하지 않습니다.
+    개인의 소득·자산·가구 상황에 따라 적용 여부가 달라지므로 최종 판단 전 해당 기관에 확인하시기 바랍니다.
+  </p>
+</aside>

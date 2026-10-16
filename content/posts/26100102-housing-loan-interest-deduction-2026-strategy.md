@@ -7,6 +7,7 @@ tags: [주택담보대출, 이자상환액, 소득공제, 연말정산, 무주�
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 주택담보대출 이자상환액 소득공제 제도 개요 및 최신 개정 배경

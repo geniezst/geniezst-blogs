@@ -7,6 +7,7 @@ tags: [주택담보대출, 갈아타기, 소득공제, 연말정산, 절세, 부
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 주택담보대출 갈아타기- 최신 개정된 절세 혜택 완벽 분석

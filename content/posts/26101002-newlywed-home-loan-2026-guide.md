@@ -7,6 +7,7 @@ tags: [신혼부부, 주택구입자금대출, 내집마련, 저금리대출, �
 author: "스마트 머니"
 reading_time: 8
 affiliate: false
+status: "draft"
 ---
 
 ## 2026년 신혼부부 주택 구입자금 대출- 내 집 마련의 든든한 디딤돌
