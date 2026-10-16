@@ -2,10 +2,24 @@ import { defineMiddleware } from 'astro:middleware';
 
 const CANONICAL_ORIGIN = 'https://pockemoney.com';
 
-// 중복·기준 연도가 지난 글 통합에 따른 301 영구 리디렉션 (docs/SPEC_ADSENSE_PREEMPTIVE_REMEDIATION.md P0-2)
-// 팩트체크로 비공개 처리 후 재작성 중인 글(청년도약계좌·청년내일저축계좌·주택연금·주담대 공제)로 향하는 통합 리디렉션은
-// 대상 글이 다시 공개될 때 추가한다. (영구 리디렉션이 404 로 향하지 않도록)
+// 중복·기준 연도가 지난 글 통합에 따른 301 영구 리디렉션 (docs/SPEC_ADSENSE_PREEMPTIVE_REMEDIATION.md)
+// 대상 글은 팩트체크 후 재작성·재공개된 대표 글이다.
 const REDIRECTS: Record<string, string> = {
+  // 청년도약계좌(신규가입 종료) 관련 글 → 기존 가입자 + 청년미래적금 대표 글
+  '/blog/youth-leap-account-tax-exemption-guide': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-leap-account-maturity-return-simulation-2026': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-leap-account-saving-contribution-strategy-2026': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-leap-account-early-termination-tips-2026': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-leap-account-welfare-benefits-2026': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-jump-account-2026-guide': '/blog/youth-leap-account-2026-guide',
+  '/blog/youth-hope-savings-reinvestment-strategy-2026': '/blog/youth-leap-account-2026-guide',
+  // 청년내일저축계좌
+  '/blog/youth-tomorrow-savings-account-2026-third-application-guide': '/blog/youth-tomorrow-savings-account-2026-guide',
+  '/blog/youth-savings-plus-account-2026-guide': '/blog/youth-tomorrow-savings-account-2026-guide',
+  // 주택연금·주담대 공제
+  '/blog/housing-pension-pre-booking-2026-strategy': '/blog/housing-pension-2026-guide-maximizing-income',
+  '/blog/housing-loan-refinancing-tax-deduction-2026': '/blog/housing-loan-interest-deduction-2026-strategy',
+  // 기준 연도가 지난 글
   '/blog/year-end-tax-refund-maximization-2024': '/blog/credit-debit-card-income-deduction-strategy-2026',
 };
 
