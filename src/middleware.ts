@@ -23,26 +23,41 @@ const REDIRECTS: Record<string, string> = {
   '/blog/year-end-tax-refund-maximization-2024': '/blog/credit-debit-card-income-deduction-strategy-2026',
 };
 
+const ALIAS_HOSTS = new Set(['www.pockemoney.com']);
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0']);
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
-  const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+  const method = context.request.method;
+  // 끝 슬래시 제거(루트 제외). 정규화 경로는 410·통합 slug 판정과 최종 리디렉션 대상에 함께 쓴다.
+  const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') || '/' : url.pathname;
 
   // 영구 삭제된 뉴스 다이제스트(숫자 접두사 slug)와 새소식 카테고리는 410 Gone 으로 응답해 색인 제거를 앞당긴다.
   if (/^\/blog\/\d{8}-/.test(pathname) || pathname === '/category/news') {
     return new Response('410 Gone', { status: 410, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
   }
 
-  const redirectTarget = REDIRECTS[pathname];
-  if (redirectTarget) {
-    return Response.redirect(`${CANONICAL_ORIGIN}${redirectTarget}`, 301);
+  // POST 등 API 요청은 리디렉션하면 메서드가 바뀔 수 있으므로 GET/HEAD 만 정규화한다.
+  if (method !== 'GET' && method !== 'HEAD') {
+    return next();
   }
 
-  // http 요청 및 www.pockemoney.com 접속 시 https://pockemoney.com 으로 301 영구 리디렉션 (SEO 표준)
-  // 로컬 개발 서버(localhost)는 제외한다.
-  const isProdHost = url.hostname === 'pockemoney.com';
-  const isAliasHost = url.hostname === 'www.pockemoney.com';
-  if (isAliasHost || (isProdHost && url.protocol === 'http:')) {
-    return Response.redirect(`${CANONICAL_ORIGIN}${url.pathname}${url.search}`, 301);
+  const host = url.hostname.toLowerCase();
+  const isLocal = LOCAL_HOSTS.has(host);
+  // www·workers.dev·http 접속은 https://pockemoney.com 으로 통일한다 (docs/SPEC_ADSENSE_REAPPLY_FIXES.md ## 플랫폼).
+  const needsOrigin =
+    !isLocal &&
+    (ALIAS_HOSTS.has(host) || host.endsWith('.workers.dev') || (host === 'pockemoney.com' && url.protocol === 'http:'));
+  const origin = isLocal ? url.origin : CANONICAL_ORIGIN;
+
+  // 통합 slug, 호스트·프로토콜, 끝 슬래시를 한 번에 계산해 단일 301 로 최종 URL 에 보낸다 (다중 리디렉션 방지).
+  const redirectTarget = REDIRECTS[pathname];
+  const targetPath = redirectTarget ?? pathname;
+  if (redirectTarget || needsOrigin || targetPath !== url.pathname) {
+    return new Response(null, {
+      status: 301,
+      headers: { Location: `${origin}${targetPath}${url.search}`, 'Cache-Control': 'public, max-age=3600' },
+    });
   }
 
   return next();

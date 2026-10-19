@@ -5,7 +5,6 @@ export const GET: APIRoute = () => {
 Allow: /
 
 Sitemap: https://pockemoney.com/sitemap.xml
-Sitemap: https://pockemoney.com/sitemap-index.xml
 `;
 
   return new Response(robots, {

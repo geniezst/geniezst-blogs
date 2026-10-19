@@ -39,6 +39,16 @@ if (db) {
 
     <!-- 메인 컨텐츠 영역 -->
     <div class="flex-1 w-full flex flex-col gap-4">
+      <!-- 홈 페이지 제목 (페이지당 h1 1개, 사이트 주제 안내) -->
+      <section class="card-base px-5 py-4 sm:px-6 sm:py-5">
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-[var(--on-surface)] font-heading">
+          포켓머니 · 정부 지원금, 세금, 생활 금융 가이드
+        </h1>
+        <p class="mt-1.5 text-sm leading-relaxed text-[var(--on-surface-variant)]">
+          청년·서민·직장인이 신청할 수 있는 지원 제도와 절세 방법을 정부·공공기관 공식 자료를 확인해 정리합니다.
+        </p>
+      </section>
+
       <!-- Shirone CategoryBar (가로 스크롤 카테고리 칩 바) -->
       <CategoryBar categories={categories} totalPosts={total} />
 

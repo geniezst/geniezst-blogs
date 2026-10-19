@@ -11,6 +11,7 @@ interface Props {
   ogImage?: string | null;
   type?: 'website' | 'article';
   publishedTime?: string;
+  modifiedTime?: string;
   tags?: string[];
   author?: string;
 }
@@ -18,12 +19,14 @@ interface Props {
 const {
   title,
   description,
-  // 프로토콜(http)·호스트·쿼리스트링과 무관하게 항상 https://pockemoney.com 기준 canonical 을 사용한다.
-  canonicalUrl = new URL(Astro.url.pathname, 'https://pockemoney.com').href,
+  // 프로토콜(http)·호스트·쿼리스트링·끝 슬래시와 무관하게 항상 https://pockemoney.com + 정규화 경로를 canonical 로 쓴다.
+  // (middleware 가 끝 슬래시를 301 로 제거하므로 canonical 도 슬래시 없는 형태와 일치해야 한다.)
+  canonicalUrl = new URL(Astro.url.pathname.replace(/\/+$/, '') || '/', 'https://pockemoney.com').href,
   image = '/favicon.svg',
   ogImage = null,
   type = 'website',
   publishedTime,
+  modifiedTime,
   tags = [],
   author = '포켓머니',
 } = Astro.props;
@@ -72,6 +75,7 @@ const jsonLd = type === 'article'
       description: description,
       image: ogImageUrl,
       datePublished: publishedTime,
+      dateModified: modifiedTime || publishedTime,
       author: {
         '@type': 'Person',
         name: author,
@@ -113,6 +117,7 @@ const jsonLd = type === 'article'
 <meta property="og:locale" content="ko_KR" />
 <meta property="og:site_name" content={siteName} />
 {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+{modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
 {tags.map((tag) => <meta property="article:tag" content={tag} />)}
 
 <!-- Twitter Card -->

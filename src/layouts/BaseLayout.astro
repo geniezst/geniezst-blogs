@@ -11,6 +11,8 @@ interface Props {
   image?: string;
   type?: 'website' | 'article';
   publishedTime?: string;
+  /** ISO 8601 (+09:00) 수정 시각 */
+  modifiedTime?: string;
   tags?: string[];
   author?: string;
   canonicalUrl?: string;
@@ -24,6 +26,7 @@ const {
   image,
   type = 'website',
   publishedTime,
+  modifiedTime,
   tags,
   author = siteConfig.author,
   canonicalUrl,
@@ -46,10 +49,14 @@ const adsenseClientId = siteConfig.adsenseClientId || import.meta.env.PUBLIC_ADS
       ogImage={ogImage}
       type={type}
       publishedTime={publishedTime}
+      modifiedTime={modifiedTime}
       tags={tags}
       author={author}
       canonicalUrl={canonicalUrl}
     />
+
+    <!-- AdSense 사이트 소유 확인 (siteConfig.adsenseClientId 와 ads.txt pub-ID 일치) -->
+    {adsenseClientId && <meta name="google-adsense-account" content={adsenseClientId} />}
 
     <!-- Naver Search Advisor 소유확인 -->
     <meta name="naver-site-verification" content="ef283c5ac3c646e5140c75671ae1ff3a80b0c692" />

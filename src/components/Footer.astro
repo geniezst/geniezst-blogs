@@ -8,20 +8,22 @@ const currentYear = new Date().getFullYear();
   <div class="max-w-6xl mx-auto card-base p-6 sm:p-8 flex flex-col gap-6">
     <!-- 상단 링크 & 저작권 -->
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-5 border-b border-[var(--outline-variant)]">
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center justify-center gap-2">
         <span class="w-2 h-2 rounded-full bg-[var(--primary)]"></span>
         <span class="font-bold text-[var(--on-surface)]">{siteConfig.title}</span>
         <span>•</span>
         <span>Copyright &#169; {currentYear}. All rights reserved.</span>
       </div>
 
-      <div class="flex items-center gap-4">
+      <nav class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2" aria-label="사이트 정보">
         <a href="/about" class="hover:text-[var(--primary)] transition">소개</a>
-        <span>•</span>
-        <a href="/privacy" class="hover:text-[var(--primary)] transition">개인정보처리방침</a>
-        <span>•</span>
+        <span aria-hidden="true">•</span>
         <a href="/contact" class="hover:text-[var(--primary)] transition">문의하기</a>
-        <span>•</span>
+        <span aria-hidden="true">•</span>
+        <a href="/privacy" class="hover:text-[var(--primary)] transition">개인정보처리방침</a>
+        <span aria-hidden="true">•</span>
+        <a href="/terms" class="hover:text-[var(--primary)] transition">이용약관</a>
+        <span aria-hidden="true">•</span>
         <a
           href="/rss.xml"
           class="inline-flex items-center gap-1 text-[var(--primary)] font-semibold"
@@ -32,13 +34,13 @@ const currentYear = new Date().getFullYear();
           </svg>
           <span>RSS</span>
         </a>
-      </div>
+      </nav>
     </div>
 
     <!-- 신뢰도 강화 면책 안내문 -->
     <div class="text-[11px] leading-relaxed text-[var(--on-surface-variant)] opacity-80 max-w-4xl mx-auto text-center sm:text-left">
       <p>
-        [안내 및 면책 고지] 본 웹사이트의 모든 콘텐츠는 대한민국 정부 부처 및 공공기관(기획재정부, 금융위원회, 서민금융진흥원, 국세청 등)의 공식 보도자료 및 공공누리 출처를 기반으로 일반 이용자가 이해하기 쉽게 정리한 생활 정보입니다. 정책 및 금리 조건은 관련 법령 개정 및 금융기관 사정에 따라 수시로 변동될 수 있으므로, 최종 신청 전 각 소관 부처 및 은행의 공식 창구를 반드시 재확인하시기 바랍니다.
+        [안내 및 면책 고지] 포켓머니의 글은 정부 부처·공공기관이 공개한 자료를 바탕으로 이해하기 쉽게 정리한 생활 정보이며, 글마다 확인한 기준일과 출처를 적어 둡니다. 제도와 금리는 바뀔 수 있으므로 신청 전 소관 기관의 최신 공고를 확인하세요. 이 사이트의 글은 투자·법률·세무 자문이 아닙니다.
       </p>
     </div>
   </div>

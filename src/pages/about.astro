@@ -13,52 +13,61 @@ if (db) {
 
 <BaseLayout
   title="블로그 소개 - 포켓머니"
-  description="포켓머니의 운영 철학과 생활 금융 가이드 소개입니다."
+  description="포켓머니 운영자, 글 작성·검수 방식, 광고·정정 정책 안내입니다."
 >
   <div class="flex flex-col lg:flex-row gap-6 items-start">
     <Sidebar categories={categories} />
 
     <div class="flex-1 w-full card-base p-6 sm:p-10">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40 mb-3">
-        <span>🏛️</span>
-        <span>스마트 금융 아카이브</span>
-      </div>
-
       <h1 class="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mb-2">
         About 포켓머니
       </h1>
       <p class="text-sm text-neutral-500 dark:text-neutral-400 pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
-        놓치면 손해보는 정부 복지 혜택과 알뜰 생활 금융의 모든 것
+        정부 지원 제도와 생활 금융 정보를 공식 자료 기준으로 정리하는 개인 블로그
       </p>
 
       <div class="prose prose-neutral dark:prose-invert max-w-none text-base leading-relaxed
                   prose-headings:font-bold prose-a:text-emerald-600 dark:prose-a:text-emerald-400">
         <p>
-          <strong>포켓머니</strong>는 복잡하고 어려운 정부 정책 지원금, 숨은 세금 환급금, 알뜰 금융 및 생활비 절약 노하우를 일반 독자의 눈높이에서 가장 쉽고 명쾌하게 안내하는 실전 생활 금융 가이드입니다.
+          <strong>포켓머니</strong>는 정부 지원금·복지 제도, 연말정산과 세금 공제, 예적금·대출 같은 생활 금융 정보를
+          공식 발표 자료를 바탕으로 이해하기 쉽게 정리하는 개인 운영 블로그입니다.
         </p>
 
-        <h2>주요 다루는 분야</h2>
+        <h2>다루는 분야</h2>
         <ul>
-          <li><strong>정부 지원금 &amp; 복지:</strong> 청년도약계좌, 근로·자녀장려금, 부모급여 등 전 국민 맞춤형 복지 혜택</li>
-          <li><strong>연말정산 &amp; 절세/환급:</strong> 숨은 국세/지방세 환급금 조회, 소득공제 극대화 전략</li>
-          <li><strong>예적금 &amp; 금융 팁:</strong> 고금리 파킹통장 실시간 비교, 특판 예적금, 청약통장 및 ISA 절세 계좌 활용법</li>
-          <li><strong>생활비 절약 &amp; 공과금:</strong> 전기·가스요금 캐시백, 통신비 25% 요금할인, 신용·체크카드 피킹 노하우</li>
-          <li><strong>소상공인 &amp; 정책자금:</strong> 소상공인 전기료 지원, 저금리 대환 대출, 희망리턴패키지 정부 지원금</li>
-          <li><strong>생활 행정 &amp; 필수 팁:</strong> 정부24 원스톱 민원 서류 발급, 착한운전 마일리지, 일상 행정 상식</li>
+          <li><strong>정부 지원금·복지:</strong> 청년·신혼부부·출산 가구 등을 위한 지원 제도의 자격과 신청 방법</li>
+          <li><strong>세금·연말정산:</strong> 소득공제·세액공제 구조, 근로장려금 등 신청 일정</li>
+          <li><strong>저축·금융:</strong> 정책 적금, 청약통장, ISA 등 절세 계좌 제도</li>
+          <li><strong>주거:</strong> 전세·월세 대출, 주거급여, 주택연금 등 주거 관련 제도</li>
+          <li><strong>소상공인·생활 행정:</strong> 정책자금, 생활 속 행정 절차</li>
         </ul>
 
-        <h2>운영 원칙</h2>
+        <h2>운영자</h2>
         <p>
-          콘텐츠는 정부 부처·공공기관·금융기관의 공식 발표 자료를 참고해 정리하며,
-          누구나 쉽게 이해하고 바로 신청할 수 있는 실천적 가이드를 지향합니다.
-          다만 지원 조건과 금리, 신청 기간은 수시로 바뀔 수 있으므로 각 글 하단의 <strong>공식 확인처</strong>에서
-          최신 공고를 반드시 확인하신 뒤 신청해 주세요.
+          포켓머니는 개인 1인이 운영합니다. 운영자는 금융회사, 세무사·회계사 등 전문 자격을 가진 기관이나 전문가가 아니며,
+          본 사이트의 글은 금융·세무 자문이 아닌 일반 정보입니다. 법인이나 사업장 주소를 따로 두고 있지 않으며, 연락은 이메일로 받습니다.
         </p>
 
-        <h2>운영자 및 정정 요청</h2>
+        <h2>글을 만드는 방식</h2>
+        <p>독자가 글의 신뢰도를 스스로 판단할 수 있도록 작성 방식을 그대로 밝힙니다.</p>
+        <ul>
+          <li><strong>AI 보조 작성:</strong> 글 초안 작성에 AI(Google Gemini)를 사용합니다. 일부 글은 정해진 일정에 따라 자동으로 생성·게시됩니다.</li>
+          <li><strong>공식 자료 대조:</strong> 운영자가 정부 부처·공공기관·운영 기관의 공고와 원문을 기준으로 금액·한도·금리·자격·기간을 확인하고 수정합니다. 자동으로 게시된 글은 게시 후에 이 확인을 거칠 수 있습니다.</li>
+          <li><strong>확인되지 않는 내용:</strong> 공식 자료로 확인하지 못한 수치나 존재가 확인되지 않는 제도는 수정하거나 비공개 처리합니다. 발표만 되고 시행이 확정되지 않은 내용은 그렇게 구분해 적습니다.</li>
+          <li><strong>기준일 표시:</strong> 제도와 금리는 자주 바뀌므로 글의 작성일·확인 기준일을 함께 보시고, 각 글 하단의 <strong>공식 확인처</strong>에서 최신 공고를 확인한 뒤 신청해 주세요.</li>
+        </ul>
+
+        <h2>광고와 제휴</h2>
         <p>
-          포켓머니는 생활 금융·복지 정보를 정리하는 개인 운영 블로그입니다. 본문의 오류나 변경된 정책 정보를 발견하시면
-          아래 이메일로 알려주세요. 확인 후 바로 수정합니다.
+          사이트 운영비 마련을 위해 Google AdSense 광고를 게재하거나 준비하고 있습니다. 현재 수수료를 받는 제휴 링크는 없으며,
+          도입하는 경우 해당 글에 표시합니다. 자세한 내용은 <a href="/terms">이용약관 및 면책 고지</a>와
+          <a href="/privacy">개인정보처리방침</a>을 참고해 주세요.
+        </p>
+
+        <h2>오류 제보와 정정</h2>
+        <p>
+          본문의 오류나 바뀐 정책 정보를 발견하시면 아래 이메일로 알려주세요. 공식 자료와 대조해 확인한 뒤 본문을 고치고,
+          수정한 내용은 글에 반영합니다.
         </p>
         <ul>
           <li><strong>문의/정정 요청:</strong> <a href="mailto:geniezst@gmail.com">geniezst@gmail.com</a></li>

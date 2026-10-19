@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../site.config';
+
+const email = siteConfig.profile.email;
+const EFFECTIVE_DATE = '2026년 10월 19일';
+const a = 'text-blue-600 dark:text-blue-400 underline break-all';
+const h2 = 'text-base font-bold text-gray-900 dark:text-white pt-4';
+const ul = 'list-disc pl-5 space-y-1';
+---
+
+<BaseLayout
+  title="이용약관 및 면책 고지"
+  description="포켓머니 이용약관과 금융·세금·복지 정보에 대한 면책 고지, 저작권, 광고·제휴 안내입니다."
+>
+  <div class="max-w-3xl mx-auto py-8">
+    <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-2">
+      이용약관 및 면책 고지 (Terms &amp; Disclaimer)
+    </h1>
+    <p class="text-xs text-gray-500 dark:text-neutral-400 mb-6">시행일: {EFFECTIVE_DATE}</p>
+
+    <div class="space-y-4 text-gray-700 dark:text-neutral-300 leading-relaxed text-sm">
+      <p>
+        이 약관은 개인이 운영하는 생활경제·금융 정보 블로그 포켓머니(pockemoney.com, 이하 '본 사이트')의 이용 조건과
+        본 사이트가 제공하는 정보의 성격을 안내합니다. 본 사이트를 이용하면 이 약관에 동의한 것으로 봅니다.
+      </p>
+
+      <h2 class={h2}>1. 정보의 성격 — 금융·세금 자문이 아닙니다</h2>
+      <p>
+        본 사이트의 글은 정부 지원 제도, 세금, 예적금·대출 등에 관한 <strong>일반적인 정보 제공</strong>을 목적으로 합니다.
+        본 사이트는 금융회사, 투자자문업자, 세무사·회계사 등 전문 자격을 갖춘 기관·개인이 아니며,
+        특정 금융상품의 가입·매수·매도나 대출 실행을 권유하지 않습니다.
+      </p>
+      <p>
+        투자·대출·저축·세금 신고 등에 관한 최종 결정과 그 결과에 대한 책임은 이용자 본인에게 있습니다.
+        개인의 소득·자산·가구 상황에 따라 적용 결과가 달라질 수 있으므로, 중요한 결정 전에는 해당 금융회사나 세무 전문가, 운영 기관에 직접 상담하시기 바랍니다.
+      </p>
+
+      <h2 class={h2}>2. 정보 기준일과 변경 가능성</h2>
+      <p>
+        각 글의 금액·한도·금리·자격 요건·신청 기간은 글에 표시된 작성일 또는 확인 기준일 시점의 공개 자료를 기준으로 합니다.
+        정부 정책과 금융상품 조건은 예고 없이 바뀌거나 종료될 수 있으며, 발표된 개정안은 실제 시행 시점과 세부 내용이 달라질 수 있습니다.
+        본 사이트는 정보를 최신으로 유지하려 노력하지만 정확성·완전성·최신성을 보장하지 않습니다.
+      </p>
+
+      <h2 class={h2}>3. 공식 기관 원문 확인 권고</h2>
+      <p>신청·가입·신고 전에는 반드시 아래와 같은 공식 기관의 최신 공고와 원문을 확인하세요. 각 글 하단의 '공식 확인처'에도 관련 기관을 안내합니다.</p>
+      <ul class={ul}>
+        <li>금융위원회 <a class={a} href="https://www.fsc.go.kr" target="_blank" rel="noopener noreferrer">www.fsc.go.kr</a> · 금융감독원 파인 <a class={a} href="https://fine.fss.or.kr" target="_blank" rel="noopener noreferrer">fine.fss.or.kr</a></li>
+        <li>국세청 <a class={a} href="https://www.nts.go.kr" target="_blank" rel="noopener noreferrer">www.nts.go.kr</a> · 홈택스 <a class={a} href="https://www.hometax.go.kr" target="_blank" rel="noopener noreferrer">www.hometax.go.kr</a></li>
+        <li>복지로 <a class={a} href="https://www.bokjiro.go.kr" target="_blank" rel="noopener noreferrer">www.bokjiro.go.kr</a> · 정부24 <a class={a} href="https://www.gov.kr" target="_blank" rel="noopener noreferrer">www.gov.kr</a></li>
+        <li>주택도시기금 <a class={a} href="https://nhuf.molit.go.kr" target="_blank" rel="noopener noreferrer">nhuf.molit.go.kr</a> · 한국주택금융공사 <a class={a} href="https://www.hf.go.kr" target="_blank" rel="noopener noreferrer">www.hf.go.kr</a></li>
+      </ul>
+      <p>본 사이트의 내용과 공식 기관의 안내가 다를 경우 공식 기관의 안내가 우선합니다.</p>
+
+      <h2 class={h2}>4. 책임의 제한</h2>
+      <p>
+        본 사이트는 이용자가 본 사이트의 정보를 이용하여 내린 결정이나, 정보의 오류·누락·변경으로 발생한 손해에 대해 법령이 허용하는 범위에서 책임을 지지 않습니다.
+        본 사이트에서 연결되는 외부 사이트의 내용과 서비스는 해당 사이트 운영자의 책임입니다.
+      </p>
+
+      <h2 class={h2}>5. 오류 제보와 정정</h2>
+      <p>
+        글의 오류나 바뀐 정책 정보를 발견하면 <a class={a} href={`mailto:${email}`}>{email}</a> 로 알려 주세요.
+        운영자가 공식 자료와 대조해 확인한 뒤 본문을 수정하거나, 확인되지 않는 내용은 비공개 처리합니다.
+      </p>
+
+      <h2 class={h2}>6. 광고</h2>
+      <p>
+        본 사이트에는 Google AdSense 등 제3자 광고가 게재될 수 있습니다. 광고 내용은 광고주와 광고 네트워크가 제공하며 본 사이트가 그 상품·서비스를 보증하지 않습니다.
+        광고 쿠키 사용에 관한 내용은 <a class={a} href="/privacy">개인정보처리방침</a>에서 확인할 수 있습니다.
+      </p>
+
+      <h2 class={h2}>7. 제휴 링크</h2>
+      <p>
+        현재 본 사이트의 글에는 수수료를 받는 제휴 링크가 없습니다. 앞으로 제휴 링크를 넣는 경우
+        해당 글에 "제휴 링크를 통해 구매 시 운영자가 수수료를 받을 수 있다"는 사실을 명확히 표시합니다.
+        제휴 여부는 정보의 내용이나 평가에 영향을 주지 않도록 작성합니다.
+      </p>
+
+      <h2 class={h2}>8. 저작권</h2>
+      <p>
+        본 사이트의 글·이미지·도표에 대한 저작권은 운영자 또는 원저작권자에게 있습니다.
+        출처(사이트명과 해당 글 링크)를 밝힌 짧은 인용은 허용하지만, 전문 복제·재배포·상업적 이용은 사전 동의 없이 할 수 없습니다.
+        본문에 인용한 정부·공공기관 자료의 권리는 해당 기관에 있습니다.
+        저작권 침해가 의심되는 내용이 있으면 문의처로 알려 주시면 확인 후 조치합니다.
+      </p>
+
+      <h2 class={h2}>9. 금지 행위</h2>
+      <p>사이트에 대한 무단 대량 수집(스크래핑), 보안 침해 시도, 서비스 운영을 방해하는 행위를 금지합니다.</p>
+
+      <h2 class={h2}>10. 문의처</h2>
+      <ul class={ul}>
+        <li>운영: 포켓머니 운영자(개인)</li>
+        <li>이메일: <a class={a} href={`mailto:${email}`}>{email}</a> · <a class={a} href="/contact">문의하기</a></li>
+      </ul>
+
+      <h2 class={h2}>11. 약관의 변경 및 시행일</h2>
+      <p>
+        이 약관은 {EFFECTIVE_DATE}부터 적용됩니다. 내용이 바뀌는 경우 시행 7일 전부터 이 페이지에 변경 내용과 시행일을 게시합니다.
+        이 약관은 대한민국 법령에 따라 해석됩니다.
+      </p>
+    </div>
+  </div>
+</BaseLayout>

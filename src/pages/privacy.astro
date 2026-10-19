@@ -1,50 +1,155 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../site.config';
+
+const email = siteConfig.profile.email;
+const EFFECTIVE_DATE = '2026년 10월 19일';
+const a = 'text-blue-600 dark:text-blue-400 underline break-all';
+const h2 = 'text-base font-bold text-gray-900 dark:text-white pt-4';
+const ul = 'list-disc pl-5 space-y-1';
 ---
 
 <BaseLayout
   title="개인정보처리방침"
-  description="포켓머니의 개인정보 수집 및 쿠키 처리 방침 안내입니다."
+  description="포켓머니의 개인정보 처리 목적·항목·보유기간, 쿠키 및 Google 광고·분석 서비스 이용 안내입니다."
 >
   <div class="max-w-3xl mx-auto py-8">
-    <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-6">
+    <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-2">
       개인정보처리방침 (Privacy Policy)
     </h1>
+    <p class="text-xs text-gray-500 dark:text-neutral-400 mb-6">시행일: {EFFECTIVE_DATE}</p>
 
-    <div class="space-y-6 text-gray-700 dark:text-neutral-300 leading-relaxed text-sm">
+    <div class="space-y-4 text-gray-700 dark:text-neutral-300 leading-relaxed text-sm">
       <p>
-        포켓머니(이하 '본 블로그')는 이용자의 개인정보를 매우 소중히 여기며, 관련 법령을 준수하기 위해 최선을 다하고 있습니다.
-      </p>
-
-      <h2 class="text-base font-bold text-gray-900 dark:text-white pt-2">1. 수집하는 개인정보 항목</h2>
-      <p>
-        본 블로그는 회원가입 없이 자유롭게 열람할 수 있으며, 일반적인 방문 과정에서 별도의 개인 식별 정보를 강제로 수집하지 않습니다. 단, 서비스 개선 및 통계 분석을 위해 방문자의 IP 주소, 브라우저 종류, 방문 시간 등의 기술적 로그가 서버에 의해 자동 기록될 수 있습니다.
+        포켓머니(pockemoney.com, 이하 '본 사이트')는 개인이 운영하는 생활경제·금융 정보 블로그입니다.
+        본 사이트는 「개인정보 보호법」 등 관련 법령을 준수하며, 이 방침을 통해 어떤 정보가 어떻게 처리되는지 안내합니다.
+        본 사이트는 회원가입·댓글·결제 기능이 없으며, 이름·전화번호 같은 정보를 입력받는 양식을 운영하지 않습니다.
       </p>
 
-      <h2 class="text-base font-bold text-gray-900 dark:text-white pt-2">2. 쿠키(Cookie) 및 웹 비콘의 사용 (Google AdSense 등)</h2>
+      <h2 class={h2}>1. 처리 목적</h2>
+      <ul class={ul}>
+        <li>이메일 문의·오류 제보·정정 요청에 대한 확인과 답변</li>
+        <li>방문 통계 분석을 통한 콘텐츠·사이트 개선</li>
+        <li>광고 게재 및 광고 효과 측정(Google AdSense 사용 시)</li>
+        <li>서비스 안정성 확보와 보안(비정상 접속·공격 차단)</li>
+      </ul>
+
+      <h2 class={h2}>2. 처리하는 항목과 수집 방법</h2>
+      <ul class={ul}>
+        <li><strong>이메일 문의 시:</strong> 보내는 분의 이메일 주소, 이름(표시되는 경우), 문의 내용 — 이용자가 직접 이메일을 보낼 때</li>
+        <li><strong>자동 수집:</strong> IP 주소, 브라우저·기기 정보, 방문 일시, 방문 페이지, 유입 경로, 쿠키 및 광고 식별자 — 사이트 이용 과정에서 아래 제3자 서비스에 의해 자동 생성·수집</li>
+        <li><strong>브라우저 저장소:</strong> 화면 테마(라이트/다크) 설정값을 이용자 브라우저의 localStorage 에만 저장하며 서버로 전송하지 않습니다.</li>
+      </ul>
+
+      <h2 class={h2}>3. Google 광고 및 쿠키 (Google AdSense)</h2>
       <p>
-        본 블로그는 제3자 광고 사업자(Google AdSense 등)를 통해 광고를 게재할 수 있습니다. Google을 포함한 제3자 공급업체는 쿠키를 사용하여 이용자가 본 웹사이트 또는 다른 웹사이트를 방문한 기록을 바탕으로 맞춤형 광고를 제공합니다.
+        본 사이트는 Google AdSense 를 통해 광고를 게재하거나 게재를 준비하고 있습니다.
+        Google 을 포함한 제3자 공급업체는 쿠키를 사용하여 이용자가 본 사이트 또는 다른 웹사이트를 방문한 기록을 바탕으로 광고를 게재합니다.
+        Google 은 광고 쿠키(DoubleClick 쿠키 포함)를 사용하여 이용자의 본 사이트 및 인터넷상의 다른 사이트 방문 기록을 바탕으로 이용자에게 맞는 광고를 게재할 수 있습니다.
       </p>
+      <ul class={ul}>
+        <li>Google 이 광고에서 데이터를 사용하는 방식: <a class={a} href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">https://policies.google.com/technologies/ads</a></li>
+        <li>맞춤 광고 사용 중지: Google 광고 설정 <a class={a} href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">https://adssettings.google.com</a></li>
+        <li>제3자 공급업체의 맞춤 광고 쿠키 거부: <a class={a} href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">https://www.aboutads.info/choices/</a> (미국), <a class={a} href="https://www.youronlinechoices.eu/" target="_blank" rel="noopener noreferrer">https://www.youronlinechoices.eu/</a> (유럽)</li>
+      </ul>
       <p>
-        이용자는 Google 광고 설정 페이지(<a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">https://adssettings.google.com</a>)를 방문하여 개인 맞춤 광고를 해제할 수 있습니다.
+        맞춤 광고를 거부하더라도 광고는 계속 표시될 수 있으며, 이 경우 방문 기록이 아닌 페이지 내용 등에 기반한 광고가 표시됩니다.
       </p>
 
-      <h2 class="text-base font-bold text-gray-900 dark:text-white pt-2">3. Google Analytics(이용 통계 수집) 이용 안내</h2>
+      <h2 class={h2}>4. 방문 통계 (Google Analytics 4)</h2>
       <p>
-        본 블로그는 사이트 이용 통계 분석을 위해 Google Analytics 4(측정 ID: G-HTTFPW8CX1)를 사용합니다. Google Analytics는 쿠키를 통해 수집된 익명의 이용 데이터(방문한 페이지, 체류 시간, 대략적 방문 지역, 사용 기기·브라우저 정보 등)를 Google에 전송하며, Google은 이를 집계하여 사이트 운영에 필요한 통계 정보를 제공합니다.
-      </p>
-      <p>
-        이용자는 Google Analytics 차단 브라우저 부가기능(<a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline">https://tools.google.com/dlpage/gaoptout</a>)을 설치하거나 브라우저 쿠키 설정을 변경하여 수집을 거부할 수 있습니다. 수집된 데이터는 개인을 식별할 수 없는 형태로만 사용됩니다.
-      </p>
-
-      <h2 class="text-base font-bold text-gray-900 dark:text-white pt-2">4. 제휴 마케팅 링크 안내</h2>
-      <p>
-        본 블로그는 쿠팡 파트너스, 알리익스프레스 등 제휴 마케팅 프로그램에 참여할 수 있습니다. 해당 링크를 통해 물품 구매 시 운영자에게 일정 수수료가 제공될 수 있으나 구매자에게 추가 비용이 발생하지 않습니다.
+        본 사이트는 이용 통계 분석을 위해 Google Analytics 4(측정 ID: G-HTTFPW8CX1)를 사용합니다.
+        Google Analytics 는 쿠키를 이용해 방문한 페이지, 체류 시간, 대략적 지역, 기기·브라우저 정보 등을 수집해 Google 에 전송하며,
+        운영자는 개인을 식별할 수 없는 집계 통계만 확인합니다.
+        수집을 원하지 않으면 Google Analytics 차단 부가기능(<a class={a} href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">https://tools.google.com/dlpage/gaoptout</a>)을 설치하거나 브라우저 쿠키 설정을 변경할 수 있습니다.
+        Google 의 데이터 처리 방식은 <a class={a} href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보처리방침</a>에서 확인할 수 있습니다.
       </p>
 
-      <h2 class="text-base font-bold text-gray-900 dark:text-white pt-2">5. 문의처</h2>
+      <h2 class={h2}>5. 제휴 링크</h2>
       <p>
-        개인정보 처리방침과 관련된 문의 사항은 <a href="/contact" class="text-blue-600 dark:text-blue-400 underline">문의 페이지</a>를 통해 접수해 주시기 바랍니다.
+        현재 본 사이트의 글에는 수수료를 받는 제휴(어필리에이트) 링크가 없습니다.
+        앞으로 제휴 링크를 포함하는 경우 해당 글 안에 제휴 사실을 명확히 표시하고 이 방침에도 사용하는 제휴 프로그램을 추가해 안내합니다.
+      </p>
+
+      <h2 class={h2}>6. 보유 기간과 파기</h2>
+      <ul class={ul}>
+        <li><strong>이메일 문의:</strong> 답변·정정 처리 완료 후 1년간 보관한 뒤 삭제합니다. 이용자가 삭제를 요청하면 지체 없이 삭제합니다.</li>
+        <li><strong>Google Analytics 데이터:</strong> Google Analytics 의 데이터 보존 기간 설정(최대 14개월)에 따라 자동 삭제됩니다.</li>
+        <li><strong>광고 쿠키·식별자:</strong> Google 의 정책에 따른 기간 동안 이용자 브라우저에 저장되며, 이용자가 브라우저에서 직접 삭제할 수 있습니다.</li>
+        <li><strong>파기 방법:</strong> 전자적 파일은 복구할 수 없는 방법으로 삭제합니다. 관계 법령에서 보존을 요구하는 경우에는 그 기간 동안 보관합니다.</li>
+      </ul>
+
+      <h2 class={h2}>7. 처리 위탁 및 국외 이전</h2>
+      <p>본 사이트는 운영을 위해 아래 해외 사업자의 서비스를 이용하며, 이 과정에서 접속 정보가 해당 사업자의 국외 서버로 전송·처리될 수 있습니다.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs border border-gray-200 dark:border-neutral-800">
+          <thead class="bg-gray-50 dark:bg-neutral-900">
+            <tr>
+              <th class="p-2 text-left border-b border-gray-200 dark:border-neutral-800">수탁자(이전받는 자)</th>
+              <th class="p-2 text-left border-b border-gray-200 dark:border-neutral-800">업무</th>
+              <th class="p-2 text-left border-b border-gray-200 dark:border-neutral-800">이전 항목</th>
+              <th class="p-2 text-left border-b border-gray-200 dark:border-neutral-800">국가·방법</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">Google LLC</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">방문 통계(GA4), 광고 게재(AdSense), 웹폰트, 이메일(Gmail)</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">IP, 기기·브라우저 정보, 쿠키·광고 식별자, 이용 기록, 문의 이메일</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">미국 등 / 사이트 접속 시 네트워크 전송</td>
+            </tr>
+            <tr>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">Cloudflare, Inc.</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">웹 호스팅, 콘텐츠 전송(CDN), 보안</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">IP, 요청 정보(접속 로그)</td>
+              <td class="p-2 border-b border-gray-100 dark:border-neutral-800">미국 등 / 사이트 접속 시 네트워크 전송</td>
+            </tr>
+            <tr>
+              <td class="p-2">jsDelivr(웹폰트 CDN)</td>
+              <td class="p-2">글꼴 파일 전송</td>
+              <td class="p-2">IP, 요청 정보</td>
+              <td class="p-2">해외 / 사이트 접속 시 네트워크 전송</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>각 사업자의 보유 기간은 해당 사업자의 정책에 따릅니다. 국외 이전을 원하지 않으면 쿠키 차단 또는 본 사이트 이용 중단으로 거부할 수 있으나, 이 경우 사이트가 정상적으로 표시되지 않을 수 있습니다.</p>
+
+      <h2 class={h2}>8. 유럽경제지역(EEA)·영국·스위스 이용자</h2>
+      <p>
+        본 사이트는 현재 동의 관리 플랫폼(CMP)을 아직 설정하지 않았습니다. Google 인증 CMP 를 설정하면 EEA·영국·스위스에서 접속하는 이용자에게
+        광고 개인 맞춤화와 쿠키 사용에 대한 동의 메시지를 표시하고, 동의를 받은 뒤 처리합니다. 동의하지 않으면 맞춤 광고 대신 제한적·비개인 맞춤 광고가 표시될 수 있으며, 동의는 언제든 철회할 수 있습니다.
+        이용자는 GDPR 에 따라 열람·정정·삭제·처리 제한·이의 제기 권리를 가지며, 아래 문의처로 요청할 수 있습니다.
+      </p>
+
+      <h2 class={h2}>9. 정보주체의 권리와 행사 방법</h2>
+      <p>
+        이용자는 언제든지 본인 개인정보의 열람, 정정·삭제, 처리 정지를 요구할 수 있습니다.
+        아래 이메일로 요청하면 본인 확인 후 지체 없이(10일 이내) 조치합니다.
+        쿠키는 브라우저 설정(Chrome: 설정 → 개인정보 및 보안 → 서드 파티 쿠키 등)에서 저장을 거부하거나 삭제할 수 있습니다.
+      </p>
+
+      <h2 class={h2}>10. 개인정보의 안전성 확보 조치</h2>
+      <p>본 사이트는 HTTPS 암호화 통신을 사용하며, 문의 이메일은 운영자 계정에서만 접근할 수 있도록 관리합니다.</p>
+
+      <h2 class={h2}>11. 개인정보 보호책임자</h2>
+      <ul class={ul}>
+        <li>개인정보 보호책임자: 포켓머니 운영자</li>
+        <li>연락처: <a class={a} href={`mailto:${email}`}>{email}</a></li>
+      </ul>
+      <p>
+        개인정보 침해에 대한 신고나 상담은 아래 기관에 문의할 수 있습니다.
+      </p>
+      <ul class={ul}>
+        <li>개인정보침해신고센터 (국번 없이 118, <a class={a} href="https://privacy.kisa.or.kr" target="_blank" rel="noopener noreferrer">privacy.kisa.or.kr</a>)</li>
+        <li>개인정보분쟁조정위원회 (1833-6972, <a class={a} href="https://www.kopico.go.kr" target="_blank" rel="noopener noreferrer">www.kopico.go.kr</a>)</li>
+        <li>대검찰청 사이버수사과 (국번 없이 1301), 경찰청 사이버수사국 (국번 없이 182)</li>
+      </ul>
+
+      <h2 class={h2}>12. 방침의 변경</h2>
+      <p>
+        이 방침은 {EFFECTIVE_DATE}부터 적용됩니다. 내용이 바뀌는 경우 시행 7일 전부터 이 페이지에 변경 내용과 시행일을 게시합니다.
+        관련 문서: <a class={a} href="/terms">이용약관 및 면책 고지</a>, <a class={a} href="/contact">문의하기</a>
       </p>
     </div>
   </div>
