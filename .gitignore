@@ -54,3 +54,6 @@ data/*.out
 
 # AdSense 대응 작업 백업 (2026-10-16)
 data/backup-*/
+
+# 팩트체크 보고서 (감사용, 저장소 제외)
+data/factcheck/

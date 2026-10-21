@@ -13,7 +13,7 @@
     "astro": "astro",
     "d1:migrate": "wrangler d1 migrations apply blogs --remote",
     "d1:migrate:local": "wrangler d1 migrations apply blogs --local",
-    "test": "node scripts/__tests__/auto-publish-stabilization.test.mjs && node scripts/__tests__/runtime-lock.test.mjs && node scripts/__tests__/image-pipeline.test.mjs && node scripts/__tests__/article-url-key.test.mjs && node scripts/__tests__/slug-collision.test.mjs && node scripts/__tests__/telegram-split.test.mjs"
+    "test": "node scripts/__tests__/fact-pipeline.test.mjs && node scripts/__tests__/auto-publish-stabilization.test.mjs && node scripts/__tests__/runtime-lock.test.mjs && node scripts/__tests__/image-pipeline.test.mjs && node scripts/__tests__/article-url-key.test.mjs && node scripts/__tests__/slug-collision.test.mjs && node scripts/__tests__/telegram-split.test.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.1",

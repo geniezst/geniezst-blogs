@@ -82,7 +82,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * @param {number} [p.timeoutMs=180000]
  * @param {number} [p.transientRetry=3] 503/429 등 일시 오류 시 동일 모델 backoff 재시도 횟수
  * @param {(msg: string) => void} [p.log]
- * @returns {Promise<{ text: string, model: string, usage: object }>}
+ * @param {string[]} [p.models] 모델 체인을 직접 지정 (지정 시 GEMINI_MODEL/DEFAULT_MODELS 무시)
+ * @param {number} [p.thinkingBudget=0] 추론 토큰 예산 (리서치·팩트체크 단계에서만 사용)
+ * @param {number} [p.backoffBaseMs=2000] 503/429 재시도 대기 시작값 (지수 증가)
+ * @param {boolean} [p.googleSearch=false] Google 검색 그라운딩 사용 (2026-10 기준 무료 키는 2.5-flash 만 허용)
+ * @returns {Promise<{ text: string, model: string, usage: object, grounding: { chunks: Array<{title: string, uri: string}>, queries: string[] } }>}
  * @throws {Error} 모든 모델 실패 시. 잘림(MAX_TOKENS)이면 `err.truncated === true`
  */
 export async function callGemini({
@@ -94,6 +98,10 @@ export async function callGemini({
   timeoutMs = 180000,
   transientRetry = 3,
   log = () => {},
+  models: modelChain = null,
+  thinkingBudget = 0,
+  googleSearch = false,
+  backoffBaseMs = 2000,
 }) {
   const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -105,7 +113,9 @@ export async function callGemini({
     .replace(/\/openai$/i, '');
 
   // GEMINI_MODEL이 DEFAULT_MODELS와 겹칠 수 있으므로 중복 제거 (동일 모델 재시도 방지)
-  const models = [...new Set([env.GEMINI_MODEL, ...DEFAULT_MODELS].filter(Boolean))];
+  const models = modelChain?.length
+    ? [...new Set(modelChain)]
+    : [...new Set([env.GEMINI_MODEL, ...DEFAULT_MODELS].filter(Boolean))];
   let lastError = null;
 
   for (const model of models) {
@@ -114,7 +124,7 @@ export async function callGemini({
     for (let attempt = 0; attempt <= transientRetry; attempt++) {
       log(
         attempt === 0
-          ? `🧠 [LLM] Gemini 네이티브 호출 (${model}, thinkingBudget: 0, maxOutputTokens: ${maxOutputTokens})...`
+          ? `🧠 [LLM] Gemini 네이티브 호출 (${model}, thinkingBudget: ${thinkingBudget}, maxOutputTokens: ${maxOutputTokens}${googleSearch ? ', google_search' : ''})...`
           : `🔄 [LLM] 일시 오류 재시도 ${attempt}/${transientRetry} (${model})...`
       );
 
@@ -124,9 +134,10 @@ export async function callGemini({
           generationConfig: {
             temperature,
             maxOutputTokens,
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget },
           },
         };
+        if (googleSearch) body.tools = [{ google_search: {} }];
         if (systemPrompt) {
           body.systemInstruction = { parts: [{ text: systemPrompt }] };
         }
@@ -145,7 +156,7 @@ export async function callGemini({
           // 503/429 등은 전체 엔드포인트의 일시적 수치 부족이며 모델을 바꿔도 동일하다.
           // 다음 모델로 넘어가기 전에 동일 모델을 backoff 로 재시도한다.
           if (TRANSIENT_STATUS.has(res.status) && attempt < transientRetry) {
-            const waitMs = 2000 * 2 ** attempt;
+            const waitMs = backoffBaseMs * 2 ** attempt;
             log(`⚠️ [LLM] ${res.status} 일시 오류 — ${waitMs}ms 후 동일 모델 재시도`);
             await sleep(waitMs);
             continue;
@@ -159,7 +170,7 @@ export async function callGemini({
         const candidate = data?.candidates?.[0];
         const finishReason = candidate?.finishReason;
         const text = (candidate?.content?.parts || [])
-          .map((p) => p.text || '')
+          .map((p) => (p.thought ? '' : p.text || ''))
           .join('')
           .trim();
 
@@ -188,12 +199,17 @@ export async function callGemini({
           throw err;
         }
 
-        return { text, model, usage: data?.usageMetadata || {} };
+        const gm = candidate?.groundingMetadata || {};
+        const grounding = {
+          chunks: (gm.groundingChunks || []).map((c) => ({ title: c.web?.title || '', uri: c.web?.uri || '' })).filter((c) => c.uri),
+          queries: gm.webSearchQueries || [],
+        };
+        return { text, model, usage: data?.usageMetadata || {}, grounding };
       } catch (err) {
         if (err.truncated) throw err; // 잘림은 다음 모델로 넘기지 않고 즉시 표면화
         lastError = err;
         if (attempt < transientRetry) {
-          const waitMs = 2000 * 2 ** attempt;
+          const waitMs = backoffBaseMs * 2 ** attempt;
           log(`⚠️ [LLM] ${model} 예외: ${err.message} — ${waitMs}ms 후 동일 모델 재시도`);
           await sleep(waitMs);
           continue;

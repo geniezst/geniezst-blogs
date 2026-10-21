@@ -27,6 +27,7 @@ import { sendTelegramReport } from './telegram-notify.mjs';
 import { yamlEscapedScalar } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
+import { researchTopic, buildAllowedRefs, formatAllowedRefs, factCheckArticle, enforceAllowedLinks, tidyHeadings, saveFactCheckReport, WRITER_MODELS } from './lib/fact-pipeline.mjs';
 import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
 process.env.WRANGLER_LOG_PATH = process.env.WRANGLER_LOG_PATH || '/tmp/wrangler.log';
@@ -134,16 +135,10 @@ function acquireSessionLock(sessionName, dateStr) {
   return acquireSessionLockLib(lockDir, sessionName, dateStr, { log });
 }
 
-export const FACT_SHEET_2026 = `[2026년 대한민국 핵심 생활금융·세무·복지 팩트시트 (기준 연도 2026년 철저 준수)]
-- 연도 기준: 올해는 2026년입니다. 과거 연도(2024년, 2025년)를 '최신', '올해'로 언급하지 마십시오.
-- 최저임금: 2026년 최저시급 10,030원 (주 40시간 기준 월 환산액 2,096,270원). 사상 첫 1만원대 진입.
-- 기준 중위소득 (2026년 기준 4인가구): 약 609만원 (1인가구 약 239만원, 2인가구 약 390만원).
-- 청년도약계좌: 5년 만기 시 최대 5,000만원 안팎 목돈 마련, 정부기여금 매칭 및 비과세 혜택.
-- 청년내일저축계좌: 소득 기준 중위소득 100% 이하(차상위 이하는 1:3 매칭, 일반은 1:1 매칭).
-- 근로장려금: 단독가구 최대 165만원, 홑벌이 최대 285만원, 맞벌이 최대 330만원.
-- 국민취업지원제도: 1유형 구직촉진수당 월 50만원 x 6개월(부양가족 1인당 10만원 추가 지원).
-- 출산·육아: 부모급여(0세 월 100만원, 1세 월 50만원), 육아휴직 급여 상한액 인상 적용.
-- 세무/연말정산: 2026년 귀속 소득공제/세액공제 개정 사항 적용.`;
+export const FACT_SHEET_2026 = `[기준 연도 규칙]
+- 올해는 2026년입니다. 과거 연도(2024년, 2025년)를 '최신', '올해'로 언급하지 마십시오.
+- 금액·자격 기준·지급액·신청 기간 등 모든 수치는 [리서치 브리프](검색으로 확인한 공식 자료)만 근거로 씁니다.
+  (예전 이 자리에 하드코딩했던 2026 최저시급·기준 중위소득 수치가 2025년 값이어서 2026-10-21 제거)`;
 
 /**
  * 0-3. 마크다운 본문 공백 및 금융 금액 띄어쓰기 규범화
@@ -780,8 +775,10 @@ export async function callLLMWithFallback(messages, env) {
     systemPrompt,
     userPrompt,
     env,
-    maxOutputTokens: 16384,
-    temperature: 0.6,
+    models: WRITER_MODELS,
+    maxOutputTokens: 24576,
+    thinkingBudget: 1024,
+    temperature: 0.5,
     log: (...a) => log(...a),
   });
 
@@ -1025,6 +1022,57 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
   };
 }
 
+/** 실제 발행 글 slug 목록 (팩트체크 후 존재하지 않는 내부 링크를 풀기 위함) */
+function getPublishedSlugs(postsDir) {
+  const set = new Set();
+  try {
+    for (const f of fs.readdirSync(postsDir)) {
+      if (!f.endsWith('.md') || f === 'template.md') continue;
+      const m = readFrontmatterHead(path.join(postsDir, f)).match(/^slug:\s*["']?([^"'\n]+)["']?/m);
+      if (m) set.add(m[1].trim());
+    }
+  } catch (_) {}
+  return set;
+}
+
+/**
+ * 사이트별 리서치·팩트체크 정책 (docs/SPEC_FACT_GROUNDED_PIPELINE.md)
+ * 참고 링크는 리서치에서 검색으로 확인되고 접속 200 이 확인된 공공기관 자료를 우선한다.
+ */
+const SITE_FACT_POLICY = {
+  name: '포켓머니(pockemoney.com) 생활경제 블로그',
+  audience: '직장인·사회초년생·자영업자·신혼부부·은퇴자가 찾는 대한민국 생활금융·세무·복지·지원금 실무 정보',
+  sourceRule:
+    '근거는 정부·공공기관 공식 자료(정책브리핑 korea.kr, 국가법령정보센터, 정부24, 복지로, 고용24, 국세청·홈택스, 국민건강보험공단, 국민연금공단, 금융감독원, 주택도시기금·청약홈 등)만 사용하세요. 언론 기사·블로그·카페는 근거로 삼지 마세요. 금액·자격 기준·신청 기간은 2026년 적용분인지 확인하고, 제도 개편안(국회 통과 전)과 시행 중인 기준을 구분하세요.',
+  sourcePolicy: {
+    official: [/\.go\.kr$/, /\.or\.kr$/, /\.re\.kr$/, /(^|\.)korea\.kr$/, /(^|\.)sbiz24\.kr$/, /(^|\.)applyhome\.co\.kr$/, /(^|\.)gov\.kr$/],
+    blocked: [/tistory\.com$/, /blog\.naver\.com$/, /cafe\.naver\.com$/, /velog\.io$/, /brunch\.co\.kr$/, /youtube\.com$/],
+    allowNeutral: false,
+  },
+  factCheckExtra:
+    '8. 금액·자격 기준·신청 기간이 2026년 시행 기준인지 확인하세요. 국회 통과 전 개편안·발표안을 확정 사실처럼 쓴 부분은 "발표안" 으로 고치거나 시행 기준으로 바꾸세요. 기관명·사이트명(고용24, 복지로 등)이 현재 명칭인지 확인하세요.',
+};
+
+const CATEGORY_TOPIC_GUIDE = {
+  welfare: '복지·사회보장 급여(기초생활보장, 부모급여, 아동수당, 긴급복지, 장애인·노인 지원 등)의 자격과 신청',
+  tax: '연말정산·종합소득세·소득공제/세액공제·양도세·증여세 등 개인 세무 실무',
+  finance: '대출·신용점수·보험·연금(국민연금·퇴직연금·개인연금) 등 생활 금융 실무',
+  saving: '청년·서민 저축 지원 상품, 청약통장, ISA·연금저축 등 자산 형성 제도',
+  subsidy: '정부·지자체 지원금(근로·자녀장려금, 소상공인 지원, 에너지바우처, 고용 지원금 등)',
+  'life-tips': '전세보증·주거 계약, 실업급여, 건강보험 피부양자, 공과금 등 생활 행정 실무',
+};
+
+/** 리서치 출처가 모자랄 때만 보충하는 안전 링크 (2026-10-21 접속 200 확인). 국토부(molit.go.kr)는 TLS 실패로 제외 */
+const SAFE_FALLBACK_REFS = [
+  { title: '정책브리핑', url: 'https://www.korea.kr' },
+  { title: '정부24', url: 'https://www.gov.kr' },
+  { title: '복지로', url: 'https://www.bokjiro.go.kr' },
+  { title: '고용24', url: 'https://www.work24.go.kr' },
+  { title: '국세청', url: 'https://www.nts.go.kr' },
+  { title: '국민건강보험공단', url: 'https://www.nhis.or.kr' },
+  { title: '국가법령정보센터', url: 'https://www.law.go.kr' },
+];
+
 /**
  * Tier 2 내장 심층글 생성 엔진 (Built-in Deep Article Generator)
  */
@@ -1033,6 +1081,31 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
   const avoidTopics = Array.isArray(options.avoidTopics) ? options.avoidTopics : [];
   log(`🚀 [Tier 2 엔진 가동] 내장 심층글 생성기를 호출합니다. (카테고리: ${category}, 세션: ${sessionName}, 차트: ${selectedChart.name})`);
 
+  // 1) 리서치: 주제 + 출처가 붙은 사실 브리프 (docs/SPEC_FACT_GROUNDED_PIPELINE.md)
+  const llmLog = (...a) => log(...a);
+  const research = await researchTopic({
+    env,
+    log: llmLog,
+    site: SITE_FACT_POLICY,
+    category,
+    topicGuide: CATEGORY_TOPIC_GUIDE[category] || category,
+    excludedList: buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts')),
+    avoidTopics,
+    dateStr: targetDateStr,
+  });
+  avoidTopics.push(research.topic);
+  if (Array.isArray(options.rejectedSlugs) && options.rejectedSlugs !== avoidTopics) options.rejectedSlugs.push(research.topic);
+  const officialFound = research.sources.filter((s) => s.official).length;
+  if (officialFound < 1) {
+    const err = new Error(`[리서치 게이트 실패] 접속 확인된 공식 출처 ${officialFound}개 (최소 1개 필요) — 주제: ${research.topic}`);
+    err.qualityGate = true;
+    throw err;
+  }
+  const allowed = await buildAllowedRefs(research.sources, SAFE_FALLBACK_REFS, QUALITY_GATE.MIN_REFERENCE_LINKS);
+  // SLUG_HINT 는 모델 출력이라 '<english-kebab-case>' 같은 자리표시자나 공백·따옴표가 올 수 있다 → kebab-case 로 정리 (QA 2026-10-21)
+  const slugHint = (research.brief.match(/^SLUG_HINT:\s*(.+)$/m)?.[1] || '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
   const systemPrompt = `당신은 대한민국 생활 경제 및 정부 정책 복지 혜택 전문 금융/행정 시니어 에디터입니다.
 블로그 저장소 위치는 /workspace/projects/blogs 이며 블로그 이름은 '포켓머니(pockemoney)'입니다.
 구글 애드센스 고수익 승인 표준 및 개발자/실무자 수준의 정확하고 깊이 있는 금융 분석 기준을 엄격히 준수하세요.
@@ -1040,14 +1113,18 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
 ${FACT_SHEET_2026}
 
 [필수 작성 지침]
-0. [절대 금지 - 이미 발행된 주제]
-${buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts'))}
-${avoidTopics.length ? `   - 이번 실행에서 이미 시도했으나 채택되지 않은 주제입니다. 이 주제 및 동일 주제는 절대 다시 선택하지 마세요: ${avoidTopics.join(', ')}` : ''}
-   - 위 목록에 있는 주제와 사실상 같은 글은 어떤 경우에도 생성하지 마세요. 제목이나 슬러그만 살짝 바꾼 변형도 금지입니다.
-   - 목록에 없는 완전히 새로운 주제를 고르세요. 목록이 비어 있지 않다면 반드시 그 밖의 주제를 선택해야 합니다.
+0. [주제와 리서치 브리프]
+   - 주제: ${research.topic}
+   - 아래 브리프는 Google 검색으로 확인한 공식 자료 기반 사실입니다. 금액·비율·자격 기준·기간·기관명·제도명은 브리프에 있는 것만 쓰세요.
+   - 브리프에 없는 수치는 새로 만들지 말고 "공식 안내에서 확인" 수준으로 일반화하세요. OUT_OF_SCOPE 항목은 단정하지 마세요. PITFALLS 는 본문에서 바로잡으세요.
+   - 폐지·통합·명칭 변경된 제도나 사이트(예: 취업성공패키지, HRD-Net → 고용24)를 현재 유효한 것처럼 쓰지 마세요.
+[리서치 브리프]
+${research.brief}
+[허용 참고 링크 — 외부 링크는 이 목록에서만 3~5개 고르세요]
+${formatAllowedRefs(allowed)}
 ${buildInternalLinkInstruction(path.join(BLOG_ROOT, 'content', 'posts'), category)}
-1. [골디락스 난이도 및 주제 선정]
-   - 직장인, 사회초년생, 자영업자, 신혼부부, 은퇴자 등 다양한 독자층이 일상에서 검색창에 자주 찾는 실전 생활금융, 세무(연말정산/소득공제/비과세), 주거/부동산(청약통장/전세보증보험), 복지/건강보험(피부양자 자격/실업급여), 생활 지원금(근로장려금/소상공인 지원) 등 다채롭고 구체적인 실무 주제를 선정하세요.
+1. [기준일 표기]
+   - 도입부 바로 다음에 :::note[기준일] 블록으로 "이 글은 ${targetDateStr} 기준 공식 안내를 바탕으로 정리했습니다. 금액과 기준은 매년 바뀌므로 신청 전 해당 기관에서 다시 확인하세요." 취지의 안내를 넣으세요.
 2. [필수 분량 규격]
    - 반드시 전체 공백 포함 최소 2,800자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.
 3. [금액 띄어쓰기 규범]
@@ -1082,11 +1159,7 @@ ${selectedChart.instruction}
    - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
    - 위 요소들을 바탕으로 본문에 독립된 '## [직관적인 소제목]' 대주제(H2)를 반드시 4개 이상 구성하세요.
    - 반드시 마크다운 표(Table: \`| 항목 | 기준 | 내용 |\`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
-   - 작성한 금액·자격 요건·일정 수치는 반드시 정부/공식 발표 기준으로만 서술하고, 근거가 되는 공식 안내 페이지 링크(정책브리핑, 법제처 국가법령정보센터, 정부24, 고용24, 건강보험공단, 국세청 등)를 실제 존재하는 URL로 최소 3개 이상 인라인 링크 또는 '## 참고 자료' 섹션으로 명시하세요. 존재하지 않는 URL을 지어내는 것은 절대 금지입니다.
-   - 깊은 하위 경로(.do?menuNo=… 등)를 추측하면 404로 탈락합니다. 아래 검증된 주소 형식만 사용하세요.
-     · 법령: https://www.law.go.kr/법령/<정확한 법령명>  (예: https://www.law.go.kr/법령/조세특례제한법, https://www.law.go.kr/법령/고용보험법)
-     · 기관 공식 사이트(루트 주소): https://www.korea.kr, https://www.gov.kr, https://www.work24.go.kr, https://www.nts.go.kr, https://www.hometax.go.kr, https://www.nhis.or.kr, https://www.nps.or.kr, https://www.bokjiro.go.kr, https://www.applyhome.co.kr, https://www.myhome.go.kr, https://www.hf.go.kr, https://www.moel.go.kr, https://www.mohw.go.kr, https://www.fss.or.kr, https://www.sbiz24.kr
-     · 최소 1개 이상은 law.go.kr 법령 링크로 근거 조문을 제시하세요.
+   - 마지막에 '## 참고 자료' 섹션을 두고, [허용 참고 링크]에서 고른 3~5개를 '- [문서/기관 이름](URL)' 형식으로 쓰세요. 목록에 없는 URL 은 쓰지 마세요(자동으로 링크가 해제됩니다).
 7. [절대 금지 사항]
    - 반드시 현재 연도인 2026년 기준(2026년 최신 개정 및 2026년 정책)으로 작성하세요. 과거 연도(2024년, 2025년 등)를 '최신'으로 서술하거나 제목/슬러그에 넣는 것을 엄격히 금지합니다.
    - 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요.
@@ -1100,7 +1173,7 @@ ${selectedChart.instruction}
    - Frontmatter 필수 필드:
 ---
 title: "제목 (콜론 없이 매력적인 고수익 CTR 제목)"
-slug: "korean-policy-topic-english-slug"
+slug: "${slugHint && slugHint !== 'english-kebab-case' ? slugHint : 'korean-policy-topic-english-slug'}"
 description: "핵심 요약 120~150자 내외"
 category: "${category}"
 tags: [태그1, 태그2, 태그3, 태그4]
@@ -1121,7 +1194,21 @@ ${options.lastError ? `\n[⚠️ 이전 생성 실패 주의사항 및 피드백
     { role: 'user', content: userPrompt },
   ];
 
-  const rawMarkdown = await callLLMWithFallback(messages, env);
+  const draft = await callLLMWithFallback(messages, env);
+
+  // 3) 팩트체크 (검색 그라운딩) — 실패 시 발행 차단
+  const checked = await factCheckArticle({
+    env,
+    log: llmLog,
+    site: SITE_FACT_POLICY,
+    markdown: draft.trim().replace(/^```(?:markdown)?\s*\r?\n/i, '').replace(/\r?\n```\s*$/i, ''),
+    brief: research.brief,
+    allowed,
+    dateStr: targetDateStr,
+  });
+  const enforced = enforceAllowedLinks(tidyHeadings(checked.markdown), allowed, INTERNAL_REF_HOSTS, getPublishedSlugs(path.join(BLOG_ROOT, 'content', 'posts')));
+  if (enforced.removed.length) log(`🧹 [허용 외 링크 해제] ${enforced.removed.length}개: ${enforced.removed.join(', ').slice(0, 300)}`);
+  const rawMarkdown = enforced.markdown;
 
   const parsed = await parseAndSaveArticleMarkdown({
     rawMarkdown,
@@ -1131,6 +1218,12 @@ ${options.lastError ? `\n[⚠️ 이전 생성 실패 주의사항 및 피드백
     rejectedSlugSink: Array.isArray(options.rejectedSlugs) ? options.rejectedSlugs : [],
   });
 
+  const reportFile = saveFactCheckReport(BLOG_ROOT, path.basename(parsed.postFile).replace(/\.md$/, ''), {
+    date: targetDateStr, topic: research.topic, queries: research.queries,
+    allowed_refs: allowed, factcheck: checked.report, unwrapped_links: enforced.removed,
+  });
+  if (reportFile) log(`📝 [팩트체크 보고서] ${reportFile}`);
+  parsed.factCheck = { verdict: checked.report.verdict, corrections: (checked.report.corrections || []).length };
   return parsed;
 }
 
@@ -1172,6 +1265,8 @@ export async function generateArticleWithFallback({
   for (let attempt = 0; attempt <= QUALITY_GATE.MAX_LLM_RETRY; attempt++) {
     if (attempt > 0) {
       log(`🔄 [LLM 재시도 ${attempt}/${QUALITY_GATE.MAX_LLM_RETRY}] 사유: ${lastError?.message?.slice(0, 140) || '알 수 없음'}`);
+      // 시도당 Gemini 호출이 3회 이상이라 연속 재시도는 분당 한도(429)에 걸린다
+      await new Promise((r) => setTimeout(r, 30000));
     }
     try {
       const result = await runBuiltinDeepArticleGenerator({
