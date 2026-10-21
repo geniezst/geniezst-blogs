@@ -1,5 +1,5 @@
 // fact-pipeline 순수 함수 단위 테스트 (네트워크·LLM 호출 없음)
-import { tidyHeadings, enforceAllowedLinks, normalizeUrl } from '../lib/fact-pipeline.mjs';
+import { tidyHeadings, enforceAllowedLinks, normalizeUrl, dropUnchangedCorrections } from '../lib/fact-pipeline.mjs';
 
 let pass = 0;
 let fail = 0;
@@ -31,5 +31,20 @@ ok('붙어 있는 링크도 각각 검사', adj.markdown === '[a](https://ok.go.
 
 const adj2 = enforceAllowedLinks('[a](https://x.com/1)[b](https://x.com/2)\n[c](/blog/nope)[d](/blog/nope2)', [], new Set(), new Set());
 ok('붙어 있는 링크도 모두 해제 (외부·내부)', adj2.markdown === 'ab\ncd' && adj2.removed.length === 4);
+const dc = dropUnchangedCorrections([
+  { before: '검토 중', after: '2026년 시행', reason: 'r' },
+  { before: '같은 문장', after: '같은 문장', reason: '확인' },
+  { before: ' 공백 차이 ', after: '공백 차이' },
+  { reason: 'before·after 없음' },
+  { before: '삭제된 문장' },
+  null,
+  '문자열 항목',
+]);
+ok('corrections: 실제로 바뀐 항목만 남김', dc.length === 4 && dc[0].after === '2026년 시행' && dc[1].before === '삭제된 문장');
+ok('corrections: null·문자열 항목은 유지', dc[2] === null && dc[3] === '문자열 항목');
+ok('corrections: before·after 모두 없으면 제거', !dc.some((c) => c && c.reason === 'before·after 없음'));
+ok('corrections: trim 기준 동일하면 제거', !dc.some((c) => c && c.after === '공백 차이'));
+ok('corrections: 배열이 아니면 그대로', dropUnchangedCorrections(undefined) === undefined && dropUnchangedCorrections('x') === 'x' && dropUnchangedCorrections(null) === null);
+ok('corrections: 숫자 before/after 비교', dropUnchangedCorrections([{ before: 3, after: '3' }]).length === 0);
 console.log(`===== 결과: ${pass} 통과 / ${fail} 실패 =====`);
 if (fail) process.exit(1);

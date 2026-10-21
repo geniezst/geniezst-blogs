@@ -234,6 +234,7 @@ export async function factCheckArticle({ env, log, site, markdown, brief, allowe
 1. 수치·금액·비율·날짜·자격 기준·법령·기관·제도명·명령어·옵션·경로·레지스트리 키·이벤트 ID·오류 코드·버전 등 모든 사실 주장을 Google 검색으로 확인하세요.
 2. 틀린 내용은 정확한 내용으로 고치세요. 확인할 수 없는 구체적 주장은 확인된 범위로 일반화하거나 삭제하세요. 추측으로 채우지 마세요.
 3. 폐지·통합·명칭 변경된 제도나 지원 종료된 버전·기능을 현재 유효한 것처럼 쓴 부분은 고치세요.
+   '검토 중', '개정안', '발표안' 으로 쓴 내용은 오늘 날짜 기준으로 이미 시행됐는지(시행령 개정 포함), 시행일과 적용 대상이 무엇인지 확인해 고치세요. 반대로 아직 시행 전인 안을 확정된 것처럼 쓴 부분도 고치세요.
 4. 실제 실행 결과처럼 꾸민 출력/로그 블록은, 공식 문서에 형식이 있으면 값 자리를 <placeholder> 로 바꾸고, 근거가 없으면 블록을 삭제하세요.
 5. 명령어는 해당 OS·도구에서 실제로 존재하는 문법인지 확인하세요 (존재하지 않는 플래그·권한 문자열 금지).
 6. 외부 링크는 [허용 참고 링크]에 있는 URL 만 남기세요. 그 외 외부 링크는 링크를 풀고 텍스트만 남기세요. 내부 링크(/blog/...)는 그대로 두세요.
@@ -249,6 +250,7 @@ ${formatAllowedRefs(allowed)}
 [출력 형식 — 반드시 지킬 것]
 교정된 전체 마크다운(첫 줄 '---' Frontmatter부터)을 출력하고, 그 다음 줄에 정확히 ${REPORT_MARKER} 를 쓰고, 그 아래에 JSON 하나만 출력하세요.
 {"verdict":"pass|fixed|reject","corrections":[{"before":"...","after":"...","reason":"...","source":"..."}],"removed":[{"text":"...","reason":"..."}]}
+corrections 에는 실제로 문장을 바꾼 항목만 넣으세요 (확인만 하고 그대로 둔 문장은 넣지 마세요).
 verdict 는 고칠 것이 없으면 pass, 고쳤으면 fixed, 글의 주제·전제 자체가 사실과 달라 교정으로 살릴 수 없으면 reject.
 
 [초안]
@@ -294,12 +296,23 @@ ${markdown}`;
   if (corrected.length < markdown.length * 0.7) throw fail(`교정본이 과도하게 줄어듦 (${markdown.length}→${corrected.length}자)`);
   const h2 = (s) => (s.match(/^##\s+/gm) || []).length;
   if (h2(corrected) < Math.min(4, h2(markdown))) throw fail(`교정본 H2 감소 (${h2(markdown)}→${h2(corrected)})`);
+  // 모델이 '확인만 한' 문장을 교정으로 보고하는 경우가 있어 실제로 바뀐 항목만 남긴다
+  report.corrections = dropUnchangedCorrections(report.corrections);
   if (report.verdict === 'reject') throw fail(`주제 전제 오류로 reject — ${JSON.stringify(report.corrections || []).slice(0, 200)}`);
 
   const n = Array.isArray(report.corrections) ? report.corrections.length : 0;
   const r = Array.isArray(report.removed) ? report.removed.length : 0;
   log(`🧪 [팩트체크] verdict=${report.verdict} | 교정 ${n}건 | 삭제 ${r}건 | 검색 ${res.grounding.queries.length}회`);
   return { markdown: corrected, report: { ...report, queries: res.grounding.queries } };
+}
+
+/**
+ * before 와 after 가 (trim 기준) 같은 '확인만 한' corrections 항목을 걸러 낸다.
+ * 배열이 아니면 그대로 돌려주고, 객체가 아닌 항목(null·문자열 등)은 판단할 수 없어 그대로 둔다.
+ */
+export function dropUnchangedCorrections(corrections) {
+  if (!Array.isArray(corrections)) return corrections;
+  return corrections.filter((c) => !c || typeof c !== 'object' || String(c.before ?? '').trim() !== String(c.after ?? '').trim());
 }
 
 /** 팩트체크 보고서를 data/factcheck/ 에 남긴다 (감사 추적용, 발행 경로와 무관) */

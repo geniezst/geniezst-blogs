@@ -105,3 +105,22 @@
 - `data/` 의 일부 파일(state json, review-report 등)은 ignore 되지 않아 untracked 로 보인다(기존 상태). 커밋할 때 `git add -A` 를 쓰지 말 것.
 
 승인: @qa 2026-10-21 (코드 감사·단위 테스트 기준. 실제 생성 1편 검증은 사용자 실행 시 확인 필요)
+
+## QA 추가 승인 (@qa, 2026-10-21, 팩트체크 보고서 정리)
+
+### 점검 항목
+- 대상: `scripts/lib/fact-pipeline.mjs` 미커밋 변경 3건. (1) 규칙 3번에 '검토 중/개정안/발표안' 의 시행 여부 확인 지시 추가 (2) 출력 형식에 "corrections 에는 실제로 바꾼 항목만" 지시 추가 (3) 파싱 뒤 before·after 가 같은(trim 기준) corrections 항목 제거.
+- `node --check` 통과.
+- 경계 사례: corrections 가 배열이 아니면 손대지 않는다(로그 건수 0). null·문자열 등 객체가 아닌 항목은 판단할 수 없으므로 그대로 둔다. before·after 가 둘 다 없으면 '' 와 '' 로 비교되어 제거된다. before 만 있으면(삭제) 남는다. 숫자는 String 변환 뒤 비교한다.
+- reject 판정은 `report.verdict` 만 보므로 필터의 영향을 받지 않는다. reject 메시지, 로그의 `교정 n건`, 반환되어 `data/factcheck/` 에 저장되는 보고서는 모두 필터 뒤 값을 쓴다.
+
+### 수정 사항
+- 필터를 `export function dropUnchangedCorrections(corrections)` 로 분리했다. 동작은 바뀌지 않았다. 배열이 아니면 입력을 그대로 돌려준다. 호출부는 `report.corrections = dropUnchangedCorrections(report.corrections);` 한 줄이다.
+- `scripts/__tests__/fact-pipeline.test.mjs` 에 단위 테스트 6건을 추가했다(실제 변경 유지, trim 동일 제거, before·after 없음 제거, null·문자열 유지, 배열 아님, 숫자 비교). `npm test` 전체 통과.
+
+### 잔여 위험
+- verdict 가 `fixed` 인데 걸러 낸 뒤 corrections 가 0건일 수 있다(로그 "verdict=fixed | 교정 0건"). 교정본 본문은 그대로 쓰므로 발행에는 영향이 없다.
+- reject 일 때 모델이 근거를 before==after 항목으로만 적으면 reject 메시지에서 그 근거가 빠진다. verdict 판정 자체는 바뀌지 않는다.
+- 프롬프트 지시(시행 여부 확인)의 효과는 Gemini 호출 없이 검증할 수 없다. 다음 실제 발행분의 보고서에서 확인할 것.
+
+승인: @qa 2026-10-21
