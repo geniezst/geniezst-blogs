@@ -113,7 +113,7 @@ try {
   ok('발행 완료 시 markSessionCompleted 호출 코드 포함', runnerSrc.includes('markSessionCompleted(sessionLock.lockFile'));
   ok('일일 랜덤 목표 시간 영속화 함수 getOrAssignTargets 포함', runnerSrc.includes('getOrAssignTargets('));
   ok('QUALITY_GATE MIN_H2 기준값이 4로 설정됨', runnerSrc.includes('MIN_H2: 4'));
-  ok('QUALITY_GATE MAX_LLM_RETRY 가 2회로 설정됨', runnerSrc.includes('MAX_LLM_RETRY: 2'));
+  ok('QUALITY_GATE MAX_LLM_RETRY 가 3회로 설정됨', runnerSrc.includes('MAX_LLM_RETRY: 3'));
   ok('프롬프트 H2 최소 기준이 4개 이상으로 명시됨', runnerSrc.includes('H2 최소 4개 이상 필수 구성'));
   ok('프롬프트 마크다운 표 템플릿의 백틱 이스케이프 정상 적용', runnerSrc.includes('\\`| 항목 | 기준 | 내용 |\\`'));
 } finally {

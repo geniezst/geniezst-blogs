@@ -159,7 +159,7 @@ export const QUALITY_GATE = {
   MIN_NON_SPACE_CHARS: 1800,
   MIN_SPACE_INCLUDED_CHARS: 2800,
   MIN_REFERENCE_LINKS: 3,
-  MAX_LLM_RETRY: 2, // 게이트 실패 시 LLM 재생성 시도 횟수 (2회로 확대하여 재시도 기회 보장)
+  MAX_LLM_RETRY: 3, // 게이트 실패·응답 잘림 시 LLM 재생성 횟수 (2026-10-21: 2→3, 3차 시도 잘림으로 세션 실패)
 };
 
 export function sanitizeProseSpaces(rawText) {
@@ -268,7 +268,10 @@ async function verifyReferenceLinks(urls) {
   const counted = { active: 0, gone: 0, blocked: 0, errors: 0 };
   for (const r of results) {
     const kind = r.status === 'fulfilled' && r.value ? r.value.kind : 'error';
-    counted[kind === 'ok' ? 'active' : kind === 'blocked' ? 'active' : kind] += 1;
+    // 'error' 를 'errors' 로 집계해야 네트워크 오류 예외(infraFailure) 경로가 동작한다.
+    // (2026-10-21 저녁: molit.go.kr TLS 실패가 어디에도 집계되지 않아 '활성 2/3, 오류 0' 으로 차단됨)
+    const key = kind === 'ok' || kind === 'blocked' ? 'active' : kind === 'error' ? 'errors' : kind;
+    counted[key] += 1;
   }
   return {
     ok: counted.active >= QUALITY_GATE.MIN_REFERENCE_LINKS,
@@ -779,7 +782,7 @@ export async function callLLMWithFallback(messages, env) {
     env,
     maxOutputTokens: 16384,
     temperature: 0.6,
-    log: (m) => log(m),
+    log: (...a) => log(...a),
   });
 
   if (result.truncated) {
@@ -890,7 +893,7 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
 
   // 6) Author 보정
   if (!/author:\s*["']?[^"'\n]+["']?/.test(yamlBlock)) {
-    yamlBlock += `\nauthor: "스마트 머니"`;
+    yamlBlock += `\nauthor: "포켓머니"`;
   }
 
   // 7) Affiliate 보정
@@ -1080,6 +1083,10 @@ ${selectedChart.instruction}
    - 위 요소들을 바탕으로 본문에 독립된 '## [직관적인 소제목]' 대주제(H2)를 반드시 4개 이상 구성하세요.
    - 반드시 마크다운 표(Table: \`| 항목 | 기준 | 내용 |\`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
    - 작성한 금액·자격 요건·일정 수치는 반드시 정부/공식 발표 기준으로만 서술하고, 근거가 되는 공식 안내 페이지 링크(정책브리핑, 법제처 국가법령정보센터, 정부24, 고용24, 건강보험공단, 국세청 등)를 실제 존재하는 URL로 최소 3개 이상 인라인 링크 또는 '## 참고 자료' 섹션으로 명시하세요. 존재하지 않는 URL을 지어내는 것은 절대 금지입니다.
+   - 깊은 하위 경로(.do?menuNo=… 등)를 추측하면 404로 탈락합니다. 아래 검증된 주소 형식만 사용하세요.
+     · 법령: https://www.law.go.kr/법령/<정확한 법령명>  (예: https://www.law.go.kr/법령/조세특례제한법, https://www.law.go.kr/법령/고용보험법)
+     · 기관 공식 사이트(루트 주소): https://www.korea.kr, https://www.gov.kr, https://www.work24.go.kr, https://www.nts.go.kr, https://www.hometax.go.kr, https://www.nhis.or.kr, https://www.nps.or.kr, https://www.bokjiro.go.kr, https://www.applyhome.co.kr, https://www.myhome.go.kr, https://www.hf.go.kr, https://www.moel.go.kr, https://www.mohw.go.kr, https://www.fss.or.kr, https://www.sbiz24.kr
+     · 최소 1개 이상은 law.go.kr 법령 링크로 근거 조문을 제시하세요.
 7. [절대 금지 사항]
    - 반드시 현재 연도인 2026년 기준(2026년 최신 개정 및 2026년 정책)으로 작성하세요. 과거 연도(2024년, 2025년 등)를 '최신'으로 서술하거나 제목/슬러그에 넣는 것을 엄격히 금지합니다.
    - 기계적인 '들어가며', '마치며', '서론', '결론' 헤딩을 절대 쓰지 마세요.
@@ -1097,7 +1104,7 @@ slug: "korean-policy-topic-english-slug"
 description: "핵심 요약 120~150자 내외"
 category: "${category}"
 tags: [태그1, 태그2, 태그3, 태그4]
-author: "스마트 머니"
+author: "포켓머니"
 reading_time: 8
 affiliate: false
 ---`;
@@ -1227,6 +1234,14 @@ export async function generateArticleWithFallback({
             ? '응답 잘림'
             : '생성 오류';
       log(`⛔ [LLM ${reason}] ${err.message.slice(0, 200)}`);
+      // 잘림 원인(반복/공백 폭주 등) 진단용으로 부분 응답을 data/ 에 남긴다 (발행 경로와 무관)
+      if (err.truncated && err.partialText) {
+        try {
+          const dump = path.join(BLOG_ROOT, 'data', `truncated-${targetDateStr}-${sessionName}-${attempt}.md`);
+          fs.writeFileSync(dump, err.partialText, 'utf8');
+          log(`📝 [잘림 진단] 부분 응답 저장: ${dump}`);
+        } catch (_) {}
+      }
       // 중복 주제는 프롬프트에 금지 목록을 주입했으므로 재시도로 해결될 가능성이 높다
       if (err.duplicate) {
         log(`🔁 [중복 회피 재시도 ${attempt + 1}/${QUALITY_GATE.MAX_LLM_RETRY}] 다른 주제를 선택하도록 다시 생성합니다.`);
@@ -1713,7 +1728,7 @@ ${deployLine}`;
 ❌ *차단 사유:* ${err.message}
 
 *조치:* D1 등록 및 GitHub 커밋을 수행하지 않았습니다. 생성된 미달 파일도 삭제했습니다.
-_llm 도retry ${QUALITY_GATE.MAX_LLM_RETRY}회로 분량/구조를 충족하지 못했습니다. 프롬프트 규칙 점검 필요._`
+_LLM 재시도 ${QUALITY_GATE.MAX_LLM_RETRY}회로도 분량/구조를 충족하지 못했습니다. 프롬프트 규칙 점검 필요._`
       : `⚠️ *[blogs 자동 게시 실패]*
 
 ⏰ *실행 시간:* ${timeStr} KST
