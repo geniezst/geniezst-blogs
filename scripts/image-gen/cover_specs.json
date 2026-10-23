@@ -1,0 +1,552 @@
+{
+ "credit-card-point-cash-conversion-2026-guide": {
+  "category": "생활 절약",
+  "title": "흩어진 카드포인트 한 번에 조회하고 현금으로 받는 법",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "현금화 단위",
+    "value": "1포인트부터",
+    "sub": "1포인트 = 1원"
+   },
+   {
+    "label": "참여 카드사",
+    "value": "11곳",
+    "sub": "전업 8곳 + 겸영 3곳"
+   },
+   {
+    "label": "소멸시효",
+    "value": "5년",
+    "sub": "6개월 전부터 매월 고지"
+   }
+  ]
+ },
+ "credit-debit-card-income-deduction-strategy-2026": {
+  "category": "연말정산",
+  "title": "신용카드·체크카드 소득공제는 총급여 25%부터",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "공제 문턱",
+    "value": "총급여의 25%",
+    "sub": "초과 사용분부터 공제"
+   },
+   {
+    "label": "공제율",
+    "value": "15~40%",
+    "sub": "신용 15 · 체크 30 · 시장 40"
+   },
+   {
+    "label": "기본 한도",
+    "value": "300만원",
+    "sub": "총급여 7,000만원 이하"
+   }
+  ]
+ },
+ "eitc-2026-missed-deadline-remaining-application-windows": {
+  "category": "세금 환급",
+  "title": "근로장려금 정기·반기·기한후 신청 시기와 지급액",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "맞벌이 최대",
+    "value": "330만원",
+    "sub": "총소득 4,400만원 미만"
+   },
+   {
+    "label": "기한후 신청",
+    "value": "12월 1일까지",
+    "sub": "산정액의 95% 지급"
+   },
+   {
+    "label": "재산 기준",
+    "value": "2.4억원 미만",
+    "sub": "1.7억원 이상은 50%"
+   }
+  ]
+ },
+ "health-insurance-dependent-eligibility-guide-2026": {
+  "category": "건강보험",
+  "title": "건강보험 피부양자 자격 기준, 소득과 재산",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "합산소득",
+    "value": "2,000만원 이하",
+    "sub": "공적연금 포함"
+   },
+   {
+    "label": "재산 과세표준",
+    "value": "5.4억원 이하",
+    "sub": "9억원 이하는 소득 1,000만원 이하"
+   },
+   {
+    "label": "형제·자매",
+    "value": "1.8억원 이하",
+    "sub": "나이·장애 요건 추가"
+   }
+  ]
+ },
+ "hope-savings-account-eligibility-benefits-2026": {
+  "category": "자산형성 지원",
+  "title": "희망저축계좌 1·2유형 가입 대상과 정부 매칭 구조",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "본인 저축",
+    "value": "월 10만원",
+    "sub": "3년 360만원"
+   },
+   {
+    "label": "1유형 정부지원",
+    "value": "1,080만원",
+    "sub": "월 30만원 × 36개월"
+   },
+   {
+    "label": "2유형 정부지원",
+    "value": "720만원",
+    "sub": "1:1 → 1:2 → 1:3"
+   }
+  ]
+ },
+ "housing-benefit-2026-guide-maximizing-support": {
+  "category": "주거 복지",
+  "title": "주거급여 선정기준과 기준임대료, 지급액 계산법",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "선정기준",
+    "value": "중위 48% 이하",
+    "sub": "4인 월 311만 7,474원"
+   },
+   {
+    "label": "서울 1인 기준임대료",
+    "value": "36만 9천원",
+    "sub": "월 상한"
+   },
+   {
+    "label": "대보수 한도",
+    "value": "1,601만원",
+    "sub": "자가가구, 7년 주기"
+   }
+  ]
+ },
+ "housing-loan-interest-deduction-2026-strategy": {
+  "category": "연말정산",
+  "title": "주택담보대출 이자상환액 소득공제, 한도 2,000만원을 받으려면",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "최대 한도",
+    "value": "2,000만원",
+    "sub": "15년↑ 고정금리 + 분할상환"
+   },
+   {
+    "label": "주택 기준",
+    "value": "기준시가 6억원",
+    "sub": "2024년 이후 취득분"
+   },
+   {
+    "label": "대상",
+    "value": "무주택·1주택",
+    "sub": "12월 31일 기준 세대주"
+   }
+  ]
+ },
+ "housing-pension-2026-guide-maximizing-income": {
+  "category": "노후 소득",
+  "title": "주택연금 2026년 가입 조건과 집값·나이별 월 수령액",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "가입 나이",
+    "value": "만 55세 이상",
+    "sub": "부부 중 한 명"
+   },
+   {
+    "label": "주택 가격",
+    "value": "공시가 12억원",
+    "sub": "부부 합산 이하"
+   },
+   {
+    "label": "70세 · 3억원",
+    "value": "월 92.3만원",
+    "sub": "종신 정액형, 2026.3~"
+   }
+  ]
+ },
+ "housing-rent-loan-deduction-2026-strategy": {
+  "category": "연말정산",
+  "title": "전세대출 원리금 상환액 소득공제, 요건과 연 400만원 한도",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "공제율",
+    "value": "상환액의 40%",
+    "sub": "원금 + 이자"
+   },
+   {
+    "label": "한도",
+    "value": "연 400만원",
+    "sub": "청약저축 공제와 합산"
+   },
+   {
+    "label": "은행 차입 시점",
+    "value": "전후 3개월",
+    "sub": "입주일·전입일 중 빠른 날"
+   }
+  ]
+ },
+ "housing-stability-monthly-rent-loan-2026-guide": {
+  "category": "주거 금융",
+  "title": "주거안정 월세대출 조건과 한도",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "월 한도",
+    "value": "60만원",
+    "sub": "총 최대 1,440만원"
+   },
+   {
+    "label": "금리",
+    "value": "연 1.3~1.8%",
+    "sub": "우대형 1.3% · 일반형 1.8%"
+   },
+   {
+    "label": "상환",
+    "value": "만기 일시",
+    "sub": "기본 2년, 최장 10년"
+   }
+  ]
+ },
+ "housing-subscription-monthly-limit-250k-strategy-2026": {
+  "category": "청약",
+  "title": "청약통장 월 납입 인정액 25만원, 얼마를 넣는 게 맞을까",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "월 납입 인정액",
+    "value": "25만원",
+    "sub": "2024.11.1부터"
+   },
+   {
+    "label": "소득공제 한도",
+    "value": "연 300만원",
+    "sub": "납입액의 40%"
+   },
+   {
+    "label": "금리",
+    "value": "연 2.3~3.1%",
+    "sub": "2년 이상 3.1%"
+   }
+  ]
+ },
+ "isa-maturity-pension-transfer-strategy-2026": {
+  "category": "절세",
+  "title": "ISA 만기 자금을 연금계좌로 옮기면 받는 추가 세액공제",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "추가 공제 한도",
+    "value": "전환액의 10%",
+    "sub": "최대 300만원"
+   },
+   {
+    "label": "전환 기한",
+    "value": "만기 후 60일",
+    "sub": "연금저축·IRP"
+   },
+   {
+    "label": "최대 절세액",
+    "value": "49.5만원",
+    "sub": "총급여 5,500만원 이하"
+   }
+  ]
+ },
+ "national-employment-support-allowance-2026": {
+  "category": "구직 지원",
+  "title": "국민취업지원제도 구직촉진수당, 2026년부터 월 60만원",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "구직촉진수당",
+    "value": "월 60만원",
+    "sub": "6개월, 총 360만원"
+   },
+   {
+    "label": "부양가족 가산",
+    "value": "1명당 10만원",
+    "sub": "최대 월 40만원"
+   },
+   {
+    "label": "취업성공수당",
+    "value": "최대 150만원",
+    "sub": "취업 후 근속 시"
+   }
+  ]
+ },
+ "national-tomorrow-learning-card-2026-guide": {
+  "category": "직업훈련",
+  "title": "국민내일배움카드 2026 발급 조건과 300만~500만원 지원 구조",
+  "date": "2026.10.21",
+  "cards": [
+   {
+    "label": "기본 한도",
+    "value": "300만원",
+    "sub": "발급일부터 5년"
+   },
+   {
+    "label": "추가 지원",
+    "value": "+200만원",
+    "sub": "기간제·일용 등 대상자, 최대 500만원"
+   },
+   {
+    "label": "자부담률",
+    "value": "0~55%",
+    "sub": "직종 취업률·대상별"
+   }
+  ]
+ },
+ "newborn-special-loan-2026-guide": {
+  "category": "출산 가구",
+  "title": "신생아 특례대출 조건과 금리, 달라진 한도",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "구입 한도",
+    "value": "4억원",
+    "sub": "2025.6.27 이후 계약"
+   },
+   {
+    "label": "전세 한도",
+    "value": "2.4억원",
+    "sub": "보증금 80% 이내"
+   },
+   {
+    "label": "소득 기준",
+    "value": "1.3억원",
+    "sub": "맞벌이 2억원"
+   }
+  ]
+ },
+ "newlywed-home-loan-2026-guide": {
+  "category": "내 집 마련",
+  "title": "신혼가구 디딤돌대출 조건, 소득 8,500만원과 한도 3.2억원",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "신혼 소득 기준",
+    "value": "8,500만원 이하",
+    "sub": "부부합산"
+   },
+   {
+    "label": "최대 한도",
+    "value": "3.2억원",
+    "sub": "6억원 이하 주택"
+   },
+   {
+    "label": "기본 금리",
+    "value": "연 2.85~4.15%",
+    "sub": "소득·만기별 고정"
+   }
+  ]
+ },
+ "newlywed-jeonse-loan-2026-guide": {
+  "category": "신혼 주거",
+  "title": "신혼부부 버팀목 전세자금대출 조건과 한도",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "부부합산 소득",
+    "value": "7,500만원 이하",
+    "sub": "순자산 3.45억원 이하"
+   },
+   {
+    "label": "대출 한도",
+    "value": "수도권 2.5억원",
+    "sub": "지방 1.6억원"
+   },
+   {
+    "label": "금리",
+    "value": "연 2.5~3.5%",
+    "sub": "수도권, 지방 0.2%p 낮음"
+   }
+  ]
+ },
+ "parental-leave-allowance-2026-guide": {
+  "category": "육아 지원",
+  "title": "육아휴직 급여 첫 3개월 월 250만원, 기간별 상한액",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "1~3개월",
+    "value": "월 250만원",
+    "sub": "통상임금 100%"
+   },
+   {
+    "label": "4~6개월",
+    "value": "월 200만원",
+    "sub": "통상임금 100%"
+   },
+   {
+    "label": "7개월 이후",
+    "value": "월 160만원",
+    "sub": "통상임금 80%"
+   }
+  ]
+ },
+ "small-business-policy-funds-guide-2026": {
+  "category": "자영업",
+  "title": "소상공인 정책자금 자금 종류와 고금리 대환대출 조건",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "대환대출 금리",
+    "value": "연 4.5%",
+    "sub": "고정, 3분기 공단 안내"
+   },
+   {
+    "label": "대환 한도",
+    "value": "5,000만원",
+    "sub": "업체당, 10년 분할상환"
+   },
+   {
+    "label": "3분기 기준금리",
+    "value": "연 3.85%",
+    "sub": "분기마다 변경"
+   }
+  ]
+ },
+ "sme-worker-preferential-savings-guide-2026": {
+  "category": "직장인 목돈",
+  "title": "회사가 20% 얹어 주는 중소기업 재직자 우대 저축공제",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "기업 지원금",
+    "value": "납입액의 20%",
+    "sub": "근로자 월 10만~50만원"
+   },
+   {
+    "label": "최고 금리",
+    "value": "연 4.5%",
+    "sub": "우대금리 포함"
+   },
+   {
+    "label": "3년형 예상액",
+    "value": "약 2,298만원",
+    "sub": "월 50만원 기준"
+   }
+  ]
+ },
+ "youth-hope-savings-reinvestment-strategy-2026-new": {
+  "category": "청년 자산형성",
+  "title": "청년희망적금 만기 자금, 2026년에 다시 따져볼 선택지",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "희망적금 만기",
+    "value": "2024년 2~3월",
+    "sub": "2026년 만기 아님"
+   },
+   {
+    "label": "미래적금 우대형",
+    "value": "3년 216만원",
+    "sub": "월 50만원 × 12% × 36"
+   },
+   {
+    "label": "도약계좌 최대",
+    "value": "5년 198만원",
+    "sub": "월 3.3만원 × 60개월"
+   }
+  ]
+ },
+ "youth-jeonse-deposit-guarantee-support-2026": {
+  "category": "전세 안전",
+  "title": "전세보증금 반환보증 보증료 최대 40만원 돌려받는 조건",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "지원 한도",
+    "value": "최대 40만원",
+    "sub": "2025.3.30 이전 가입은 30만원"
+   },
+   {
+    "label": "보증금 기준",
+    "value": "3억원 이하",
+    "sub": "무주택 임차인"
+   },
+   {
+    "label": "지급",
+    "value": "30일 이내",
+    "sub": "심사 후 본인 계좌"
+   }
+  ]
+ },
+ "youth-leap-account-2026-guide": {
+  "category": "청년 자산형성",
+  "title": "청년도약계좌 기존 가입자와 청년미래적금 비교",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "도약계좌 기여금",
+    "value": "월 최대 3.3만원",
+    "sub": "2025년 1월 납입분부터"
+   },
+   {
+    "label": "미래적금 기여금",
+    "value": "6% 또는 12%",
+    "sub": "월 50만원 한도, 3년"
+   },
+   {
+    "label": "2차 계좌 개설",
+    "value": "11.16~11.27",
+    "sub": "갈아타기는 개설 후 해지"
+   }
+  ]
+ },
+ "youth-monthly-rent-support-2026-guide": {
+  "category": "청년 주거",
+  "title": "청년월세 지원 2026년부터 월 최대 20만원, 24개월",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "월 지원 한도",
+    "value": "20만원",
+    "sub": "실제 월세 범위 안"
+   },
+   {
+    "label": "지원 기간",
+    "value": "최장 24개월",
+    "sub": "총 최대 480만원"
+   },
+   {
+    "label": "청년가구 소득",
+    "value": "중위 60% 이하",
+    "sub": "1인 월 약 153만 8천원"
+   }
+  ]
+ },
+ "youth-tomorrow-savings-account-2026-guide": {
+  "category": "청년 자산형성",
+  "title": "청년내일저축계좌 2026년 가입 조건과 만기 수령액",
+  "date": "2026.10.19",
+  "cards": [
+   {
+    "label": "가구 소득",
+    "value": "중위 50% 이하",
+    "sub": "2026년 신규 모집"
+   },
+   {
+    "label": "정부지원금",
+    "value": "월 30만원",
+    "sub": "3년 1,080만원"
+   },
+   {
+    "label": "만기 합계",
+    "value": "1,440만원",
+    "sub": "본인 월 10만원, 이자 별도"
+   }
+  ]
+ }
+}
