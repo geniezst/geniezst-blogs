@@ -1921,6 +1921,11 @@ async function startDaemon() {
     isAfternoonSkippedToday = initDayOfWeek === initWeekly.skip_afternoon_day;
   }
   let eveningExecutedToday = false;
+  // [2026-11-04] 실패 시 같은 날 재시도: Gemini 과부하(503)/쿼터(429)로 하루치 발행이 통째로 사라지던 문제 대응
+  let eveningFailsToday = 0;
+  let eveningRetryNotBefore = 0;
+  const EVENING_MAX_FAILS = 3;
+  const EVENING_RETRY_COOLDOWN_MS = 30 * 60 * 1000;
   let eveningSkippedLoggedToday = false;
   let isSessionRunning = false;
 
@@ -1970,6 +1975,8 @@ async function startDaemon() {
       currentEveningTarget = newTargets.evening;
       lastCheckedDay = dateStr;
       eveningExecutedToday = false;
+      eveningFailsToday = 0;
+      eveningRetryNotBefore = 0;
       eveningSkippedLoggedToday = false;
 
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
@@ -1996,7 +2003,7 @@ async function startDaemon() {
 
     // 오후 심층글 시간 도달 확인 (Catch-up Window: 목표 시각 도달 후 24시 이전)
     const eveningDone = isSessionAlreadyDone(state, 'evening', dateStr);
-    if (!eveningDone && !eveningExecutedToday && currentTotal >= eveningTargetTotal && currentTotal < 24 * 60) {
+    if (!eveningDone && !eveningExecutedToday && Date.now() >= eveningRetryNotBefore && currentTotal >= eveningTargetTotal && currentTotal < 24 * 60) {
       if (isAfternoonSkippedToday) {
         if (!eveningSkippedLoggedToday) {
           const weeklyConfig = state.weekly_skip_config || {};
@@ -2013,7 +2020,17 @@ async function startDaemon() {
         eveningExecutedToday = true;
         isSessionRunning = true;
         try {
-          await runPublishPipeline('evening');
+          const ok = await runPublishPipeline('evening');
+          if (ok === false && !isSessionAlreadyDone(loadState(), 'evening', dateStr)) {
+            eveningFailsToday += 1;
+            if (eveningFailsToday < EVENING_MAX_FAILS) {
+              eveningExecutedToday = false;
+              eveningRetryNotBefore = Date.now() + EVENING_RETRY_COOLDOWN_MS;
+              log(`🔁 [재시도 예약] 실패 ${eveningFailsToday}/${EVENING_MAX_FAILS}회 — 30분 뒤 같은 세션을 다시 시도합니다.`);
+            } else {
+              log(`⛔ [재시도 중단] 오늘 ${EVENING_MAX_FAILS}회 실패하여 더 이상 시도하지 않습니다.`);
+            }
+          }
         } catch (e) {
           log(`❌ [오후 세션 오류 방어] ${e.message}`);
         } finally {
