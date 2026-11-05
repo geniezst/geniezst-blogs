@@ -7,6 +7,10 @@ tags: [연금저축계좌, 세액공제, 연말정산, IRP, 노후대비]
 author: "포켓머니"
 reading_time: 6
 affiliate: false
+featured_image: "/assets/posts/pension-savings-account-2026-tax-credit-strategy/cover.webp"
+og_image: "/assets/posts/pension-savings-account-2026-tax-credit-strategy/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

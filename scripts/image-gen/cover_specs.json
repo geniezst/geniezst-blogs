@@ -548,5 +548,291 @@
     "sub": "본인 월 10만원, 이자 별도"
    }
   ]
+ },
+ "housing-capital-gains-tax-2026-guide": {
+  "category": "양도소득세",
+  "title": "주택 양도세 계산과 1세대 1주택 비과세 요건",
+  "date": "2026.10.21",
+  "cards": [
+   {
+    "label": "비과세 상한",
+    "value": "12억원",
+    "sub": "초과분만 안분 과세"
+   },
+   {
+    "label": "거주 요건",
+    "value": "2년",
+    "sub": "취득 당시 조정대상지역"
+   },
+   {
+    "label": "장기보유특별공제",
+    "value": "최대 80%",
+    "sub": "보유 연 4% + 거주 연 4%"
+   }
+  ]
+ },
+ "2026-parental-benefit-eligibility-amount-application-childcare-difference": {
+  "category": "부모급여",
+  "title": "부모급여 금액과 어린이집 이용 시 차액",
+  "date": "2026.10.22",
+  "cards": [
+   {
+    "label": "만 0세 부모급여",
+    "value": "월 100만원",
+    "sub": "만 1세는 월 50만원"
+   },
+   {
+    "label": "0세반 현금 차액",
+    "value": "월 41.6만원",
+    "sub": "보육료 단가 58.4만원"
+   },
+   {
+    "label": "신청 기한",
+    "value": "60일 이내",
+    "sub": "출생일 기준"
+   }
+  ]
+ },
+ "pension-savings-account-2026-tax-credit-strategy": {
+  "category": "연금저축",
+  "title": "연금저축 세액공제 한도와 소득별 환급액",
+  "date": "2026.10.23",
+  "cards": [
+   {
+    "label": "연 납입 한도",
+    "value": "1,800만원",
+    "sub": "IRP 합산"
+   },
+   {
+    "label": "세액공제 한도",
+    "value": "600만원",
+    "sub": "IRP 합산 900만원"
+   },
+   {
+    "label": "공제율",
+    "value": "16.5%",
+    "sub": "총급여 5,500만원 초과 13.2%"
+   }
+  ]
+ },
+ "irp-2026-guide-tax-benefits-investment-strategy": {
+  "category": "IRP",
+  "title": "IRP 세액공제 한도와 퇴직금 절세법",
+  "date": "2026.10.24",
+  "cards": [
+   {
+    "label": "연 납입 한도",
+    "value": "1,800만원",
+    "sub": "연금저축 합산 기준"
+   },
+   {
+    "label": "세액공제 한도",
+    "value": "900만원",
+    "sub": "연금저축 합산"
+   },
+   {
+    "label": "900만원 납입 시 환급",
+    "value": "148.5만원",
+    "sub": "총급여 5,500만원 이하"
+   }
+  ]
+ },
+ "energy-voucher-2026-guide": {
+  "category": "에너지바우처",
+  "title": "에너지바우처 신청 조건과 지원 금액",
+  "date": "2026.10.25",
+  "cards": [
+   {
+    "label": "연간 지원 금액",
+    "value": "29.5만~70.1만원",
+    "sub": "세대원 수별"
+   },
+   {
+    "label": "신청 기한",
+    "value": "12월 31일",
+    "sub": "2026년 기준"
+   },
+   {
+    "label": "다자녀 가구",
+    "value": "올해부터 포함",
+    "sub": "19세 미만 자녀 2명 이상"
+   }
+  ]
+ },
+ "unemployment-benefits-2026-guide": {
+  "category": "실업급여",
+  "title": "실업급여 수급 조건과 신청, 지급액",
+  "date": "2026.10.26",
+  "cards": [
+   {
+    "label": "1일 상한액",
+    "value": "68,100원",
+    "sub": "하한액 66,048원"
+   },
+   {
+    "label": "가입 요건",
+    "value": "180일",
+    "sub": "이직 전 18개월 기준"
+   },
+   {
+    "label": "지급 일수",
+    "value": "120~270일",
+    "sub": "나이·가입 기간별"
+   }
+  ]
+ },
+ "2026-child-allowance-eligibility-application-guide": {
+  "category": "아동수당",
+  "title": "아동수당 만 9세 미만 확대와 지역별 지급액",
+  "date": "2026.10.28",
+  "cards": [
+   {
+    "label": "대상 연령",
+    "value": "만 9세 미만",
+    "sub": "2030년 만 13세 미만"
+   },
+   {
+    "label": "기본 지급액",
+    "value": "월 10만원",
+    "sub": "비수도권 10.5만원"
+   },
+   {
+    "label": "해외 체류",
+    "value": "90일 이상 정지",
+    "sub": "소득·재산 심사 없음"
+   }
+  ]
+ },
+ "gift-tax-filing-deadline-penalties-exemptions-2026": {
+  "category": "증여세",
+  "title": "증여세 신고 기한과 공제 한도, 가산세",
+  "date": "2026.10.29",
+  "cards": [
+   {
+    "label": "신고 기한",
+    "value": "3개월",
+    "sub": "받은 달 말일부터"
+   },
+   {
+    "label": "배우자 공제",
+    "value": "6억원",
+    "sub": "성인 자녀 5천만원, 10년 합산"
+   },
+   {
+    "label": "혼인·출산 추가",
+    "value": "1억원",
+    "sub": "직계존속에게서"
+   }
+  ]
+ },
+ "personal-rehabilitation-guide-2026-eligibility-procedure-cost-minimum-living-expenses": {
+  "category": "개인회생",
+  "title": "개인회생 신청 자격과 최저생계비, 절차",
+  "date": "2026.10.30",
+  "cards": [
+   {
+    "label": "무담보 채무 한도",
+    "value": "10억원",
+    "sub": "담보부 채무 15억원"
+   },
+   {
+    "label": "최저생계비",
+    "value": "중위소득 60%",
+    "sub": "가구원수별 적용"
+   },
+   {
+    "label": "면책 이력",
+    "value": "5년 이내 제한",
+    "sub": "면책 확정일 기준"
+   }
+  ]
+ },
+ "yellow-umbrella-mutual-aid-2026-guide": {
+  "category": "노란우산공제",
+  "title": "노란우산공제 소득공제와 해지 환급금",
+  "date": "2026.10.31",
+  "cards": [
+   {
+    "label": "소득공제 최대",
+    "value": "600만원",
+    "sub": "사업소득 4,000만원 이하"
+   },
+   {
+    "label": "납입 한도",
+    "value": "월 150만원",
+    "sub": "연 1,800만원"
+   },
+   {
+    "label": "임의 해지 환급",
+    "value": "1~3회 80%",
+    "sub": "7~12회 100%"
+   }
+  ]
+ },
+ "2026-employment-retention-subsidy-guide": {
+  "category": "고용유지지원",
+  "title": "고용유지지원금 신청 요건과 지원금액",
+  "date": "2026.11.03",
+  "cards": [
+   {
+    "label": "지원 비율",
+    "value": "휴업수당의 2/3",
+    "sub": "대규모기업 1/2"
+   },
+   {
+    "label": "1인 1일 한도",
+    "value": "68,100원",
+    "sub": "연 180일"
+   },
+   {
+    "label": "매출 감소 요건",
+    "value": "15% 이상",
+    "sub": "직전 6개월 월평균 대비"
+   }
+  ]
+ },
+ "utility-bill-discounts-vulnerable-groups-2026": {
+  "category": "공공요금 감면",
+  "title": "취약계층 전기·도시가스 요금 감면",
+  "date": "2026.11.03",
+  "cards": [
+   {
+    "label": "전기 복지할인",
+    "value": "월 16,000원",
+    "sub": "하계 7~9월 20,000원"
+   },
+   {
+    "label": "도시가스 동절기",
+    "value": "최대 148,000원",
+    "sub": "대상별 18,000원부터"
+   },
+   {
+    "label": "신청처",
+    "value": "한전·도시가스사",
+    "sub": "대상별 증빙 필요"
+   }
+  ]
+ },
+ "basic-livelihood-security-livelihood-benefit-2026-guide": {
+  "category": "기초생활보장",
+  "title": "생계급여 수급자격과 신청 방법",
+  "date": "2026.11.04",
+  "cards": [
+   {
+    "label": "선정 기준",
+    "value": "중위소득 32%",
+    "sub": "소득인정액 기준"
+   },
+   {
+    "label": "1인 가구 기준",
+    "value": "820,556원",
+    "sub": "4인 가구 2,078,316원"
+   },
+   {
+    "label": "부양의무자 예외",
+    "value": "연소득 1.3억원 초과",
+    "sub": "또는 일반재산 12억원 초과"
+   }
+  ]
  }
 }

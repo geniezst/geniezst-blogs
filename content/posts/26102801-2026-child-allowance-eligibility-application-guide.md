@@ -7,6 +7,10 @@ tags: [아동수당, 2026아동수당, 부모급여, 육아지원금, 복지혜�
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/2026-child-allowance-eligibility-application-guide/cover.webp"
+og_image: "/assets/posts/2026-child-allowance-eligibility-application-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 아동수당은 2026년부터 지급 대상이 만 8세 미만에서 만 9세 미만(0~107개월)으로 한 살 넓어졌고, 비수도권과 인구감소지역에는 월 5천원에서 최대 3만원이 더해졌습니다. 2030년까지 해마다 한 살씩 늘려 만 13세 미만까지 지급할 예정입니다. 소득·재산과 관계없이 지급되는 점은 그대로입니다.

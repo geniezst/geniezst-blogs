@@ -7,6 +7,10 @@ tags: [개인회생, 최저생계비, 채무조정, 회생법원, 금지명령]
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/personal-rehabilitation-guide-2026-eligibility-procedure-cost-minimum-living-expenses/cover.webp"
+og_image: "/assets/posts/personal-rehabilitation-guide-2026-eligibility-procedure-cost-minimum-living-expenses/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

@@ -7,6 +7,10 @@ tags: [에너지바우처, 2026정부지원금, 냉난방비지원, 난방비바
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/energy-voucher-2026-guide/cover.webp"
+og_image: "/assets/posts/energy-voucher-2026-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 에너지바우처는 전기·도시가스·지역난방·등유·LPG·연탄 같은 냉난방 에너지 비용을 대 주는 제도입니다. 기초생활보장 수급 가구 중 노인·영유아·장애인·임산부 등이 같이 사는 세대가 대상이고, 2026년에는 다자녀 가구가 새로 포함됐습니다. 4인 이상 세대는 연 70만1,300원까지 받습니다. 신청은 12월 31일까지입니다.

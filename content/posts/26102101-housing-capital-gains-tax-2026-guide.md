@@ -7,6 +7,10 @@ tags: [양도소득세, 1세대1주택비과세, 장기보유특별공제, 양�
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/housing-capital-gains-tax-2026-guide/cover.webp"
+og_image: "/assets/posts/housing-capital-gains-tax-2026-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 집을 팔 때 내는 양도소득세는 팔아서 남은 이익(양도차익)에 매기는 세금입니다. 1세대 1주택이면 12억원까지는 비과세이고, 12억원을 넘는 고가주택은 초과분에 해당하는 비율만 과세합니다. 이 글은 2026년 10월 현재 시행 중인 규정으로 계산 순서를 설명하고, 2026년 8월 3일에 발표된 세제개편안(아직 입법 전)과 이미 시행 중인 일시적 2주택 처분기한 단축(2년)을 구분했습니다.

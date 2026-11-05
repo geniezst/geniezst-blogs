@@ -7,6 +7,10 @@ tags: [실업급여, 고용보험, 구직급여, 재취업, 2026년, 실직지�
 author: "포켓머니"
 reading_time: 6
 affiliate: false
+featured_image: "/assets/posts/unemployment-benefits-2026-guide/cover.webp"
+og_image: "/assets/posts/unemployment-benefits-2026-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 실업급여는 고용보험에 가입했던 사람이 일자리를 잃었을 때 재취업 활동을 하는 동안 받는 돈입니다. 정식 이름은 구직급여이고, 신청 자격과 금액은 퇴사 전 가입 기간·나이·평균임금으로 정해집니다. 이 글은 2026년 기준으로 상한액과 하한액, 지급 기간, 신청 순서, 받는 중에 지켜야 할 것을 공식 안내에 맞춰 정리했습니다.

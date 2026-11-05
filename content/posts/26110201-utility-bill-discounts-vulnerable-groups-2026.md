@@ -7,6 +7,10 @@ tags: [전기요금 할인, 도시가스 감면, 취약계층 복지, 에너지 
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/utility-bill-discounts-vulnerable-groups-2026/cover.webp"
+og_image: "/assets/posts/utility-bill-discounts-vulnerable-groups-2026/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

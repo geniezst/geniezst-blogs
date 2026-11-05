@@ -7,6 +7,10 @@ tags: [고용유지지원금, 2026년 정책, 기업지원, 고용안정, 정부
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/2026-employment-retention-subsidy-guide/cover.webp"
+og_image: "/assets/posts/2026-employment-retention-subsidy-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

@@ -7,6 +7,10 @@ tags: [노란우산공제, 소상공인, 자영업자, 소득공제, 퇴직금, 
 author: "포켓머니"
 reading_time: 7
 affiliate: false
+featured_image: "/assets/posts/yellow-umbrella-mutual-aid-2026-guide/cover.webp"
+og_image: "/assets/posts/yellow-umbrella-mutual-aid-2026-guide/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

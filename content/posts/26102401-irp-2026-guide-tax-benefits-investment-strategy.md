@@ -7,6 +7,10 @@ tags: [IRP, 개인형퇴직연금, 연말정산세액공제, 퇴직소득세, �
 author: "포켓머니"
 reading_time: 6
 affiliate: false
+featured_image: "/assets/posts/irp-2026-guide-tax-benefits-investment-strategy/cover.webp"
+og_image: "/assets/posts/irp-2026-guide-tax-benefits-investment-strategy/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 :::note[기준일]

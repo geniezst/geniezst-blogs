@@ -7,6 +7,10 @@ tags: [부모급여, 2026년부모급여, 어린이집보육료차액, 아동수
 author: "포켓머니"
 reading_time: 6
 affiliate: false
+featured_image: "/assets/posts/2026-parental-benefit-eligibility-amount-application-childcare-difference/cover.webp"
+og_image: "/assets/posts/2026-parental-benefit-eligibility-amount-application-childcare-difference/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 부모급여는 소득·재산 기준 없이 만 2세 미만 아이를 키우는 가정이 받는 현금 지원입니다. 다만 집에서 키우는지 어린이집을 보내는지에 따라 통장에 들어오는 돈이 크게 달라집니다. 만 0세는 어린이집 0세반을 보내면 월 41만6천원이 남고, 만 1세는 1세반 보육료가 부모급여보다 커서 현금이 남지 않습니다.

@@ -7,6 +7,10 @@ tags: [증여세, 증여재산공제, 세금신고, 가산세, 절세전략]
 author: "포켓머니"
 reading_time: 6
 affiliate: false
+featured_image: "/assets/posts/gift-tax-filing-deadline-penalties-exemptions-2026/cover.webp"
+og_image: "/assets/posts/gift-tax-filing-deadline-penalties-exemptions-2026/og.jpg"
+image_width: 1200
+image_height: 630
 ---
 
 증여세는 돈이나 집을 받은 사람이 받은 날이 속한 달의 말일부터 3개월 안에 신고하고 내야 합니다. 부모에게 5천만원을 받으면 세금이 없지만, 10년 안에 받은 돈은 모두 합산되기 때문에 두 번째, 세 번째 증여에서 갑자기 세금이 생기는 일이 흔합니다. 공제 한도, 기한을 넘겼을 때의 가산세, 홈택스 신고 순서를 정리합니다.
