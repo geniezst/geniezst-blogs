@@ -61,8 +61,8 @@ export function blogEnvCandidates(blogRoot) {
   ];
 }
 
-// 블로그 자동 글 발행 모델 우선순위 (2.5 flash 최우선 적용)
-const DEFAULT_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash'];
+// 블로그 자동 글 발행 모델: gemini-2.5-flash 단일 사용
+const DEFAULT_MODELS = ['gemini-2.5-flash'];
 
 // 503/429/5xx 는 모델 문제가 아니라 엔드포인트의 일시적 수치 부족이다.
 // 모델을 바꿔도 동일하게 실패하므로, 다음 모델로 넘어가기 전에 같은 모델을 재시도해야 한다.
@@ -96,7 +96,7 @@ export async function callGemini({
   maxOutputTokens = 16384,
   temperature = 0.6,
   timeoutMs = 180000,
-  transientRetry = 3,
+  transientRetry = 2,
   log = () => {},
   models: modelChain = null,
   thinkingBudget = 0,
@@ -150,8 +150,16 @@ export async function callGemini({
         });
 
         if (!res.ok) {
-          const errText = (await res.text().catch(() => '')).slice(0, 200);
+          const fullText = await res.text().catch(() => '');
+          const errText = fullText.slice(0, 200);
           lastError = new Error(`Gemini ${model} HTTP ${res.status}: ${errText}`);
+
+          // 일일 한도(PerDay) 429 는 재시도해도 풀리지 않는다 — 호출만 낭비하므로 즉시 다음 모델로 넘어간다.
+          if (res.status === 429 && /PerDay/i.test(fullText)) {
+            lastError.dailyQuota = true;
+            log(`⛔ [LLM] ${model} 일일 호출 한도 소진 — 재시도 없이 다음 모델로 전환`);
+            break;
+          }
 
           // 503/429 등은 전체 엔드포인트의 일시적 수치 부족이며 모델을 바꿔도 동일하다.
           // 다음 모델로 넘어가기 전에 동일 모델을 backoff 로 재시도한다.

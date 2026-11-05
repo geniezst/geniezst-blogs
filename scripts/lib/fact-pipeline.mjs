@@ -17,7 +17,7 @@ import { callGemini } from './llm.mjs';
 
 // 2.5-flash 가 503(과부하)일 때 2.5-flash-lite 로 넘어간다 (둘 다 무료 키 그라운딩 가능, 2026-10-21 확인)
 export const GROUNDED_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-export const WRITER_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash'];
+export const WRITER_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 export const REPORT_MARKER = '===FACTCHECK_REPORT===';
 
 const UA = 'Mozilla/5.0 (compatible; BlogQualityChecker/1.0)';

@@ -154,7 +154,7 @@ export const QUALITY_GATE = {
   MIN_NON_SPACE_CHARS: 1800,
   MIN_SPACE_INCLUDED_CHARS: 2800,
   MIN_REFERENCE_LINKS: 3,
-  MAX_LLM_RETRY: 3, // 게이트 실패·응답 잘림 시 LLM 재생성 횟수 (2026-10-21: 2→3, 3차 시도 잘림으로 세션 실패)
+  MAX_LLM_RETRY: 1, // 호출 한도 절약(blog·blogs 가 같은 키 공유): 재시도 1회, 브리프 재사용 시 집필+팩트체크 2호출
 };
 
 export function sanitizeProseSpaces(rawText) {
@@ -1083,25 +1083,34 @@ export async function runBuiltinDeepArticleGenerator({ category, sessionName, ta
 
   // 1) 리서치: 주제 + 출처가 붙은 사실 브리프 (docs/SPEC_FACT_GROUNDED_PIPELINE.md)
   const llmLog = (...a) => log(...a);
-  const research = await researchTopic({
-    env,
-    log: llmLog,
-    site: SITE_FACT_POLICY,
-    category,
-    topicGuide: CATEGORY_TOPIC_GUIDE[category] || category,
-    excludedList: buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts')),
-    avoidTopics,
-    dateStr: targetDateStr,
-  });
-  avoidTopics.push(research.topic);
-  if (Array.isArray(options.rejectedSlugs) && options.rejectedSlugs !== avoidTopics) options.rejectedSlugs.push(research.topic);
-  const officialFound = research.sources.filter((s) => s.official).length;
-  if (officialFound < 1) {
-    const err = new Error(`[리서치 게이트 실패] 접속 확인된 공식 출처 ${officialFound}개 (최소 1개 필요) — 주제: ${research.topic}`);
-    err.qualityGate = true;
-    throw err;
+  const cache = options.cache || {};
+  let research = cache.research;
+  let allowed = cache.allowed;
+  if (research && allowed) {
+    log(`♻️ [리서치 재사용] 이전 시도의 브리프를 그대로 씁니다 — 주제: ${research.topic}`);
+  } else {
+    research = await researchTopic({
+      env,
+      log: llmLog,
+      site: SITE_FACT_POLICY,
+      category,
+      topicGuide: CATEGORY_TOPIC_GUIDE[category] || category,
+      excludedList: buildExcludedTopicList(path.join(BLOG_ROOT, 'content', 'posts')),
+      avoidTopics,
+      dateStr: targetDateStr,
+    });
+    avoidTopics.push(research.topic);
+    if (Array.isArray(options.rejectedSlugs) && options.rejectedSlugs !== avoidTopics) options.rejectedSlugs.push(research.topic);
+    const officialFound = research.sources.filter((s) => s.official).length;
+    if (officialFound < 1) {
+      const err = new Error(`[리서치 게이트 실패] 접속 확인된 공식 출처 ${officialFound}개 (최소 1개 필요) — 주제: ${research.topic}`);
+      err.qualityGate = true;
+      throw err;
+    }
+    allowed = await buildAllowedRefs(research.sources, SAFE_FALLBACK_REFS, QUALITY_GATE.MIN_REFERENCE_LINKS);
+    cache.research = research;
+    cache.allowed = allowed;
   }
-  const allowed = await buildAllowedRefs(research.sources, SAFE_FALLBACK_REFS, QUALITY_GATE.MIN_REFERENCE_LINKS);
   // SLUG_HINT 는 모델 출력이라 '<english-kebab-case>' 같은 자리표시자나 공백·따옴표가 올 수 있다 → kebab-case 로 정리 (QA 2026-10-21)
   const slugHint = (research.brief.match(/^SLUG_HINT:\s*(.+)$/m)?.[1] || '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -1262,6 +1271,7 @@ export async function generateArticleWithFallback({
   // 2026-09-29 저녁 재실행 시 1·2차 시도 모두 '근로장려금 반기 신청' 을 골랐던
   // 것처럼, 재시도는 같은 확률적 분포에서 다시 뽑히므로 방치하면 무한 반복된다.
   const avoidTopics = [];
+  const genCache = {}; // 재시도 간 리서치 브리프 재사용
   for (let attempt = 0; attempt <= QUALITY_GATE.MAX_LLM_RETRY; attempt++) {
     if (attempt > 0) {
       log(`🔄 [LLM 재시도 ${attempt}/${QUALITY_GATE.MAX_LLM_RETRY}] 사유: ${lastError?.message?.slice(0, 140) || '알 수 없음'}`);
@@ -1280,6 +1290,7 @@ export async function generateArticleWithFallback({
           avoidTopics: [...avoidTopics],
           rejectedSlugs: avoidTopics,
           lastError: lastError?.message,
+          cache: genCache,
         },
       });
 
@@ -1329,6 +1340,10 @@ export async function generateArticleWithFallback({
             ? '응답 잘림'
             : '생성 오류';
       log(`⛔ [LLM ${reason}] ${err.message.slice(0, 200)}`);
+      // 주제 자체가 문제(전제 오류·출처 부족·중복)면 브리프를 버리고 새 주제로, 그 외엔 브리프를 유지한다
+      if (err.duplicate || /reject|전제 오류|리서치 게이트/.test(err.message)) { genCache.research = null; genCache.allowed = null; }
+      // 일일 호출 한도 소진은 재시도해도 소용없다
+      if (err.dailyQuota) { log('⛔ [호출 한도] 일일 한도 소진 — 이번 세션 재시도를 중단합니다.'); break; }
       // 잘림 원인(반복/공백 폭주 등) 진단용으로 부분 응답을 data/ 에 남긴다 (발행 경로와 무관)
       if (err.truncated && err.partialText) {
         try {
@@ -1924,7 +1939,7 @@ async function startDaemon() {
   // [2026-11-04] 실패 시 같은 날 재시도: Gemini 과부하(503)/쿼터(429)로 하루치 발행이 통째로 사라지던 문제 대응
   let eveningFailsToday = 0;
   let eveningRetryNotBefore = 0;
-  const EVENING_MAX_FAILS = 3;
+  const EVENING_MAX_FAILS = 2;
   const EVENING_RETRY_COOLDOWN_MS = 30 * 60 * 1000;
   let eveningSkippedLoggedToday = false;
   let isSessionRunning = false;
