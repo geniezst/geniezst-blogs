@@ -201,6 +201,9 @@ export async function callGemini({
               `(수신 ${text.length}자). 분량을 줄이거나 maxOutputTokens 를 늘려 재시도해야 합니다.`
           );
           err.truncated = true;
+          if (/[ \t\-]{200,}/.test(text)) {
+            err.message += ' 원인: 표 칸 맞춤용 공백/하이픈이 끝없이 이어졌습니다. 표는 칸 사이 공백 한 칸, 구분선은 |---| 로만 쓰세요.';
+          }
           err.model = model;
           err.partialText = text;
           log(`⛔ [LLM] ${err.message}`);

@@ -226,7 +226,9 @@ export function tidyHeadings(markdown) {
  * 실패(호출 오류·형식 불량·과도한 삭제·reject)는 발행 차단(qualityGate)으로 던진다.
  * @returns {Promise<{ markdown: string, report: { verdict: string, corrections: any[], removed: any[] } }>}
  */
-export async function factCheckArticle({ env, log, site, markdown, brief, allowed, dateStr }) {
+export async function factCheckArticle({ env, log, site, markdown: rawMarkdown, brief, allowed, dateStr }) {
+  // 표 칸 맞춤용 공백·하이픈 폭주는 입력 토큰과 응답 길이를 불필요하게 키운다
+  const markdown = compactTablePadding(rawMarkdown);
   const systemPrompt = `당신은 ${site.name}의 엄격한 팩트체커이자 교열자입니다. 오늘 날짜는 ${dateStr} 입니다. Google 검색으로 확인한 내용만 사실로 인정합니다.`;
   const userPrompt = `아래 [초안]을 검수해 교정본을 만드세요.
 
@@ -238,7 +240,7 @@ export async function factCheckArticle({ env, log, site, markdown, brief, allowe
 4. 실제 실행 결과처럼 꾸민 출력/로그 블록은, 공식 문서에 형식이 있으면 값 자리를 <placeholder> 로 바꾸고, 근거가 없으면 블록을 삭제하세요.
 5. 명령어는 해당 OS·도구에서 실제로 존재하는 문법인지 확인하세요 (존재하지 않는 플래그·권한 문자열 금지).
 6. 외부 링크는 [허용 참고 링크]에 있는 URL 만 남기세요. 그 외 외부 링크는 링크를 풀고 텍스트만 남기세요. 내부 링크(/blog/...)는 그대로 두세요.
-7. Frontmatter, H2/H3 구조, 표, ':::' 디렉티브, HTML 차트 블록은 유지하세요. 분량을 줄이지 말고, 고친 부분 외의 문장은 바꾸지 마세요. 상투적 문구는 추가하지 마세요.
+7. Frontmatter, H2/H3 구조, 표, ':::' 디렉티브, HTML 차트 블록은 건드리지 마세요. 고친 부분 외의 문장은 바꾸지 마세요. 상투적 문구는 추가하지 마세요.
 ${site.factCheckExtra || ''}
 
 [리서치 브리프 — 참고용. 브리프도 틀릴 수 있으니 검색으로 확인]
@@ -248,10 +250,13 @@ ${brief}
 ${formatAllowedRefs(allowed)}
 
 [출력 형식 — 반드시 지킬 것]
-교정된 전체 마크다운(첫 줄 '---' Frontmatter부터)을 출력하고, 그 다음 줄에 정확히 ${REPORT_MARKER} 를 쓰고, 그 아래에 JSON 하나만 출력하세요.
+교정된 글 전체를 다시 쓰지 마세요. 고칠 곳만 아래 JSON 하나로 출력하세요 (JSON 외 다른 글자 금지).
 {"verdict":"pass|fixed|reject","corrections":[{"before":"...","after":"...","reason":"...","source":"..."}],"removed":[{"text":"...","reason":"..."}]}
-corrections 에는 실제로 문장을 바꾼 항목만 넣으세요 (확인만 하고 그대로 둔 문장은 넣지 마세요).
-verdict 는 고칠 것이 없으면 pass, 고쳤으면 fixed, 글의 주제·전제 자체가 사실과 달라 교정으로 살릴 수 없으면 reject.
+- before 와 removed.text 는 [초안]에 있는 문장 일부를 한 글자도 바꾸지 말고 그대로 복사하세요. 한 줄 안의 100자 안팎, 초안에서 한 번만 나오는 조각으로 고르세요.
+- after 는 before 를 대체할 문장입니다. 링크를 풀 때는 before 에 마크다운 링크 전체를, after 에 텍스트만 쓰세요.
+- removed.text 는 삭제할 문장(또는 줄) 일부입니다. 그 조각이 들어 있는 문장 전체가 삭제됩니다.
+- corrections 에는 실제로 문장을 바꾼 항목만 넣으세요 (확인만 하고 그대로 둔 문장은 넣지 마세요).
+- verdict 는 고칠 것이 없으면 pass(배열은 비움), 고쳤으면 fixed, 글의 주제·전제 자체가 사실과 달라 교정으로 살릴 수 없으면 reject.
 
 [초안]
 ${markdown}`;
@@ -263,7 +268,7 @@ ${markdown}`;
       userPrompt,
       env,
       thinkingBudget: 4096,
-      maxOutputTokens: 32768,
+      maxOutputTokens: 12288,
       temperature: 0.2,
       timeoutMs: 300000,
       log,
@@ -279,31 +284,69 @@ ${markdown}`;
     e.qualityGate = true;
     return e;
   };
-  const idx = res.text.lastIndexOf(REPORT_MARKER);
-  if (idx === -1) throw fail('보고서 구분선 누락');
-  let corrected = res.text.slice(0, idx).trim()
-    .replace(/^```(?:markdown)?\s*\r?\n/i, '')
-    .replace(/\r?\n```\s*$/i, '')
-    .trim();
-  const jsonText = (res.text.slice(idx + REPORT_MARKER.length).match(/\{[\s\S]*\}/) || [])[0];
+  const jsonText = (res.text.match(/\{[\s\S]*\}/) || [])[0];
   let report;
   try {
     report = JSON.parse(jsonText);
   } catch {
     throw fail('보고서 JSON 파싱 실패');
   }
-  if (!corrected.startsWith('---')) throw fail('교정본에 Frontmatter 없음');
-  if (corrected.length < markdown.length * 0.7) throw fail(`교정본이 과도하게 줄어듦 (${markdown.length}→${corrected.length}자)`);
-  const h2 = (s) => (s.match(/^##\s+/gm) || []).length;
-  if (h2(corrected) < Math.min(4, h2(markdown))) throw fail(`교정본 H2 감소 (${h2(markdown)}→${h2(corrected)})`);
+  if (!['pass', 'fixed', 'reject'].includes(report.verdict)) throw fail(`알 수 없는 verdict: ${report.verdict}`);
   // 모델이 '확인만 한' 문장을 교정으로 보고하는 경우가 있어 실제로 바뀐 항목만 남긴다
   report.corrections = dropUnchangedCorrections(report.corrections);
   if (report.verdict === 'reject') throw fail(`주제 전제 오류로 reject — ${JSON.stringify(report.corrections || []).slice(0, 200)}`);
 
+  // 교정 목록을 원문에 직접 적용한다 (전체 글을 다시 받지 않으므로 호출당 출력이 작다)
+  const applied = applyFactCheckPatches(markdown, report);
+  const corrected = applied.markdown;
+  if (applied.unapplied > 0) log(`⚠️ [팩트체크] 원문에서 찾지 못한 교정 ${applied.unapplied}건은 적용하지 못했습니다.`);
+  if (applied.total > 0 && applied.applied === 0) throw fail('교정 항목을 원문에 하나도 적용하지 못함');
   const n = Array.isArray(report.corrections) ? report.corrections.length : 0;
   const r = Array.isArray(report.removed) ? report.removed.length : 0;
   log(`🧪 [팩트체크] verdict=${report.verdict} | 교정 ${n}건 | 삭제 ${r}건 | 검색 ${res.grounding.queries.length}회`);
   return { markdown: corrected, report: { ...report, queries: res.grounding.queries } };
+}
+
+/** 표 칸 맞춤용 공백 연속과 구분선 하이픈 연속을 줄인다 (코드 블록은 건드리지 않음) */
+export function compactTablePadding(md) {
+  let inCode = false;
+  return String(md || '').split('\n').map((line) => {
+    if (line.trim().startsWith('```')) { inCode = !inCode; return line; }
+    if (inCode || !/^\s*\|.*\|\s*$/.test(line)) return line;
+    return line.replace(/:-{4,}/g, ':---').replace(/-{4,}:/g, '---:').replace(/-{4,}/g, '---').replace(/[ \t]{2,}/g, ' ');
+  }).join('\n');
+}
+
+/**
+ * 팩트체크 보고서의 corrections(before→after)와 removed(text) 를 마크다운에 적용한다.
+ * before 가 원문에 없거나 둘 이상 나오면 적용하지 않고 unapplied 로 센다.
+ */
+export function applyFactCheckPatches(markdown, report) {
+  let out = markdown;
+  let total = 0, applied = 0, unapplied = 0;
+  const once = (needle) => needle && out.indexOf(needle) !== -1 && out.indexOf(needle) === out.lastIndexOf(needle);
+  for (const c of Array.isArray(report.corrections) ? report.corrections : []) {
+    if (!c || typeof c !== 'object' || String(c.before ?? '').trim() === String(c.after ?? '').trim()) continue;
+    total++;
+    const before = String(c.before ?? '');
+    if (once(before)) { out = out.replace(before, () => String(c.after ?? '')); applied++; } else unapplied++;
+  }
+  for (const rm of Array.isArray(report.removed) ? report.removed : []) {
+    const text = String(rm?.text ?? '');
+    if (!text) continue;
+    total++;
+    if (!once(text)) { unapplied++; continue; }
+    const at = out.indexOf(text);
+    const start = out.lastIndexOf('\n', at) + 1;
+    let end = out.indexOf('\n', at + text.length);
+    if (end === -1) end = out.length;
+    const line = out.slice(start, end);
+    // 문장 단위 삭제: 줄에 다른 문장이 있으면 해당 문장 조각만 지운다
+    const cut = line.length > text.length + 80 ? line.replace(text, '') : '';
+    out = out.slice(0, start) + cut + out.slice(end);
+    applied++;
+  }
+  return { markdown: out, total, applied, unapplied };
 }
 
 /**
