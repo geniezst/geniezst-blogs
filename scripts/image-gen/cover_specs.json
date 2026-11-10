@@ -922,5 +922,49 @@
     "sub": "이자세 15.4% 면제"
    }
   ]
+ },
+ "housing-subscription-savings-account-2026-guide": {
+  "category": "예적금",
+  "title": "청약통장과 청년 주택드림 비교",
+  "date": "2026.11.10",
+  "cards": [
+   {
+    "label": "일반 청약통장",
+    "value": "최고 연 3.1%",
+    "sub": "2년 이상 유지"
+   },
+   {
+    "label": "청년 주택드림",
+    "value": "최대 연 4.5%",
+    "sub": "비과세 이자 500만원"
+   },
+   {
+    "label": "소득공제",
+    "value": "연 120만원",
+    "sub": "납입 300만원의 40%"
+   }
+  ]
+ },
+ "jeonse-deposit-return-guarantee-2026-guide": {
+  "category": "주거",
+  "title": "전세보증금 반환보증 가입 조건",
+  "date": "2026.11.10",
+  "cards": [
+   {
+    "label": "HUG 보증한도",
+    "value": "주택가격 90%",
+    "sub": "선순위 채권 차감"
+   },
+   {
+    "label": "가입 시기",
+    "value": "계약기간 1/2 전",
+    "sub": "잔금·전입일 기준"
+   },
+   {
+    "label": "보증료 지원",
+    "value": "최대 40만원",
+    "sub": "무주택 임차인"
+   }
+  ]
  }
 }
