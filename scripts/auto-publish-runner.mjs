@@ -2,7 +2,7 @@
 /**
  * blogs 자동 포스팅 오케스트레이터 및 스케줄러 (Auto Publish Runner & Daemon)
  * - 대상 블로그: 포켓머니 (blogs, /workspace/blogs)
- * - 단일 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 1회 랜덤 휴식)
+ * - 단일 오후 세션: 18:15 ~ 18:45 KST (생활금융/복지 심층 가이드, 🎲 주 2~3회 랜덤 요일, blog 와 요일 비중복)
  *   ※ 아침 뉴스 다이제스트 세션은 2026-10-16 운영 정책 변경으로 완전히 제거되었다.
  * 
  * [LLM 호출 경로 (2026-09-27 정리)]
@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import { sendTelegramReport } from './telegram-notify.mjs';
+import { getSitePublishPlan } from './lib/weekly-publish-plan.mjs';
 import { yamlEscapedScalar } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
@@ -448,27 +449,21 @@ function getYearWeek(dateStr) {
 }
 
 /**
- * 주 1회 오후 심층글 스킵 요일 선정 및 유지 (자연스러운 휴식일 시뮬레이션)
- * - 오후 심층글은 주 1회 랜덤 휴식
+ * [2026-11-10] 주간 발행 요일 계획 (blog·blogs 공용, scripts/lib/weekly-publish-plan.mjs)
+ * - 주(월~일)마다 2~3회만 발행, 두 사이트의 발행 요일은 서로 겹치지 않는다.
+ * - 계획은 주차 ID 시드로 결정되므로 상태 파일엔 기록/알림 여부만 남긴다.
+ * - 반환값 is_rest_day 가 true 면 오늘은 비발행일이다.
  */
 function checkOrUpdateWeeklySkip(state, dateStr) {
-  const currentWeek = getYearWeek(dateStr);
-  if (
-    !state.weekly_skip_config ||
-    state.weekly_skip_config.current_week !== currentWeek ||
-    state.weekly_skip_config.skip_afternoon_day === undefined ||
-    state.weekly_skip_config.skip_afternoon_day === null
-  ) {
-    const randomDay = Math.floor(Math.random() * 7); // 0~6 중 랜덤 요일
-    state.weekly_skip_config = {
-      current_week: currentWeek,
-      skip_afternoon_day: randomDay,
-      skip_day_name: DAY_NAMES[randomDay],
-    };
+  const plan = getSitePublishPlan('blogs', dateStr);
+  if (!state.weekly_publish_plan || state.weekly_publish_plan.week !== plan.week) {
+    state.weekly_publish_plan = { week: plan.week, publish_days: plan.publish_days, publish_day_names: plan.publish_day_names };
+    delete state.weekly_skip_config;
     saveState(state);
-    log(`🎲 [주간 변칙 스케줄 갱신] ${currentWeek} 주간 1회 오후 심층글 휴식 요일 배정: ${DAY_NAMES[randomDay]}`);
+    log(`🎲 [주간 발행 계획] ${plan.week} 발행 요일: ${plan.publish_day_names.join(', ')} (주 ${plan.publish_days.length}회)`);
+    sendTelegramReport(`🗓️ *[포켓머니 주간 발행 계획]* ${plan.week}\n\n발행 요일: ${plan.publish_day_names.join(', ')} (주 ${plan.publish_days.length}회)\n나머지 요일은 쉽니다.`).catch(() => {});
   }
-  return state.weekly_skip_config;
+  return { ...plan, is_rest_day: !plan.is_publish_day };
 }
 
 /**
@@ -1576,15 +1571,15 @@ export async function runPublishPipeline(sessionName, options = {}) {
 
   const state = loadState();
 
-  // [P0 · 2026-10-13 휴식일 가드] 주 1회 오후 심층글 휴식일에는 데몬 재시작·
+  // [P0 · 2026-10-13 휴식일 가드] [2026-11-10 변경] 주간 발행 요일이 아닌 날에는 데몬 재시작·
   // 직접 CLI 호출 등 어떤 경로로든 발행을 차단한다 (--force로만 우회 가능).
   // 데몬 루프의 isAfternoonSkippedToday 는 "날짜 변경 시점"에만 갱신되어
   // 오후에 재시작되면 휴식일을 놓치던 문제를 발행 직전 재검증으로 원천 차단한다.
   if (sessionName === 'evening' && !options.force && !options.dryRun) {
     const { dayOfWeek } = getKSTDate();
     const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
-    if (dayOfWeek === weeklyConfig.skip_afternoon_day) {
-      console.log(`💤 [휴식일 가드] 오늘(${dateStr})은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다. 발행을 건너뜁니다.`);
+    if (weeklyConfig.is_rest_day) {
+      console.log(`💤 [비발행일 가드] 오늘(${dateStr}, ${weeklyConfig.day_name})은 이번 주 발행 요일(${weeklyConfig.publish_day_names.join(', ')})이 아닙니다. 발행을 건너뜁니다. (--force 로 우회)`);
       return true;
     }
   }
@@ -1856,7 +1851,7 @@ _LLM 재시도 ${QUALITY_GATE.MAX_LLM_RETRY}회로도 분량/구조를 충족하
 
 /**
  * 데몬 스케줄러 메인 루프 (단일 오후 세션)
- * - 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)
+ * - 오후 세션: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 2~3회 랜덤 요일, blog 와 요일 비중복)
  */
 async function startDaemon() {
   // [P1] 데몬 단일 인스턴스 보장
@@ -1881,7 +1876,7 @@ async function startDaemon() {
   process.on('SIGTERM', () => { cleanup(); process.exit(0); });
 
   log(`🤖 [blogs 포켓머니 자동화 스케줄러 데몬 가동]`);
-  log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 1회 랜덤 휴식)`);
+  log(`- 오후 범위: 18:15 ~ 18:45 KST (생활금융 심층 가이드, 🎲 주 2~3회 랜덤 요일, blog 와 요일 비중복)`);
 
   // [P1] 고스트 자폭 하트비트: 메인 루프가 장시간 세션 처리(수 분)로 블록되어도
   //   락 소유권 상실/중복 데몬을 5초 내 감지해 즉시 자진 종료한다(중복 발행 원천 차단).
@@ -1935,7 +1930,7 @@ async function startDaemon() {
     const initSkipState = loadState();
     const initWeekly = checkOrUpdateWeeklySkip(initSkipState, initialDateStr);
     const { dayOfWeek: initDayOfWeek } = getKSTDate();
-    isAfternoonSkippedToday = initDayOfWeek === initWeekly.skip_afternoon_day;
+    isAfternoonSkippedToday = initWeekly.is_rest_day;
   }
   let eveningExecutedToday = false;
   // [2026-11-04] 실패 시 같은 날 재시도: Gemini 과부하(503)/쿼터(429)로 하루치 발행이 통째로 사라지던 문제 대응
@@ -1982,7 +1977,7 @@ async function startDaemon() {
     {
       const skipState = loadState();
       const weeklyConfig = checkOrUpdateWeeklySkip(skipState, dateStr);
-      isAfternoonSkippedToday = dayOfWeek === weeklyConfig.skip_afternoon_day;
+      isAfternoonSkippedToday = weeklyConfig.is_rest_day;
     }
 
     // 날짜가 바뀌면 새로운 랜덤 시간 배정 및 주간 스킵 점검
@@ -1997,11 +1992,11 @@ async function startDaemon() {
       eveningSkippedLoggedToday = false;
 
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
-      isAfternoonSkippedToday = (dayOfWeek === weeklyConfig.skip_afternoon_day);
+      isAfternoonSkippedToday = (weeklyConfig.is_rest_day);
 
       log(`\n🌅 [새 날짜 감지: ${dateStr} (${DAY_NAMES[dayOfWeek]})] 랜덤 목표 배정 (${newTargets.isNew ? '신규 배정 및 영속화' : '상태 파일에서 복원'}):`);
       if (isAfternoonSkippedToday) {
-        log(`- 🎲 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name})입니다! 오후 세션을 건너뜁니다.`);
+        log(`- 💤 오늘은 비발행일입니다 (이번 주 발행 요일: ${weeklyConfig.publish_day_names.join(', ')}).`);
       } else {
         log(`- 📚 오후 심층글: ${formatTarget(currentEveningTarget)} KST`);
       }
@@ -2023,14 +2018,9 @@ async function startDaemon() {
     if (!eveningDone && !eveningExecutedToday && Date.now() >= eveningRetryNotBefore && currentTotal >= eveningTargetTotal && currentTotal < 24 * 60) {
       if (isAfternoonSkippedToday) {
         if (!eveningSkippedLoggedToday) {
-          const weeklyConfig = state.weekly_skip_config || {};
-          log(`💤 오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '지정요일'})입니다. 오후 세션을 건너뜁니다.`);
+          // 비발행일이 주 4~5일이라 매일 텔레그램을 보내지 않는다 (주간 계획은 주 1회 알림)
+          log(`💤 [비발행일] 오늘은 이번 주 발행 요일이 아니어서 오후 세션을 건너뜁니다.`);
           eveningSkippedLoggedToday = true;
-          try {
-            await sendTelegramReport(
-              `💤 *[포켓머니 오후 세션 휴식 안내]*\n\n오늘은 주 1회 오후 심층글 휴식일(${weeklyConfig.skip_day_name || '휴식일'})입니다.\n오후 심층글은 내일부터 다시 정상 발행됩니다.`
-            );
-          } catch (_) {}
         }
       } else {
         log(`📚 [오후 세션 트리거] 목표 시각(${formatTarget(currentEveningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
