@@ -966,5 +966,27 @@
     "sub": "무주택 임차인"
    }
   ]
+ },
+ "emergency-welfare-support-2026-eligibility-application": {
+  "category": "복지",
+  "title": "2026 긴급복지지원 자격과 금액",
+  "date": "2026.11.12",
+  "cards": [
+   {
+    "label": "소득 기준",
+    "value": "중위소득 75%",
+    "sub": "1인 월 1,923,179원"
+   },
+   {
+    "label": "생계지원",
+    "value": "월 78만 3천원",
+    "sub": "1인 가구 기준"
+   },
+   {
+    "label": "신청",
+    "value": "129·주민센터",
+    "sub": "선지원 후조사"
+   }
+  ]
  }
 }
