@@ -96,7 +96,7 @@ export async function callGemini({
   maxOutputTokens = 16384,
   temperature = 0.6,
   timeoutMs = 180000,
-  transientRetry = 2,
+  transientRetry = 4,
   log = () => {},
   models: modelChain = null,
   thinkingBudget = 0,
@@ -153,6 +153,7 @@ export async function callGemini({
           const fullText = await res.text().catch(() => '');
           const errText = fullText.slice(0, 200);
           lastError = new Error(`Gemini ${model} HTTP ${res.status}: ${errText}`);
+          if (TRANSIENT_STATUS.has(res.status)) lastError.transient = true;
 
           // 일일 한도(PerDay) 429 는 재시도해도 풀리지 않는다 — 호출만 낭비하므로 즉시 다음 모델로 넘어간다.
           if (res.status === 429 && /PerDay/i.test(fullText)) {
@@ -164,7 +165,8 @@ export async function callGemini({
           // 503/429 등은 전체 엔드포인트의 일시적 수치 부족이며 모델을 바꿔도 동일하다.
           // 다음 모델로 넘어가기 전에 동일 모델을 backoff 로 재시도한다.
           if (TRANSIENT_STATUS.has(res.status) && attempt < transientRetry) {
-            const waitMs = backoffBaseMs * 2 ** attempt;
+            // 503 "high demand" 급증은 보통 수 분 지속된다 (2026-11-15 실측: 약 3분). 초 단위 backoff 로는 못 넘기므로 15→30→60→90초로 늘린다.
+            const waitMs = res.status === 503 ? Math.min(90000, 15000 * 2 ** attempt) : backoffBaseMs * 2 ** attempt;
             log(`⚠️ [LLM] ${res.status} 일시 오류 — ${waitMs}ms 후 동일 모델 재시도`);
             await sleep(waitMs);
             continue;

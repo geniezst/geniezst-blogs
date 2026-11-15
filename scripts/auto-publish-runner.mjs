@@ -1842,7 +1842,7 @@ _LLM 재시도 ${QUALITY_GATE.MAX_LLM_RETRY}회로도 분량/구조를 충족하
 🏷️ *구분:* ${sessionName}
 📂 *카테고리:* ${category}
 ❌ *오류 원인:* ${err.message}
-🔄 *조치:* 상태 기록 및 에러 로깅 완료`;
+🔄 *조치:* ${/HTTP (408|429|5\d\d)/.test(String(err.message)) ? '구글 서버 일시 과부하입니다. 30분 뒤 자동으로 다시 시도합니다 (하루 최대 3회).' : '상태 기록 및 에러 로깅 완료'}`;
 
     await sendTelegramReport(failMsg);
     return false;
@@ -1936,7 +1936,7 @@ async function startDaemon() {
   // [2026-11-04] 실패 시 같은 날 재시도: Gemini 과부하(503)/쿼터(429)로 하루치 발행이 통째로 사라지던 문제 대응
   let eveningFailsToday = 0;
   let eveningRetryNotBefore = 0;
-  const EVENING_MAX_FAILS = 2;
+  const EVENING_MAX_FAILS = 3;
   const EVENING_RETRY_COOLDOWN_MS = 30 * 60 * 1000;
   let eveningSkippedLoggedToday = false;
   let isSessionRunning = false;
