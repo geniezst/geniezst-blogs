@@ -988,5 +988,27 @@
     "sub": "선지원 후조사"
    }
   ]
+ },
+ "2026-automobile-tax-guide-payment-discount-calculation": {
+  "category": "세금",
+  "title": "2026 자동차세 연납 할인율",
+  "date": "2026.11.15",
+  "cards": [
+   {
+    "label": "1월 연납",
+    "value": "연세액의 4.58%",
+    "sub": "공제율 5% 기준"
+   },
+   {
+    "label": "납기",
+    "value": "6월·12월",
+    "sub": "16일~말일"
+   },
+   {
+    "label": "세액 기준",
+    "value": "배기량(cc)",
+    "sub": "+지방교육세 30%"
+   }
+  ]
  }
 }
