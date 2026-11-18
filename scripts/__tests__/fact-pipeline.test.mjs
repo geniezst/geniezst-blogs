@@ -1,5 +1,6 @@
 // fact-pipeline 순수 함수 단위 테스트 (네트워크·LLM 호출 없음)
-import { tidyHeadings, enforceAllowedLinks, normalizeUrl, dropUnchangedCorrections } from '../lib/fact-pipeline.mjs';
+import fs from 'node:fs';
+import { tidyHeadings, enforceAllowedLinks, normalizeUrl, dropUnchangedCorrections, extractVerificationTargets } from '../lib/fact-pipeline.mjs';
 
 let pass = 0;
 let fail = 0;
@@ -46,5 +47,27 @@ ok('corrections: before·after 모두 없으면 제거', !dc.some((c) => c && c.
 ok('corrections: trim 기준 동일하면 제거', !dc.some((c) => c && c.after === '공백 차이'));
 ok('corrections: 배열이 아니면 그대로', dropUnchangedCorrections(undefined) === undefined && dropUnchangedCorrections('x') === 'x' && dropUnchangedCorrections(null) === null);
 ok('corrections: 숫자 before/after 비교', dropUnchangedCorrections([{ before: 3, after: '3' }]).length === 0);
+// 2026-11-17: 팩트체크가 검색을 0회 수행하고 게이트로 막힌 문제 → 검증 대상 주입
+const targets = extractVerificationTargets(
+  [
+    '## 2026년 기준',
+    '- 국민연금 임의가입 월 보험료는 38,950원이며 전액 본인이 부담합니다.',
+    '- 소득 기준은 연 2,400만원 이하이며, 이 기준을 넘으면 가입할 수 없습니다.',
+    '- 아무 숫자 없는 문장입니다.',
+  ].join('\n')
+);
+ok('팩트체크 검증 대상 추출(수치 포함 문장)', targets.length === 2, JSON.stringify(targets));
+const manyTargets = Array.from(
+  { length: 10 },
+  (_, i) => `가입 조건 ${i + 1}번 항목은 ${i + 1}만원입니다. 자세한 내용은 공식 안내를 확인하세요.`
+).join('\n');
+ok('검증 대상은 최대 6개', extractVerificationTargets(manyTargets).length === 6);
+ok('중복 문장은 한 번만', extractVerificationTargets('가입 조건은 월 1만원입니다. 자세한 내용은 확인하세요.\n'.repeat(5)).length === 1);
+ok('숫자 없는 글은 빈 배열', extractVerificationTargets('숫자가 전혀 없는 설명문입니다.').length === 0);
+
+// 2026-11-18: 팩트체크 catch 가 dailyQuota 표식을 잃으면 데몬이 30분 재시도를 반복한다
+const fpSrc = fs.readFileSync(new URL('../lib/fact-pipeline.mjs', import.meta.url), 'utf8');
+ok('팩트체크 래핑 시 dailyQuota 표식 유지', fpSrc.includes('e.dailyQuota = err.dailyQuota'));
+
 console.log(`===== 결과: ${pass} 통과 / ${fail} 실패 =====`);
 if (fail) process.exit(1);

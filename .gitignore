@@ -44,6 +44,7 @@ data/*.log
 data/*.json
 data/*.pid
 data/*.lock
+data/*.flock
 scripts/*_backup*/
 
 # Service account keys
@@ -57,3 +58,6 @@ data/backup-*/
 
 # 팩트체크 보고서 (감사용, 저장소 제외)
 data/factcheck/
+
+# LLM 잘림/폭주 진단 덤프 (런타임 산출물, 수백 KB~수 MB)
+data/truncated-*.md

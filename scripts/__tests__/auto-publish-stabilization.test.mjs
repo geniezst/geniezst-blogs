@@ -113,9 +113,18 @@ try {
   ok('발행 완료 시 markSessionCompleted 호출 코드 포함', runnerSrc.includes('markSessionCompleted(sessionLock.lockFile'));
   ok('일일 랜덤 목표 시간 영속화 함수 getOrAssignTargets 포함', runnerSrc.includes('getOrAssignTargets('));
   ok('QUALITY_GATE MIN_H2 기준값이 4로 설정됨', runnerSrc.includes('MIN_H2: 4'));
-  ok('QUALITY_GATE MAX_LLM_RETRY 가 3회로 설정됨', runnerSrc.includes('MAX_LLM_RETRY: 3'));
+  ok('QUALITY_GATE MAX_LLM_RETRY 가 1회로 설정됨(호출 한도 절약)', runnerSrc.includes('MAX_LLM_RETRY: 1'));
   ok('프롬프트 H2 최소 기준이 4개 이상으로 명시됨', runnerSrc.includes('H2 최소 4개 이상 필수 구성'));
   ok('프롬프트 마크다운 표 템플릿의 백틱 이스케이프 정상 적용', runnerSrc.includes('\\`| 항목 | 기준 | 내용 |\\`'));
+  ok('본문 분량 상한(MAX_BODY_CHARS 30000) 존재', runnerSrc.includes('MAX_BODY_CHARS: 30000'));
+  ok('표 정렬 콜론(:---) 금지 규칙 명시', runnerSrc.includes('":---", "---:", ":---:"'));
+  ok('일일 한도 소진 날짜를 상태에 기록', runnerSrc.includes('state.quota_exhausted_date = dateStr'));
+  ok('일일 한도 소진 시 30분 재시도 생략', runnerSrc.includes('quota_exhausted_date === dateStr') && runnerSrc.includes('30분 재시도를 건너뜁니다'));
+  ok('집필 호출에 스트리밍 폭주 상한(maxRepeatRun) 적용', runnerSrc.includes('maxRepeatRun: 400'));
+  ok('집필 temperature 는 재시도에서 더 낮춤', runnerSrc.includes('temperature: opts.compact ? 0.35 : 0.4'));
+  ok('잘림 재시도 compact 모드가 실제로 전달됨', runnerSrc.includes('compact: options.compactRetry === true'));
+  ok('sanitizeProseSpaces 가 공용 가드(sanitizeMarkdownLine)를 사용', runnerSrc.includes('sanitizeMarkdownLine(line)'));
+  ok('실패 알림이 원인별 문구(describeFailure)를 사용', runnerSrc.includes('describeFailure(err)'));
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

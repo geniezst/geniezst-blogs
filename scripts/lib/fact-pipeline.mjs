@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { callGemini } from './llm.mjs';
+import { sanitizeMarkdownBody } from './markdown-guard.mjs';
 
 // 2.5-flash 가 503(과부하)일 때 2.5-flash-lite 로 넘어간다 (둘 다 무료 키 그라운딩 가능, 2026-10-21 확인)
 export const GROUNDED_MODELS = ['gemini-2.5-flash']; // flash-lite 는 검색은 하지만 출처(groundingChunks)를 돌려주지 않아 리서치 게이트를 통과할 수 없다
@@ -222,6 +223,28 @@ export function tidyHeadings(markdown) {
 }
 
 /**
+ * 초안에서 검증 가치가 높은 주장 6개를 뽑는다 (수치·금액·비율 포함).
+ *
+ * [왜 필요한가 · 2026-11-17]
+ * 팩트체크가 google_search 를 4연속 0회 수행하고 "검색 그라운딩 미수행"으로 발행을 막았다.
+ * 프롬프트에 "모든 사실 주장을 검색으로 확인하세요"만 있어서, 모델이 고칠 것이 없다고
+ * 판단하면 검색 자체를 건너뛰었다. 검증 대상을 명시하면 검색 호출이 강제된다.
+ */
+export function extractVerificationTargets(markdown, max = 6) {
+  const picked = [];
+  for (const raw of String(markdown || '').split('\n')) {
+    const line = raw.replace(/^[#>\s|*\-]+/, '').trim();
+    if (line.length < 20 || line.startsWith('<') || line.startsWith(':::')) continue;
+    if (!/(\d[\d,.]*\s*(만원|억원|원|%|개월|년|세|명|회|일))/.test(line)) continue;
+    const sentence = line.split(/(?<=[.!?])\s/)[0];
+    if (sentence.length > 160 || picked.includes(sentence)) continue;
+    picked.push(sentence);
+    if (picked.length >= max) break;
+  }
+  return picked;
+}
+
+/**
  * 3단계 팩트체크: 초안의 사실 주장을 검색으로 확인해 교정본과 보고서를 돌려준다.
  * 실패(호출 오류·형식 불량·과도한 삭제·reject)는 발행 차단(qualityGate)으로 던진다.
  * @returns {Promise<{ markdown: string, report: { verdict: string, corrections: any[], removed: any[] } }>}
@@ -229,6 +252,12 @@ export function tidyHeadings(markdown) {
 export async function factCheckArticle({ env, log, site, markdown: rawMarkdown, brief, allowed, dateStr }) {
   // 표 칸 맞춤용 공백·하이픈 폭주는 입력 토큰과 응답 길이를 불필요하게 키운다
   const markdown = compactTablePadding(rawMarkdown);
+  const verificationTargets = extractVerificationTargets(markdown);
+  const targetBlock = verificationTargets.length
+    ? `\n[검증 대상 주장 — 아래 항목은 반드시 google_search 로 근거를 확인하세요]\n${verificationTargets
+        .map((t, i) => `${i + 1}. ${t}`)
+        .join('\n')}\n`
+    : '';
   const systemPrompt = `당신은 ${site.name}의 엄격한 팩트체커이자 교열자입니다. 오늘 날짜는 ${dateStr} 입니다. Google 검색으로 확인한 내용만 사실로 인정합니다.`;
   const userPrompt = `아래 [초안]을 검수해 교정본을 만드세요.
 
@@ -258,6 +287,7 @@ ${formatAllowedRefs(allowed)}
 - corrections 에는 실제로 문장을 바꾼 항목만 넣으세요 (확인만 하고 그대로 둔 문장은 넣지 마세요).
 - verdict 는 고칠 것이 없으면 pass(배열은 비움), 고쳤으면 fixed, 글의 주제·전제 자체가 사실과 달라 교정으로 살릴 수 없으면 reject.
 
+${targetBlock}
 [초안]
 ${markdown}`;
 
@@ -276,6 +306,8 @@ ${markdown}`;
   } catch (err) {
     const e = new Error(err.message.startsWith('[팩트체크') ? err.message : `[팩트체크 실패] ${err.message}`);
     e.qualityGate = true;
+    // 일일 한도 소진은 재시도로 풀리지 않는다 — 데몬이 30분 재시도를 건너뛸 수 있도록 표식을 유지한다.
+    e.dailyQuota = err.dailyQuota;
     throw e;
   }
 
@@ -307,14 +339,14 @@ ${markdown}`;
   return { markdown: corrected, report: { ...report, queries: res.grounding.queries } };
 }
 
-/** 표 칸 맞춤용 공백 연속과 구분선 하이픈 연속을 줄인다 (코드 블록은 건드리지 않음) */
+/**
+ * 표 칸 맞춤용 공백·구분선 하이픈 폭주를 줄인다 (코드 블록은 건드리지 않음).
+ *
+ * [2026-11-17] 기존 구현은 `|...|` 로 끝나는 줄에서만 동작해서, 끝에 | 없이 폭주한
+ * 166,848자 하이픈을 그대로 통과시켰다. 공용 가드로 교체해 줄 모양과 무관하게 줄인다.
+ */
 export function compactTablePadding(md) {
-  let inCode = false;
-  return String(md || '').split('\n').map((line) => {
-    if (line.trim().startsWith('```')) { inCode = !inCode; return line; }
-    if (inCode || !/^\s*\|.*\|\s*$/.test(line)) return line;
-    return line.replace(/:-{4,}/g, ':---').replace(/-{4,}:/g, '---:').replace(/-{4,}/g, '---').replace(/[ \t]{2,}/g, ' ');
-  }).join('\n');
+  return sanitizeMarkdownBody(md);
 }
 
 /**

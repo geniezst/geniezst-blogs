@@ -28,6 +28,7 @@ import { getSitePublishPlan } from './lib/weekly-publish-plan.mjs';
 import { yamlEscapedScalar } from './generate-news-digest.mjs';
 import { gitPublish, publishPreflight, runGit } from './lib/git-publish.mjs';
 import { callGemini } from './lib/llm.mjs';
+import { sanitizeMarkdownLine, findRunawayRun } from './lib/markdown-guard.mjs';
 import { researchTopic, buildAllowedRefs, formatAllowedRefs, factCheckArticle, enforceAllowedLinks, tidyHeadings, saveFactCheckReport, WRITER_MODELS } from './lib/fact-pipeline.mjs';
 import { acquireDaemonLock, isLockOwner, readLock, getSiblingDaemonPids, acquireBuildDeployLock, cleanDistDir, acquireSessionLock as acquireSessionLockLib, markSessionCompleted, verifyPostImageIntegrityOrThrow } from './lib/runtime-lock.mjs';
 
@@ -154,9 +155,52 @@ export const QUALITY_GATE = {
   MIN_H2: 4,
   MIN_NON_SPACE_CHARS: 1800,
   MIN_SPACE_INCLUDED_CHARS: 2800,
+  // [2026-11-17] 정상 심층글은 4,000~12,000자다. 30,000자를 넘으면 반복 폭주/붙여넣기 사고다.
+  MAX_BODY_CHARS: 30000,
   MIN_REFERENCE_LINKS: 3,
   MAX_LLM_RETRY: 1, // 호출 한도 절약(blog·blogs 가 같은 키 공유): 재시도 1회, 브리프 재사용 시 집필+팩트체크 2호출
 };
+
+/**
+ * 실패 알림에 "실제 원인"을 적기 위한 분류기.
+ * 기존 알림은 어떤 실패든 "재시도 1회로도 분량/구조를 충족하지 못했습니다. 프롬프트 규칙 점검 필요"
+ * 로 고정되어, 잘림(폭주)인지 그라운딩 인프라 실패인지 운영자가 구분할 수 없었다.
+ */
+export function describeFailure(err) {
+  const msg = String(err?.message || '');
+  if (err?.dailyQuota) return 'Gemini 무료 일일 호출 한도 소진 (태평양 자정 리셋)';
+  if (/에서 잘렸습니다/.test(msg)) {
+    return err?.runaway ? 'LLM 응답 폭주로 중단 (표 정렬 반복)' : 'LLM 응답이 분량 상한에서 잘림';
+  }
+  if (/검색 그라운딩이 수행되지 않았습니다/.test(msg)) return '팩트체크 검색 그라운딩 미수행 (인프라)';
+  if (/품질 게이트/.test(msg)) return '콘텐츠 품질 기준 미달';
+  if (/HTTP (408|429|5\d\d)/.test(msg)) return 'Gemini 일시 오류';
+  return '자동 게시 실패';
+}
+
+/**
+ * 기준 연도 왜곡 검사.
+ *
+ * [2026-11-18] 기존 정규식은 "2025년 기준" 이라는 **정상적인 과거 비교 문장**까지 잡아
+ * 7,611자 / H2 5개 / 표·출처를 모두 갖춘 글을 발행 차단했다(검증 실행에서 재현).
+ * 제목·소제목에서 쓰이면 '최신 기준' 주장이므로 위반으로 보고, 본문에서는
+ * 2026년과 대비하거나 과거임을 밝히는 문맥(기존·이전·개정 전·대비 등)이면 허용한다.
+ */
+export function findYearHallucination(title, body) {
+  const re = /(?:2024년|2025년)\s*(?:최신|기준|개정|현재)/g;
+  const headings = `${title}\n${(body.match(/^#{1,6}\s+.*$/gm) || []).join('\n')}`;
+  const headingHit = re.exec(headings);
+  if (headingHit) return headingHit[0];
+  re.lastIndex = 0; // matchAll 이 이어서 시작하지 않도록 초기화
+
+  for (const m of body.matchAll(re)) {
+    const ctx = body.slice(Math.max(0, m.index - 120), Math.min(body.length, m.index + m[0].length + 120));
+    if (/2026년/.test(ctx)) continue;
+    if (/(기존|이전|과거|종전|개정\s*전|변경\s*전|대비|반면|불구하고)/.test(ctx)) continue;
+    return m[0];
+  }
+  return null;
+}
 
 export function sanitizeProseSpaces(rawText) {
   if (!rawText) return '';
@@ -170,15 +214,14 @@ export function sanitizeProseSpaces(rawText) {
     if (inCode) {
       return line;
     }
-    // 마크다운 표 구분선(|---|) 하이픈 무한 반복 글리치 방어
-    if (/^\s*\|.*\|\s*$/.test(line)) {
-      return line
-        .replace(/:-{4,}/g, ':---')
-        .replace(/-{4,}:/g, '---:')
-        .replace(/-{4,}/g, '---')
-        .replace(/[ \t]{2,}/g, ' ');
+    // [2026-11-17] 표 줄 모양(|...|)과 무관하게 항상 반복 문자를 축약한다.
+    // 기존 구현은 줄이 | 로 끝나야만 동작해서, 끝에 | 없이 폭주한 166,848자 하이픈을
+    // 그대로 통과시켰다. 정렬 콜론(:---)도 |---| 로 통일해 폭주 동기를 없앤다.
+    let cleaned = sanitizeMarkdownLine(line);
+    if (/^\s*\|.*\|\s*$/.test(cleaned)) {
+      cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
     }
-    let cleaned = line.replace(/([^\s])\s{2,}([^\s])/g, '$1 $2').replace(/\s+$/, '');
+    cleaned = cleaned.replace(/([^\s])\s{2,}([^\s])/g, '$1 $2').replace(/\s+$/, '');
     cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*만\s+원/g, '$1만원');
     cleaned = cleaned.replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*억\s+원/g, '$1억원');
     return cleaned;
@@ -751,9 +794,10 @@ function drainPendingDeploys() {
  *
  * @param {Array<{role: string, content: string}>} messages
  * @param {object} env
+ * @param {{compact?: boolean}} [opts] compact=true 면 재시도용으로 출력 상한을 낮춘다
  * @returns {Promise<string>}
  */
-export async function callLLMWithFallback(messages, env) {
+export async function callLLMWithFallback(messages, env, opts = {}) {
   const systemPrompt = messages
     .filter((m) => m.role === 'system')
     .map((m) => m.content)
@@ -767,14 +811,21 @@ export async function callLLMWithFallback(messages, env) {
     throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
   }
 
+  // [2026-11-17] 표 정렬 반복 폭주 대응
+  //  - maxRepeatRun: 스트리밍 중 같은 문자 400자 연속이면 즉시 중단 (llm.mjs)
+  //  - compact: 재시도는 출력 상한을 낮춰 폭주 시 낭비 토큰을 줄인다
+  //  ※ frequencyPenalty/presencePenalty 는 이 키의 gemini-2.5-flash 에서
+  //    HTTP 400 "Penalty is not enabled for models/gemini-2.5-flash" 로 거부된다(2026-11-18 실측).
+  //    → 사용하지 않고, 폭주는 스트리밍 가드로 막는다.
   const result = await callGemini({
     systemPrompt,
     userPrompt,
     env,
     models: WRITER_MODELS,
-    maxOutputTokens: 24576,
+    maxOutputTokens: opts.compact ? 16384 : 24576,
     thinkingBudget: 1024,
-    temperature: 0.5,
+    temperature: opts.compact ? 0.35 : 0.4,
+    maxRepeatRun: 400,
     log: (...a) => log(...a),
   });
 
@@ -957,6 +1008,19 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
     violations.push(`마크다운 분석 표(Table) 누락 (최소 1개 이상의 비교/정리 표 필요)`);
   }
 
+  // [P0-2.4 · 2026-11-17] 반복 문자 폭주 / 비정상 분량 게이트
+  // 폭주가 MAX_TOKENS 가 아니라 STOP 으로 끝나면 길이·표·H2 게이트를 모두 통과해
+  // 깨진 표가 그대로 발행될 수 있었다. sanitize 이후에도 남은 폭주를 마지막으로 막는다.
+  const runaway = findRunawayRun(bodyContent);
+  if (runaway) {
+    violations.push(
+      `반복 문자 폭주 감지 ('${runaway.char}' ${runaway.length}자 연속) — 표 정렬/구분선 서식 오류`
+    );
+  }
+  if (totalChars > QUALITY_GATE.MAX_BODY_CHARS) {
+    violations.push(`본문 ${totalChars}자 (상한 ${QUALITY_GATE.MAX_BODY_CHARS}자 초과)`);
+  }
+
   // [P0-2.2] 추가 품질 게이트: 시각적 컴포넌트(Callout 박스 또는 차트) 검증
   const hasCallout = /:::(?:warning|note|checklist|step)\[/.test(bodyContent);
   if (!hasCallout && !hasChart) {
@@ -964,9 +1028,10 @@ export async function parseAndSaveArticleMarkdown({ rawMarkdown, category, targe
   }
 
   // [P0-2.3] 추가 품질 게이트: 연도 환각 검사 (2024년 최신, 2025년 최신 등)
-  const yearHallucination = /(?:2024년|2025년)\s*(?:최신|기준|개정|현재)/g.exec(bodyContent + ' ' + title);
+  // 과거 연도를 '최신 기준'으로 쓴 경우만 잡는다 (2026년과 대비한 과거 설명은 정상).
+  const yearHallucination = findYearHallucination(title, bodyContent);
   if (yearHallucination) {
-    violations.push(`기준 연도 왜곡 감지: "${yearHallucination[0]}" (현재 연도는 2026년이어야 함)`);
+    violations.push(`기준 연도 왜곡 감지: "${yearHallucination}" (현재 연도는 2026년이어야 함)`);
   }
 
   // 참고 출처 링크 게이트 — 정부/공식 제도 안내 URL 이 실제로 존재해야 발행 가능
@@ -1131,7 +1196,10 @@ ${buildInternalLinkInstruction(path.join(BLOG_ROOT, 'content', 'posts'), categor
 1. [기준일 표기]
    - 도입부 바로 다음에 :::note[기준일] 블록으로 "이 글은 ${targetDateStr} 기준 공식 안내를 바탕으로 정리했습니다. 금액과 기준은 매년 바뀌므로 신청 전 해당 기관에서 다시 확인하세요." 취지의 안내를 넣으세요.
 2. [필수 분량 규격]
-   - 반드시 전체 공백 포함 최소 2,800자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.
+   - ${options.compactRetry
+     ? '재시도이므로 전체 공백 포함 2,200~3,000자 (공백 제외 1,600자 이상)로 작성하세요. 길게 쓰면 잘립니다.'
+     : '반드시 전체 공백 포함 최소 2,800자 이상 (공백 제외 최소 1,800자 이상)의 깊이 있는 전문 정보를 작성하세요. 얇은 글(Thin content)은 절대 금지됩니다.'}
+   - 같은 문자(하이픈·공백·별표 등)를 10개 이상 연속으로 쓰지 마세요. 그런 출력은 폭주로 간주되어 즉시 중단됩니다.
 3. [금액 띄어쓰기 규범]
    - '70만 원', '5,000만 원'처럼 띄어 쓰지 말고 반드시 '70만원', '5,000만원', '2.4만원', '1억원'처럼 붙여 쓰세요.
 4. [필수 데이터 시각화 차트 삽입 - 이번 세션 지정 유형: ${selectedChart.name}]
@@ -1164,7 +1232,12 @@ ${selectedChart.instruction}
    - 독자들이 검색창에서 가장 자주 묻는 실전 Q&A (FAQ 4~5문항)
    - 위 요소들을 바탕으로 본문에 독립된 '## [직관적인 소제목]' 대주제(H2)를 반드시 4개 이상 구성하세요.
    - 반드시 마크다운 표(Table: \`| 항목 | 기준 | 내용 |\`)를 최소 1개 이상 작성하여 핵심 자격 요건이나 시중 상품 대비 혜택 차이를 체계적으로 비교하세요.
-   - 표는 "| a | b |" 처럼 칸 사이에 공백 한 칸만 쓰고, 구분선은 "|---|---|" 로 쓰세요. 공백이나 하이픈으로 칸 너비를 맞추지 마세요(출력이 끝없이 늘어나 응답이 잘립니다). 표 한 줄은 200자 이내로 쓰세요.
+   - 표는 "| a | b |" 처럼 칸 사이에 공백 한 칸만 쓰세요. 칸 너비를 맞추려고 공백을 여러 개 넣지 마세요.
+   - 표 구분선은 반드시 "|---|---|" 형태로만 쓰세요. 정렬 표기 ":---", "---:", ":---:" 는 절대 금지합니다. 정렬을 시도하다 하이픈을 수십만 자 연속 출력해 응답 전체가 잘리는 사고가 반복됐습니다.
+     올바른 예:
+     | 항목 | 기준 | 내용 |
+     |---|---|---|
+   - 표 한 줄은 200자 이내로 쓰세요.
    - 마지막에 '## 참고 자료' 섹션을 두고, [허용 참고 링크]에서 고른 3~5개를 '- [문서/기관 이름](URL)' 형식으로 쓰세요. 목록에 없는 URL 은 쓰지 마세요(자동으로 링크가 해제됩니다).
 7. [절대 금지 사항]
    - 반드시 현재 연도인 2026년 기준(2026년 최신 개정 및 2026년 정책)으로 작성하세요. 과거 연도(2024년, 2025년 등)를 '최신'으로 서술하거나 제목/슬러그에 넣는 것을 엄격히 금지합니다.
@@ -1188,19 +1261,32 @@ reading_time: 8
 affiliate: false
 ---`;
 
+  const retryNotice = options.lastError
+    ? `\n[⚠️ 이전 생성 실패 피드백]\n이전 시도 실패 사유: ${String(options.lastError).slice(0, 300)}\n` +
+      (options.compactRetry
+        ? `[이번 재시도 전용 규칙 — 반드시 지킬 것]
+- 분량은 공백 포함 2,200~3,000자로 줄이세요.
+- 표 구분선은 |---|---| 만 쓰고 :---, ---:, :---: 를 절대 쓰지 마세요.
+- 표 칸 정렬용 공백을 쓰지 마세요. 칸 사이는 공백 한 칸입니다.
+- 하이픈·공백·별표 등 같은 문자를 10개 이상 연속으로 쓰지 마세요.
+- H2 대주제 4개 이상, 참고 링크 3개 이상은 반드시 포함하세요.
+`
+        : `이번 생성에서는 H2 대주제 개수(최소 4개 이상 필수), 분량 규격(공백 제외 1,800자 이상), 마크다운 표, 공식 참고 출처 링크를 철저히 충족해주세요.\n`)
+    : '';
+
   const userPrompt = `카테고리: ${category}
 날짜: ${targetDateStr}
 세션: ${sessionName}
 지정 차트: ${selectedChart.name}
-${options.lastError ? `\n[⚠️ 이전 생성 실패 주의사항 및 피드백]\n이전 생성 시도가 다음 사유로 품질 게이트를 통과하지 못했습니다: "${options.lastError}".\n이번 생성에서는 H2 대주제 개수(최소 4개 이상 필수), 분량 규격(공백 제외 1,800자 이상), 마크다운 표, 공식 참고 출처 링크를 철저히 충족하여 완벽한 구조로 작성해주세요.\n` : ''}
-위 지침을 철저히 준수하여 ${category} 카테고리에 최적화된 최고 품질의 3,000자 내외 심층 가이드 마크다운을 작성해주세요.`;
+${retryNotice}
+위 지침을 철저히 준수하여 ${category} 카테고리에 최적화된 최고 품질의 ${options.compactRetry ? '2,300' : '3,000'}자 내외 심층 가이드 마크다운을 작성해주세요.`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
 
-  const draft = await callLLMWithFallback(messages, env);
+  const draft = await callLLMWithFallback(messages, env, { compact: options.compactRetry === true });
 
   // 3) 팩트체크 (검색 그라운딩) — 실패 시 발행 차단
   const checked = await factCheckArticle({
@@ -1269,7 +1355,9 @@ export async function generateArticleWithFallback({
   // 것처럼, 재시도는 같은 확률적 분포에서 다시 뽑히므로 방치하면 무한 반복된다.
   const avoidTopics = [];
   const genCache = {}; // 재시도 간 리서치 브리프 재사용
+  let attemptsMade = 0;
   for (let attempt = 0; attempt <= QUALITY_GATE.MAX_LLM_RETRY; attempt++) {
+    attemptsMade = attempt + 1;
     if (attempt > 0) {
       log(`🔄 [LLM 재시도 ${attempt}/${QUALITY_GATE.MAX_LLM_RETRY}] 사유: ${lastError?.message?.slice(0, 140) || '알 수 없음'}`);
       // 시도당 Gemini 호출이 3회 이상이라 연속 재시도는 분당 한도(429)에 걸린다
@@ -1344,7 +1432,9 @@ export async function generateArticleWithFallback({
       // 잘림 원인(반복/공백 폭주 등) 진단용으로 부분 응답을 data/ 에 남긴다 (발행 경로와 무관)
       if (err.truncated && err.partialText) {
         try {
-          const dump = path.join(BLOG_ROOT, 'data', `truncated-${targetDateStr}-${sessionName}-${attempt}.md`);
+          // 세션 내 재시도(18:34 → 19:08)가 같은 attempt 번호로 덮어쓰지 않도록 시각을 붙인다
+          const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+          const dump = path.join(BLOG_ROOT, 'data', `truncated-${targetDateStr}-${sessionName}-${attempt}-${stamp}.md`);
           fs.writeFileSync(dump, err.partialText, 'utf8');
           log(`📝 [잘림 진단] 부분 응답 저장: ${dump}`);
         } catch (_) {}
@@ -1358,6 +1448,7 @@ export async function generateArticleWithFallback({
 
   const finalErr = lastError || new Error('심층글 생성에 실패했습니다.');
   finalErr.exhausted = true;
+  finalErr.attempts = attemptsMade;
   throw finalErr;
 }
 
@@ -1821,11 +1912,25 @@ ${deployLine}`;
       status: 'failed',
       error: err.message,
     });
+    // 일일 호출 한도 소진은 날짜 단위로 기록해 두고, 데몬의 30분 재시도를 건너뛴다.
+    // (무료 티어 gemini-2.5-flash 는 하루 20회 — 재시도해도 다음 날까지 풀리지 않는다)
+    if (err.dailyQuota) state.quota_exhausted_date = dateStr;
     saveState(state);
 
     // 텔레그램 실패 보고 발송
     const isGateFailure = err.qualityGate || err.exhausted;
-    const failMsg = isGateFailure
+    const failMsg = err.dailyQuota
+      ? `⛔ *[blogs 발행 중단 — Gemini 일일 한도 소진]*
+
+⏰ *실행 시간:* ${timeStr} KST
+🏷️ *구분:* ${sessionName}
+📂 *카테고리:* ${category}
+
+❌ *원인:* 무료 티어 일일 호출 한도(하루 20회)를 모두 사용했습니다.
+🔄 *조치:* 오늘은 자동 재시도를 멈춥니다. 한도는 태평양 자정(한국 시간 16~17시경)에 리셋됩니다.
+_${describeFailure(err)}_
+_수동 재실행: node scripts/auto-publish-runner.mjs evening --force_`
+      : isGateFailure
       ? `🚫 *[blogs 품질 게이트로 발행 차단]*
 
 ⏰ *실행 시간:* ${timeStr} KST
@@ -1835,7 +1940,8 @@ ${deployLine}`;
 ❌ *차단 사유:* ${err.message}
 
 *조치:* D1 등록 및 GitHub 커밋을 수행하지 않았습니다. 생성된 미달 파일도 삭제했습니다.
-_LLM 재시도 ${QUALITY_GATE.MAX_LLM_RETRY}회로도 분량/구조를 충족하지 못했습니다. 프롬프트 규칙 점검 필요._`
+_${describeFailure(err)} — LLM 재시도 ${QUALITY_GATE.MAX_LLM_RETRY}회 포함 총 ${err.attempts || QUALITY_GATE.MAX_LLM_RETRY + 1}회 시도._
+_수동 재실행: node scripts/auto-publish-runner.mjs evening --force_`
       : `⚠️ *[blogs 자동 게시 실패]*
 
 ⏰ *실행 시간:* ${timeStr} KST
@@ -1939,6 +2045,7 @@ async function startDaemon() {
   const EVENING_MAX_FAILS = 3;
   const EVENING_RETRY_COOLDOWN_MS = 30 * 60 * 1000;
   let eveningSkippedLoggedToday = false;
+  let quotaSkipLoggedToday = false;
   let isSessionRunning = false;
 
   const formatTarget = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
@@ -1990,6 +2097,7 @@ async function startDaemon() {
       eveningFailsToday = 0;
       eveningRetryNotBefore = 0;
       eveningSkippedLoggedToday = false;
+      quotaSkipLoggedToday = false;
 
       const weeklyConfig = checkOrUpdateWeeklySkip(state, dateStr);
       isAfternoonSkippedToday = (weeklyConfig.is_rest_day);
@@ -2022,6 +2130,13 @@ async function startDaemon() {
           log(`💤 [비발행일] 오늘은 이번 주 발행 요일이 아니어서 오후 세션을 건너뜁니다.`);
           eveningSkippedLoggedToday = true;
         }
+      } else if (state.quota_exhausted_date === dateStr) {
+        // 데몬이 같은 날 재시작되어도 이미 한도가 바닥난 날에는 다시 호출하지 않는다.
+        // 한도는 태평양 자정(= 한국 16~17시)에 리셋되므로 dateStr 이 바뀌면 자동 해제된다.
+        if (!quotaSkipLoggedToday) {
+          log(`⛔ [일일 한도 소진] 오늘 Gemini 무료 한도를 모두 사용해 발행을 건너뜁니다. (태평양 자정 리셋)`);
+          quotaSkipLoggedToday = true;
+        }
       } else {
         log(`📚 [오후 세션 트리거] 목표 시각(${formatTarget(currentEveningTarget)}) 도달/보상 실행 (현재: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} KST)`);
         eveningExecutedToday = true;
@@ -2029,13 +2144,18 @@ async function startDaemon() {
         try {
           const ok = await runPublishPipeline('evening');
           if (ok === false && !isSessionAlreadyDone(loadState(), 'evening', dateStr)) {
-            eveningFailsToday += 1;
-            if (eveningFailsToday < EVENING_MAX_FAILS) {
-              eveningExecutedToday = false;
-              eveningRetryNotBefore = Date.now() + EVENING_RETRY_COOLDOWN_MS;
-              log(`🔁 [재시도 예약] 실패 ${eveningFailsToday}/${EVENING_MAX_FAILS}회 — 30분 뒤 같은 세션을 다시 시도합니다.`);
+            if (loadState().quota_exhausted_date === dateStr) {
+              // 한도 소진은 시간이 지나도 풀리지 않으므로 30분 재시도를 예약하지 않는다.
+              log(`⛔ [재시도 중단] Gemini 일일 호출 한도 소진 — 30분 재시도를 건너뜁니다.`);
             } else {
-              log(`⛔ [재시도 중단] 오늘 ${EVENING_MAX_FAILS}회 실패하여 더 이상 시도하지 않습니다.`);
+              eveningFailsToday += 1;
+              if (eveningFailsToday < EVENING_MAX_FAILS) {
+                eveningExecutedToday = false;
+                eveningRetryNotBefore = Date.now() + EVENING_RETRY_COOLDOWN_MS;
+                log(`🔁 [재시도 예약] 실패 ${eveningFailsToday}/${EVENING_MAX_FAILS}회 — 30분 뒤 같은 세션을 다시 시도합니다.`);
+              } else {
+                log(`⛔ [재시도 중단] 오늘 ${EVENING_MAX_FAILS}회 실패하여 더 이상 시도하지 않습니다.`);
+              }
             }
           }
         } catch (e) {
