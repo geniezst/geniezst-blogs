@@ -38,13 +38,23 @@ async function fetchStatus(url, { redirect = 'follow', timeoutMs = 8000 } = {}) 
  * (2026-10-21 시험: 리서치·팩트체크 각 1회씩 '검색 0회' 응답 발생)
  */
 async function callGroundedRequired(params, stage) {
-  for (let i = 0; i < 2; i++) {
+  // [2026-11-19] 무료 키 gemini-2.5-flash 는 같은 프롬프트라도 검색을 건너뛰는 경우가 있다.
+  // 2회 모두 0회면 발행이 통째로 막히므로(1호 2026-11-19 macos 글) 3회까지 시도하고,
+  // 재시도는 thinkingBudget 0 + 낮은 temperature 로 도구 호출을 더 직접적으로 유도한다.
+  for (let i = 0; i < 3; i++) {
     const userPrompt = i === 0
       ? params.userPrompt
       : `${params.userPrompt}\n\n[필수] 답하기 전에 반드시 google_search 도구로 핵심 주장마다 검색하세요. 검색 없이 기억으로 답하면 무효입니다.`;
-    const res = await callGemini({ ...params, userPrompt, models: GROUNDED_MODELS, googleSearch: true, backoffBaseMs: 8000 });
+    const res = await callGemini({
+      ...params,
+      userPrompt,
+      models: GROUNDED_MODELS,
+      googleSearch: true,
+      backoffBaseMs: 8000,
+      ...(i > 0 ? { thinkingBudget: 0, temperature: 0.2 } : {}),
+    });
     if (res.grounding.queries.length > 0) return res;
-    params.log?.(`⚠️ [${stage}] 모델이 검색을 수행하지 않았습니다 (시도 ${i + 1}/2)`);
+    params.log?.(`⚠️ [${stage}] 모델이 검색을 수행하지 않았습니다 (시도 ${i + 1}/3)`);
   }
   const err = new Error(`[${stage} 실패] 검색 그라운딩이 수행되지 않아 사실 확인 불가`);
   err.qualityGate = true;
@@ -262,7 +272,7 @@ export async function factCheckArticle({ env, log, site, markdown: rawMarkdown, 
   const userPrompt = `아래 [초안]을 검수해 교정본을 만드세요.
 
 [검수 규칙]
-1. 수치·금액·비율·날짜·자격 기준·법령·기관·제도명·명령어·옵션·경로·레지스트리 키·이벤트 ID·오류 코드·버전 등 모든 사실 주장을 Google 검색으로 확인하세요.
+1. 수치·금액·비율·날짜·자격 기준·법령·기관·제도명·명령어·옵션·경로·레지스트리 키·이벤트 ID·오류 코드·버전 등 모든 사실 주장을 Google 검색으로 확인하세요. 고칠 것이 없다고 판단해도 최소 1회는 google_search 를 호출해야 합니다.
 2. 틀린 내용은 정확한 내용으로 고치세요. 확인할 수 없는 구체적 주장은 확인된 범위로 일반화하거나 삭제하세요. 추측으로 채우지 마세요.
 3. 폐지·통합·명칭 변경된 제도나 지원 종료된 버전·기능을 현재 유효한 것처럼 쓴 부분은 고치세요.
    '검토 중', '개정안', '발표안' 으로 쓴 내용은 오늘 날짜 기준으로 이미 시행됐는지(시행령 개정 포함), 시행일과 적용 대상이 무엇인지 확인해 고치세요. 반대로 아직 시행 전인 안을 확정된 것처럼 쓴 부분도 고치세요.
