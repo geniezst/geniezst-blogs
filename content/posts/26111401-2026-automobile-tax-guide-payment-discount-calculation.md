@@ -134,7 +134,7 @@ affiliate: false
 ## 함께 읽으면 좋은 글
 
 * [2026년 신용카드 소득공제와 체크카드 전략](/blog/credit-debit-card-income-deduction-strategy-2026)
-* [2026년 신용카드 자동차 구매 혜택 정리](/blog/credit-card-car-purchase-benefits-2026-guide)
+* [흩어진 카드포인트 한 번에 조회하고 현금으로 받는 법](/blog/credit-card-point-cash-conversion-2026-guide)
 * [2026년 주택 양도소득세 가이드](/blog/housing-capital-gains-tax-2026-guide)
 
 ## 참고 자료

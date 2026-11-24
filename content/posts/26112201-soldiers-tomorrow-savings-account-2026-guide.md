@@ -6,6 +6,10 @@ category: "saving"
 tags: [장병내일준비적금, 군적금, 목돈마련, 청년정책, 2026년, 병사적금]
 author: "포켓머니"
 reading_time: 5
+featured_image: "/assets/posts/soldiers-tomorrow-savings-account-2026-guide/cover.webp"
+og_image: "/assets/posts/soldiers-tomorrow-savings-account-2026-guide/og.jpg"
+image_width: 1200
+image_height: 630
 affiliate: false
 ---
 
@@ -92,10 +96,12 @@ affiliate: false
 
 이러한 혜택들을 종합하면, 18개월 복무하는 육군 병사가 월 55만원을 꾸준히 납입하고 만기 해지할 경우, 약 2천만원의 목돈을 마련할 수 있을 것으로 예상됩니다. 이는 전역 후 사회에 안정적으로 정착하는 데 큰 도움이 될 것입니다.
 
+![장병내일준비적금 18개월 적립 구성. 총 납입 원금 990만원과 정부 매칭지원금 990만원, 이자·이자지원금 약 20만원을 합쳐 만기 수령액 약 2,000만원](/assets/posts/soldiers-tomorrow-savings-account-2026-guide/composition.webp "장병내일준비적금 18개월 적립 구성 (2026년 11월 22일 기준, 세전 추정)")
+
 :::note[함께 읽으면 좋은 글]
 장병내일준비적금으로 마련한 목돈을 어떻게 운용할지 고민이라면, 다른 청년 정책 상품도 함께 알아보세요.
-- [2026년 청년도약계좌 소득구간별 정부기여금 매칭과 저축 전략](/blog/youth-leap-account-saving-contribution-strategy-2026)
-- [2026년 청년내일저축계좌 3차 신청- 월 10만원으로 3년 만기 1,440만원 목돈 만드는 법](/blog/youth-tomorrow-savings-account-2026-third-application-guide)
+- [청년도약계좌 신규가입 종료 이후, 기존 가입자가 알아둘 것](/blog/youth-leap-account-2026-guide)
+- [청년내일저축계좌 2026년 가입 조건과 만기 수령액](/blog/youth-tomorrow-savings-account-2026-guide)
 :::
 
 ## 장병내일준비적금 실무 신청 및 해지 절차

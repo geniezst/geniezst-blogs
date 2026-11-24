@@ -98,7 +98,7 @@ image_height: 630
 ## 함께 읽으면 좋은 글
 
 * [2026년 기초연금 수급 자격과 금액, 신청 방법 정리](/blog/basic-pension-2026-guide)
-* [상호금융 세금우대 예탁금 2026년 활용법](/blog/mutual-finance-tax-preferential-deposit-2026)
+* [ISA 만기 자금을 연금계좌로 옮기면 받는 추가 세액공제](/blog/isa-maturity-pension-transfer-strategy-2026)
 
 ## 참고 자료
 

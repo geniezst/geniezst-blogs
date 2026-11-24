@@ -182,4 +182,24 @@ export const SPECS = {
     source: '보건복지부 · 정부지원금 1,080만원 포함 합계', date: D,
     items: [{ label: '본인 월 10만원', value: '1,440만원', num: 1440 }, { label: '본인 월 30만원', value: '2,160만원', num: 2160 }, { label: '본인 월 50만원', value: '2,880만원', num: 2880, hl: true }],
   },
+  'soldiers-tomorrow-savings-account-2026-guide/composition': {
+    type: 'barsH', title: '장병내일준비적금 18개월 적립 구성', subtitle: '월 55만원 납입, 기본금리 5%·이자지원 1%p 가정, 세전 추정',
+    source: '우체국예금·국가법령정보센터 · 이자 제외 1,980만원', date: '2026.11.22',
+    items: [
+      { label: '총 납입 원금', value: '990만원', num: 990 },
+      { label: '정부 매칭지원금', value: '990만원', num: 990 },
+      { label: '이자·이자지원금', value: '약 20만원', num: 20 },
+      { label: '만기 수령액', value: '약 2,000만원', num: 2000, hl: true },
+    ],
+  },
+  'national-pension-voluntary-subscription-2026-guide/rate-timeline': {
+    type: 'timeline', title: '국민연금 보험료율 인상 일정', subtitle: '2026년 9.5% → 2033년 13%, 2026년 기준소득월액(101.3만원) 기준 추정',
+    source: '국민연금공단·보건복지부', date: '2026.11.23',
+    items: [
+      { when: '2026', name: '9.5%', sub: '최소 월 96,235원', tag: '현행', hl: true },
+      { when: '2028', name: '10.5%', sub: '최소 월 약 106,365원' },
+      { when: '2030', name: '11.5%', sub: '최소 월 약 116,495원' },
+      { when: '2033', name: '13.0%', sub: '최소 월 약 131,690원' },
+    ],
+  },
 };

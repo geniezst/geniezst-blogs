@@ -174,7 +174,7 @@ image_height: 630
 ### 함께 읽으면 좋은 글
 
 * [IRP 2026년 세액공제 한도와 퇴직금 세금 절세법](/blog/irp-2026-guide-tax-benefits-investment-strategy)
-* [2026년 상호금융 세금우대 예탁금 3,000만원 비과세 한도와 절세 전략](/blog/mutual-finance-tax-preferential-deposit-2026)
+* [2026년 비과세종합저축 가입 조건과 달라진 점, 65세 기준 폐지](/blog/tax-exempt-comprehensive-savings-2026-guide)
 
 ---
 

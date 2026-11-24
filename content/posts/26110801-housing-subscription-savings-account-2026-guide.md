@@ -100,8 +100,8 @@ image_height: 630
 ## 함께 읽으면 좋은 글
 
 * [청약통장 월 납입 인정액 25만원, 얼마를 넣는 게 맞을까](/blog/housing-subscription-monthly-limit-250k-strategy-2026)
-* [2026년 청년도약계좌 소득구간별 정부기여금 매칭과 저축 전략](/blog/youth-leap-account-saving-contribution-strategy-2026)
-* [2026년 청년내일저축계좌 3차 신청 가이드](/blog/youth-tomorrow-savings-account-2026-third-application-guide)
+* [청년도약계좌 신규가입 종료 이후, 기존 가입자가 알아둘 것](/blog/youth-leap-account-2026-guide)
+* [청년내일저축계좌 2026년 가입 조건과 만기 수령액](/blog/youth-tomorrow-savings-account-2026-guide)
 
 ## 참고 자료
 

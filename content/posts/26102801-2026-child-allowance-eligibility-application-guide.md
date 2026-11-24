@@ -96,7 +96,7 @@ image_height: 630
 | 지급 정지 | 90일 이상 국외 체류 |
 | 중복 수급 | 부모급여·양육수당·보육료·유아학비와 함께 수령 |
 
-회사에서 6세 이하 자녀의 보육수당을 받는다면 자녀 1명당 월 20만원까지 소득세가 비과세입니다. 아동수당과는 별개입니다. 함께 볼 글: [청년도약계좌 혜택 가이드](/blog/youth-leap-account-welfare-benefits-2026), [주거급여 산정 기준 안내](/blog/housing-benefit-2026-guide-maximizing-support)
+회사에서 6세 이하 자녀의 보육수당을 받는다면 자녀 1명당 월 20만원까지 소득세가 비과세입니다. 아동수당과는 별개입니다. 함께 볼 글: [청년도약계좌 신규가입 종료 이후 가이드](/blog/youth-leap-account-2026-guide), [주거급여 산정 기준 안내](/blog/housing-benefit-2026-guide-maximizing-support)
 
 ## 신청 방법
 

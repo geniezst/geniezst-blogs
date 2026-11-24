@@ -1010,5 +1010,49 @@
     "sub": "+지방교육세 30%"
    }
   ]
+ },
+ "soldiers-tomorrow-savings-account-2026-guide": {
+  "category": "예적금",
+  "title": "장병내일준비적금 18개월 목돈",
+  "date": "2026.11.22",
+  "cards": [
+   {
+    "label": "월 납입 한도",
+    "value": "55만원",
+    "sub": "은행별 30만원"
+   },
+   {
+    "label": "정부 매칭",
+    "value": "100%",
+    "sub": "납입 원금 기준"
+   },
+   {
+    "label": "비과세 가입",
+    "value": "~2026.12.31",
+    "sub": "이자소득세 면제"
+   }
+  ]
+ },
+ "national-pension-voluntary-subscription-2026-guide": {
+  "category": "국민연금",
+  "title": "임의가입 최소 보험료 96,235원",
+  "date": "2026.11.23",
+  "cards": [
+   {
+    "label": "2026 보험료율",
+    "value": "9.5%",
+    "sub": "2033년 13%까지"
+   },
+   {
+    "label": "최소 월 보험료",
+    "value": "96,235원",
+    "sub": "중위수 101.3만원"
+   },
+   {
+    "label": "최소 가입기간",
+    "value": "10년",
+    "sub": "120개월"
+   }
+  ]
  }
 }
